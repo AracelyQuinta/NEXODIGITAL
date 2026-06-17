@@ -9,11 +9,12 @@ body {
 
 /* Encabezado */
 header {
-    background: linear-gradient(135deg, #4b0082, #7b2cbf);
+    background: linear-gradient(135deg, #0A2540, #134a73, #1D9E75);
     color: white;
     text-align: center;
     padding: 50px 20px;
 }
+
 header h1 {
     margin: 0;
     font-size: 42px;
@@ -21,18 +22,20 @@ header h1 {
 
 /* Navegación */
 nav {
-    background-color: #2d0a4e;
+    background-color: #0A2540;
     text-align: center;
     padding: 15px;
 }
+
 nav a {
     color: white;
     text-decoration: none;
     margin: 0 12px;
     font-weight: bold;
 }
+
 nav a:hover {
-    color: #d8b4fe;
+    color: #1D9E75;
 }
 
 /* Contenido principal */
@@ -41,21 +44,23 @@ main {
     max-width: 1100px;
     margin: 30px auto;
 }
-section, aside {
+
+section,
+aside {
     background-color: white;
     margin-bottom: 25px;
     padding: 25px;
     border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 /* Aside destacado */
 aside {
-    border-left: 6px solid #7b2cbf;
-    background-color: #f3e8ff;
+    border-left: 6px solid #1D9E75;
+    background-color: #e8f7f1;
 }
 
-/* Bloque "Quiénes Somos" */
+/* Bloque Quiénes Somos */
 .contenedor-quienes {
     display: flex;
     align-items: flex-start;
@@ -71,96 +76,124 @@ aside {
     flex: 1;
 }
 
-
+/* Títulos */
 h2 {
-    color: #4b0082;
-    border-bottom: 2px solid #7b2cbf;
+    color: #0A2540;
+    border-bottom: 2px solid #1D9E75;
     padding-bottom: 8px;
-    }
+}
 
+/* Imágenes */
 img {
     max-width: 100%;
     border-radius: 10px;
     margin-top: 15px;
-    }
+}
 
+/* Listas */
 ul {
     padding-left: 25px;
-    }
+}
 
 li {
     margin-bottom: 8px;
-    }
+}
 
+/* Videos */
 iframe {
     max-width: 100%;
     border-radius: 10px;
     margin-top: 10px;
-    }
+}
 
 /* Footer */
 footer {
-    background-color: #2d0a4e;
+    background-color: #0A2540;
     color: white;
     text-align: center;
     padding: 25px;
     margin-top: 30px;
 }
+
 footer p {
     margin: 5px;
 }
 
-/* Contenedor en fila */
+/* Herramientas */
 #herramientas {
-    display: flex;              /* activa flexbox */
-    justify-content: center;    /* centra horizontalmente */
-    gap: 20px;                  /* espacio entre cuadros */
+    display: flex;
+    justify-content: center;
+    gap: 20px;
     margin: 30px auto;
+    flex-wrap: wrap;
 }
 
-@media (max-width: 768px) {
-    #herramientas {
-        flex-direction: column;
-        align-items: center;
-    }
-}
-
-/* Estilo de cada tarjeta */
+/* Tarjetas */
 .card {
     background: white;
     padding: 25px;
     width: 250px;
     border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     text-align: center;
+    transition: transform 0.3s ease;
 }
 
-/* ===== Media queries Semana 4 ===== */
+.card:hover {
+    transform: translateY(-5px);
+}
 
-/* Tabletas (≤ 768px) */
+/* ===== MEDIA QUERIES ===== */
+
+/* Tablets */
 @media (max-width: 768px) {
+
     header h1 {
         font-size: 2rem;
     }
+
     .display-4 {
         font-size: 2rem !important;
     }
+
     iframe {
         width: 100%;
         height: 250px;
     }
+
+    #herramientas {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .contenedor-quienes {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .contenedor-quienes img {
+        width: 100%;
+    }
 }
 
-/* Celulares (≤ 480px) */
+/* Celulares */
 @media (max-width: 480px) {
+
     header h1 {
         font-size: 1.6rem;
     }
-    section {
+
+    section,
+    aside {
         padding: 15px !important;
     }
+
     .btn {
         width: 100%;
         margin-bottom: 8px;
+    }
+
+    footer {
+        font-size: 14px;
     }
 }
