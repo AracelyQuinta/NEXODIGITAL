@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="es">
 
@@ -5,205 +6,177 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexo Digital - Sitio Web Institucional</title>
+
     <!-- Bootstrap 5 CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Enlace al CSS modular -->
+    
+    <!-- CSS personalizado -->
     <link rel="stylesheet" href="css/estilo.css">
 </head>
 
 <body>
-    <header style="background: linear-gradient(135deg, #0A2540, #134a73, #1D9E75); 
-               color: white; text-align: center; padding: 60px 20px;">
-        <h1 style="font-size: 3rem; font-weight: 700; margin-bottom: 10px;">Nexo Digital</h1>
-        <p style="font-size: 1.2rem; color: #c8f0e0;">
-            Soluciones digitales para pequeños negocios y emprendimientos.
-        </p>
+
+    <header class="hero-header text-white text-center">
+        <div class="container">
+            <h1>Nexo Digital</h1>
+            <p>Soluciones digitales para pequeños negocios y emprendimientos.</p>
+        </div>
     </header>
 
-    <nav class="navbar navbar-expand-lg sticky-top" style="background-color:#0A2540;">
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="#inicio" style="color:#1D9E75;">⚡ NexoDigital</a>
+            <a class="navbar-brand fw-bold" href="#inicio">⚡ NexoDigital</a>
 
-            <!-- Botón hamburguesa para celular -->
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#menuNav">
-                <span style="color:white; font-size:1.4rem;">☰</span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menuNav">
+                <span class="navbar-toggler-icon"></span>
             </button>
 
             <div class="collapse navbar-collapse" id="menuNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="#inicio" style="color:#e0e0e0;">Inicio</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#quienes-somos" style="color:#e0e0e0;">Quiénes
-                            Somos</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#servicios" style="color:#e0e0e0;">Servicios</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#video" style="color:#e0e0e0;">Video</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#contacto" style="color:#e0e0e0;">Contacto</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#inicio">Inicio</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#quienes-somos">Quiénes Somos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#servicios">Servicios</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#video">Video</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#contacto">Contacto</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
     <main>
-        <!-- Secciones -->
-        <section id="inicio" class="text-center text-white py-5"
-            style="background: linear-gradient(135deg, #0A2540, #134a73, #1D9E75); padding: 100px 20px;">
+
+        <section id="inicio" class="inicio text-center text-white">
             <div class="container">
-                <h2 class="display-4 fw-bold">Nexo Digital</h2>
-                <p class="lead mt-3 mx-auto" style="max-width:600px; color:#c8f0e0;">
-                    Bienvenidos a Nexo Digital, una propuesta creada para ayudar a pequeños negocios
-                    a mejorar su presencia en Internet mediante páginas web, catálogos digitales,
-                    menús QR y herramientas de contacto en línea.
+                <h2 class="display-4 fw-bold">Impulsamos tu negocio en el mundo digital</h2>
+                <p class="lead mt-3 mx-auto">
+                    Creamos páginas web, catálogos digitales, menús QR y herramientas de contacto para que pequeños negocios puedan mejorar su presencia en Internet.
                 </p>
+
                 <div class="mt-4 d-flex gap-3 justify-content-center flex-wrap">
-                    <a href="#servicios" class="btn btn-lg"
-                        style="background:#1D9E75; color:white; border-radius:50px;">Ver servicios</a>
-                    <a href="#contacto" class="btn btn-lg btn-outline-light" style="border-radius:50px;">Contáctanos</a>
+                    <a href="#servicios" class="btn btn-verde btn-lg">Ver servicios</a>
+                    <a href="#contacto" class="btn btn-outline-light btn-lg">Contáctanos</a>
                 </div>
             </div>
         </section>
-        <section id="quienes-somos" class="py-5" style="background:white;">
+
+        <section id="quienes-somos" class="py-5">
             <div class="container">
                 <div class="row align-items-center g-4">
-
-                    <!-- Columna imagen -->
                     <div class="col-lg-5 col-md-6">
                         <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085"
                             alt="Persona trabajando en desarrollo web" class="img-fluid rounded shadow">
                     </div>
 
-                    <!-- Columna texto -->
-                    <div class="col-lg-7 col-md-6">
-                        <h2 style="color:#0A2540;">Quiénes Somos</h2>
+                    <article class="col-lg-7 col-md-6">
+                        <h2>Quiénes Somos</h2>
                         <p>
-                            Nexo Digital es un emprendimiento tecnológico creado por estudiantes de la carrera
-                            de Tecnologías de la Información, con el propósito de apoyar a pequeños negocios,
-                            emprendedores y profesionales que desean darse a conocer en el mundo digital.
-                            Nuestro proyecto nace al observar que muchos negocios locales tienen buenos
-                            productos o servicios, pero no cuentan con una página web, un catálogo digital o
-                            una forma moderna de comunicarse con sus clientes. Por esta razón, buscamos ofrecer
-                            soluciones sencillas, accesibles y adaptadas a las necesidades de cada cliente.
-                            Nos enfocamos en crear herramientas digitales funcionales, claras y fáciles de usar,
-                            para que los emprendimientos puedan mejorar su imagen, organizar mejor su información
-                            y llegar a más personas.
+                            Nexo Digital es un emprendimiento tecnológico creado por estudiantes de Tecnologías de la Información. Nuestro propósito es apoyar a pequeños negocios, emprendedores y profesionales que desean darse a conocer en el mundo digital.
                         </p>
-                    </div>
-
+                        <p>
+                            Ofrecemos soluciones sencillas, accesibles y adaptadas a cada cliente, ayudando a mejorar la imagen, organización y comunicación de los negocios locales.
+                        </p>
+                    </article>
                 </div>
             </div>
         </section>
-        <section id="servicios" class="py-5">
+
+        <section id="servicios" class="py-5 bg-light">
             <div class="container">
-                <h2 class="text-center mb-4" style="color:#0A2540;">Servicios</h2>
+                <h2 class="text-center mb-4">Servicios</h2>
+                <p class="text-center text-muted mb-5">Soluciones digitales prácticas para emprendedores y pequeños negocios.</p>
 
-                <article>
-                    <h3 class="text-center mb-4 text-muted">Servicios principales</h3>
-                    <div class="row g-4">
-
-                        <div class="col-lg-4 col-md-6">
-                            <div class="card h-100 shadow-sm border-0"
-                                style="border-top: 4px solid #1D9E75 !important;">
-                                <div class="card-body p-4">
-                                    <div style="font-size:2.5rem;">🌐</div>
-                                    <h5 class="card-title mt-2" style="color:#0A2540;">Páginas web</h5>
-                                    <p class="card-text text-muted">Diseño de páginas web básicas para negocios.</p>
-                                </div>
+                <div class="row g-4">
+                    <article class="col-lg-4 col-md-6">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-body p-4 text-center">
+                                <div class="icono">🌐</div>
+                                <h5 class="card-title">Páginas web</h5>
+                                <p class="card-text">Diseño de páginas web modernas, responsivas y fáciles de navegar.</p>
                             </div>
                         </div>
+                    </article>
 
-                        <div class="col-lg-4 col-md-6">
-                            <div class="card h-100 shadow-sm border-0"
-                                style="border-top: 4px solid #1D9E75 !important;">
-                                <div class="card-body p-4">
-                                    <div style="font-size:2.5rem;">📋</div>
-                                    <h5 class="card-title mt-2" style="color:#0A2540;">Catálogos digitales</h5>
-                                    <p class="card-text text-muted">Creación de catálogos digitales.</p>
-                                </div>
+                    <article class="col-lg-4 col-md-6">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-body p-4 text-center">
+                                <div class="icono">📋</div>
+                                <h5 class="card-title">Catálogos digitales</h5>
+                                <p class="card-text">Organización visual de productos y servicios para compartir en línea.</p>
                             </div>
                         </div>
+                    </article>
 
-                        <div class="col-lg-4 col-md-6">
-                            <div class="card h-100 shadow-sm border-0"
-                                style="border-top: 4px solid #1D9E75 !important;">
-                                <div class="card-body p-4">
-                                    <div style="font-size:2.5rem;">📱</div>
-                                    <h5 class="card-title mt-2" style="color:#0A2540;">Menús QR</h5>
-                                    <p class="card-text text-muted">Menús QR para restaurantes y cafeterías.</p>
-                                </div>
+                    <article class="col-lg-4 col-md-6">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-body p-4 text-center">
+                                <div class="icono">📱</div>
+                                <h5 class="card-title">Menús QR</h5>
+                                <p class="card-text">Menús digitales para restaurantes, cafeterías y emprendimientos gastronómicos.</p>
                             </div>
                         </div>
+                    </article>
 
-                        <div class="col-lg-4 col-md-6">
-                            <div class="card h-100 shadow-sm border-0"
-                                style="border-top: 4px solid #1D9E75 !important;">
-                                <div class="card-body p-4">
-                                    <div style="font-size:2.5rem;">📩</div>
-                                    <h5 class="card-title mt-2" style="color:#0A2540;">Formularios</h5>
-                                    <p class="card-text text-muted">Formularios de contacto y pedidos.</p>
-                                </div>
+                    <article class="col-lg-4 col-md-6">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-body p-4 text-center">
+                                <div class="icono">📩</div>
+                                <h5 class="card-title">Formularios</h5>
+                                <p class="card-text">Formularios de contacto, pedidos, reservas o solicitudes de información.</p>
                             </div>
                         </div>
+                    </article>
 
-                        <div class="col-lg-4 col-md-6">
-                            <div class="card h-100 shadow-sm border-0"
-                                style="border-top: 4px solid #1D9E75 !important;">
-                                <div class="card-body p-4">
-                                    <div style="font-size:2.5rem;">💬</div>
-                                    <h5 class="card-title mt-2" style="color:#0A2540;">WhatsApp y redes sociales</h5>
-                                    <p class="card-text text-muted">Integración de botones de WhatsApp y redes sociales.
-                                    </p>
-                                </div>
+                    <article class="col-lg-4 col-md-6">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-body p-4 text-center">
+                                <div class="icono">💬</div>
+                                <h5 class="card-title">WhatsApp y redes</h5>
+                                <p class="card-text">Integración de botones de WhatsApp, Facebook, Instagram y TikTok.</p>
                             </div>
                         </div>
+                    </article>
 
-                        <div class="col-lg-4 col-md-6">
-                            <div class="card h-100 shadow-sm border-0"
-                                style="border-top: 4px solid #1D9E75 !important;">
-                                <div class="card-body p-4">
-                                    <div style="font-size:2.5rem;">📈</div>
-                                    <h5 class="card-title mt-2" style="color:#0A2540;">Asesoría digital</h5>
-                                    <p class="card-text text-muted">Asesoría básica para mejorar la presencia digital.
-                                    </p>
-                                </div>
+                    <article class="col-lg-4 col-md-6">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-body p-4 text-center">
+                                <div class="icono">📈</div>
+                                <h5 class="card-title">Asesoría digital</h5>
+                                <p class="card-text">Orientación básica para mejorar la presencia digital de un negocio.</p>
                             </div>
                         </div>
-
-                    </div>
-                </article>
+                    </article>
+                </div>
             </div>
         </section>
-        <section id="video">
-            <h2>Video relacionado</h2>
 
-            <p>
-                El siguiente video muestra información relacionada con el desarrollo web y la presencia digital.
-            </p>
+        <section id="video" class="py-5">
+            <div class="container">
+                <h2 class="text-center mb-3">Video relacionado</h2>
+                <p class="text-center text-muted">
+                    El siguiente video presenta información relacionada con el desarrollo web y la presencia digital.
+                </p>
 
-            <iframe width="560" height="315" src="https://www.youtube.com/embed/cVoTm6OvsfI"
-                title="Video relacionado con desarrollo web" frameborder="0" allowfullscreen>
-            </iframe>
-
+                <div class="ratio ratio-16x9 shadow rounded">
+                    <iframe src="https://www.youtube.com/embed/cVoTm6OvsfI"
+                        title="Video relacionado con desarrollo web" allowfullscreen></iframe>
+                </div>
+            </div>
         </section>
-        <aside>
+
+        <aside class="container my-4 p-4 rounded shadow-sm">
             <h2>Información complementaria</h2>
-
-            <p>
-                <strong>Promoción:</strong> Diseño de página web básica con asesoría inicial gratuita.
-            </p>
-
-            <p>
-                <strong>Horario de atención:</strong> Lunes a viernes de 09h00 a 17h00.
-            </p>
+            <p><strong>Promoción:</strong> Diseño de página web básica con asesoría inicial gratuita.</p>
+            <p><strong>Horario de atención:</strong> Lunes a viernes de 09h00 a 17h00.</p>
         </aside>
+
         <section id="contacto" class="py-5">
             <div class="container">
-                <h2 class="text-center mb-5" style="color:#0A2540;">Contacto</h2>
+                <h2 class="text-center mb-5">Contacto</h2>
 
                 <div class="row g-5">
-
-                    <!-- Columna formulario -->
                     <div class="col-lg-7">
-                        <form action="#" method="post">
+                        <form action="#" method="post" class="p-4 rounded shadow-sm bg-white">
                             <div class="row g-3">
-
                                 <div class="col-md-6">
                                     <label for="nombre" class="form-label fw-bold">Nombre completo</label>
                                     <input type="text" id="nombre" name="nombre" class="form-control"
@@ -229,70 +202,80 @@
                                 </div>
 
                                 <div class="col-12">
-                                    <button type="submit" class="btn btn-lg w-100"
-                                        style="background:#1D9E75; color:white; border-radius:50px;">
+                                    <button type="submit" class="btn btn-verde btn-lg w-100">
                                         Enviar mensaje ✉️
                                     </button>
                                 </div>
-
                             </div>
                         </form>
                     </div>
 
-                    <!-- Columna info + redes -->
                     <div class="col-lg-5">
-                        <p><strong>Correo:</strong> nexodigital.ec@gmail.com</p>
-                        <p><strong>Teléfono:</strong> 096 977 3007</p>
-                        <p><strong>Dirección:</strong> Puyo, Ecuador</p>
+                        <div class="p-4 rounded shadow-sm bg-white h-100">
+                            <h3>Datos de contacto</h3>
+                            <p><strong>Correo:</strong> nexodigital.ec@gmail.com</p>
+                            <p><strong>Teléfono:</strong> 096 977 3007</p>
+                            <p><strong>Dirección:</strong> Puyo, Ecuador</p>
 
-                        <p><strong>Redes sociales:</strong></p>
-                        <div class="d-flex flex-column gap-2">
-                            <a href="https://www.facebook.com" target="_blank" class="btn"
-                                style="background:#1877F2; color:white; border-radius:50px;">📘 Facebook</a>
-                            <a href="https://www.instagram.com" target="_blank" class="btn"
-                                style="background:#E1306C; color:white; border-radius:50px;">📸 Instagram</a>
-                            <a href="https://www.tiktok.com" target="_blank" class="btn"
-                                style="background:#010101; color:white; border-radius:50px;">🎵 TikTok</a>
+                            <p><strong>Redes sociales:</strong></p>
+                            <div class="d-flex flex-column gap-2">
+                                <a href="https://www.facebook.com" target="_blank" class="btn btn-primary">📘 Facebook</a>
+                                <a href="https://www.instagram.com" target="_blank" class="btn btn-danger">📸 Instagram</a>
+                                <a href="https://www.tiktok.com" target="_blank" class="btn btn-dark">🎵 TikTok</a>
+                            </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </section>
 
+        <section id="herramientas" class="py-5 bg-light">
+            <div class="container">
+                <h2 class="text-center mb-4">Herramientas utilizadas</h2>
+
+                <div class="row g-4">
+                    <article class="col-md-4">
+                        <div class="card h-100 shadow-sm border-0 text-center">
+                            <div class="card-body">
+                                <h3>Visual Studio Code</h3>
+                                <p>Herramienta utilizada para crear y editar el archivo HTML.</p>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="col-md-4">
+                        <div class="card h-100 shadow-sm border-0 text-center">
+                            <div class="card-body">
+                                <h3>HTML5</h3>
+                                <p>Lenguaje utilizado para estructurar el contenido del sitio web.</p>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="col-md-4">
+                        <div class="card h-100 shadow-sm border-0 text-center">
+                            <div class="card-body">
+                                <h3>CSS3 y Bootstrap</h3>
+                                <p>Tecnologías aplicadas para mejorar el diseño visual y responsivo.</p>
+                            </div>
+                        </div>
+                    </article>
                 </div>
             </div>
         </section>
 
     </main>
 
-    <h2>Herramientas utilizadas</h2>
-    <section id="herramientas">
-        <div class="card">
-            <h3>Visual Studio Code</h3>
-            <p>Herramienta utilizada para crear y editar el archivo HTML.</p>
-        </div>
-
-        <div class="card">
-            <h3>HTML</h3>
-            <p>Lenguaje usado para estructurar la primera página web.</p>
-        </div>
-
-        <div class="card">
-            <h3>GitHub</h3>
-            <p>Plataforma empleada para publicar el código fuente del proyecto.</p>
-        </div>
-    </section>
-
-    
-    <footer>
-        <p> © 2026 - Desarrollado por: Cinthia Mishel Carrión Serrano;
-            Aracely Maribel Quintanilla Rumipamba y
-            Santiago Andres Lara Caicedo
-        </p>
+    <footer class="text-center p-4">
+        <p>© 2026 - Desarrollado por: Cinthia Mishel Carrión Serrano, Aracely Maribel Quintanilla Rumipamba y Santiago Andrés Lara Caicedo.</p>
         <p>Asignatura: Desarrollo de Aplicaciones Web</p>
-
-        <p>Universidad Estatal Amazónica- Cuarto Semestre</p>
+        <p>Universidad Estatal Amazónica - Cuarto Semestre</p>
     </footer>
 
-    <!-- Bootstrap JS — necesario para el menú hamburguesa -->
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
 
+</body>
 </html>
+```
+
