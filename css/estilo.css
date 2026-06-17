@@ -122,7 +122,7 @@ aside {
 
 /* Footer */
 footer {
-    background-color: #0c2b4b;
+    background-color: hwb(7 13% 5%);
     color: white;
 }
 
