@@ -58,7 +58,8 @@ function validarDescripcion() {
 descripcionSolicitud.addEventListener("input", validarDescripcion);
 descripcionSolicitud.addEventListener("blur", validarDescripcion);
 
-let contadorSolicitudes = 0;
+// arreglo para solicitudes
+let solicitudes = [];
 
 formulario.addEventListener("submit", function (e) {
     e.preventDefault();
@@ -77,51 +78,12 @@ formulario.addEventListener("submit", function (e) {
     const servicio = tipoServicio.value.trim();
     const descripcion = descripcionSolicitud.value.trim();
 
+    solicitudes.push({ nombre, servicio, descripcion }); //guarda en el arreglo
+
     mensaje.innerHTML =
         '<div class="alert alert-success">Solicitud registrada correctamente.</div>';
 
-    const columna = document.createElement("div");
-    columna.className = "col-md-6 col-lg-4";
-
-    const tarjeta = document.createElement("div");
-    tarjeta.className = "card shadow-sm h-100";
-
-    const cuerpo = document.createElement("div");
-    cuerpo.className = "card-body";
-
-    const titulo = document.createElement("h5");
-    titulo.className = "card-title";
-    titulo.textContent = nombre;
-
-    const subtitulo = document.createElement("h6");
-    subtitulo.className = "card-subtitle mb-2 text-muted";
-    subtitulo.textContent = servicio;
-
-    const texto = document.createElement("p");
-    texto.className = "card-text";
-    texto.textContent = descripcion;
-
-    const botonEliminar = document.createElement("button");
-    botonEliminar.className = "btn btn-danger btn-sm mt-2";
-    botonEliminar.textContent = "Eliminar";
-
-    botonEliminar.addEventListener("click", function () {
-        columna.remove();
-        contadorSolicitudes--;
-        totalSolicitudes.textContent = contadorSolicitudes;
-    });
-
-    cuerpo.appendChild(titulo);
-    cuerpo.appendChild(subtitulo);
-    cuerpo.appendChild(texto);
-    cuerpo.appendChild(botonEliminar);
-
-    tarjeta.appendChild(cuerpo);
-    columna.appendChild(tarjeta);
-    listaSolicitudes.appendChild(columna);
-
-    contadorSolicitudes++;
-    totalSolicitudes.textContent = contadorSolicitudes;
+    mostrarSolicitudes(); // renderizacion de todo el arreglo
 
     formulario.reset();
     nombreCliente.classList.remove("is-valid", "is-invalid");
@@ -130,94 +92,44 @@ formulario.addEventListener("submit", function (e) {
 });
 
 
-// ===== Formulario de Contacto =====
-const formularioContacto = document.querySelector('#contacto form');
-const nombreContacto = document.getElementById("nombre");
-const correoContacto = document.getElementById("correo");
-const asuntoContacto = document.getElementById("asunto");
-const mensajeContacto = document.getElementById("mensaje");
+// ===== Muestra la solicitudes =====
+function mostrarSolicitudes() {
+  listaSolicitudes.innerHTML = "";
 
-function validarNombreContacto() {
-    const valor = nombreContacto.value.trim();
-    if (valor.length < 3) {
-        nombreContacto.classList.add("is-invalid");
-        nombreContacto.classList.remove("is-valid");
-        return false;
-    } else {
-        nombreContacto.classList.add("is-valid");
-        nombreContacto.classList.remove("is-invalid");
-        return true;
-    }
+  if (solicitudes.length === 0) {
+    listaSolicitudes.innerHTML = "<p class='text-danger'>No hay solicitudes registradas.</p>";
+    totalSolicitudes.textContent = 0;
+    return;
+  }
+
+  solicitudes.forEach((sol, index) => {
+    const columna = document.createElement("div");
+    columna.className = "col-md-6 col-lg-4";
+
+    const tarjeta = document.createElement("div");
+    tarjeta.className = "card shadow-sm h-100";
+
+    tarjeta.innerHTML = `
+      <div class="card-body">
+        <h5 class="card-title">${sol.nombre}</h5>
+        <h6 class="card-subtitle mb-2 text-muted">${sol.servicio}</h6>
+        <p class="card-text">${sol.descripcion}</p>
+        <button class="btn btn-danger btn-sm mt-2" onclick="eliminarSolicitud(${index})">Eliminar</button>
+      </div>
+    `;
+
+    columna.appendChild(tarjeta);
+    listaSolicitudes.appendChild(columna);
+  });
+
+  totalSolicitudes.textContent = solicitudes.length;
 }
 
-function validarCorreoContacto() {
-    const valor = correoContacto.value.trim();
-    const patron = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!patron.test(valor)) {
-        correoContacto.classList.add("is-invalid");
-        correoContacto.classList.remove("is-valid");
-        return false;
-    } else {
-        correoContacto.classList.add("is-valid");
-        correoContacto.classList.remove("is-invalid");
-        return true;
-    }
+
+// ===== Elimina solicitudes =====
+function eliminarSolicitud(index) {
+    solicitudes.splice(index, 1); // elimina del arreglo
+    mostrarSolicitudes();         // vuelve a renderizar
 }
 
-function validarAsuntoContacto() {
-    const valor = asuntoContacto.value.trim();
-    if (valor.length < 5) {
-        asuntoContacto.classList.add("is-invalid");
-        asuntoContacto.classList.remove("is-valid");
-        return false;
-    } else {
-        asuntoContacto.classList.add("is-valid");
-        asuntoContacto.classList.remove("is-invalid");
-        return true;
-    }
-}
 
-function validarMensajeContacto() {
-    const valor = mensajeContacto.value.trim();
-    if (valor.length < 10) {
-        mensajeContacto.classList.add("is-invalid");
-        mensajeContacto.classList.remove("is-valid");
-        return false;
-    } else {
-        mensajeContacto.classList.add("is-valid");
-        mensajeContacto.classList.remove("is-invalid");
-        return true;
-    }
-}
-
-nombreContacto.addEventListener("input", validarNombreContacto);
-nombreContacto.addEventListener("blur", validarNombreContacto);
-
-correoContacto.addEventListener("input", validarCorreoContacto);
-correoContacto.addEventListener("blur", validarCorreoContacto);
-
-asuntoContacto.addEventListener("input", validarAsuntoContacto);
-asuntoContacto.addEventListener("blur", validarAsuntoContacto);
-
-mensajeContacto.addEventListener("input", validarMensajeContacto);
-mensajeContacto.addEventListener("blur", validarMensajeContacto);
-
-formularioContacto.addEventListener("submit", function (e) {
-    e.preventDefault();
-
-    const nombreOk = validarNombreContacto();
-    const correoOk = validarCorreoContacto();
-    const asuntoOk = validarAsuntoContacto();
-    const mensajeOk = validarMensajeContacto();
-
-    if (!nombreOk || !correoOk || !asuntoOk || !mensajeOk) {
-        return;
-    }
-
-    alert("¡Mensaje enviado correctamente! Te contactaremos pronto.");
-    formularioContacto.reset();
-    nombreContacto.classList.remove("is-valid", "is-invalid");
-    correoContacto.classList.remove("is-valid", "is-invalid");
-    asuntoContacto.classList.remove("is-valid", "is-invalid");
-    mensajeContacto.classList.remove("is-valid", "is-invalid");
-});
