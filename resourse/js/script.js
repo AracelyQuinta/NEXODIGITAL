@@ -62,34 +62,43 @@ descripcionSolicitud.addEventListener("blur", validarDescripcion);
 let solicitudes = [];
 
 formulario.addEventListener("submit", function (e) {
-    e.preventDefault();
+  e.preventDefault();
 
-    const nombreValido = validarNombre();
-    const servicioValido = validarServicio();
-    const descripcionValida = validarDescripcion();
+  const nombreValido = validarNombre();
+  const servicioValido = validarServicio();
+  const descripcionValida = validarDescripcion();
 
-    if (!nombreValido || !servicioValido || !descripcionValida) {
-        mensaje.innerHTML =
-            '<div class="alert alert-danger">Por favor corrige los campos marcados antes de registrar.</div>';
-        return;
-    }
+  if (!nombreValido || !servicioValido || !descripcionValida) {
+    // Abre modal de error
+    new bootstrap.Modal(document.getElementById("solicitudErrorModal")).show();
+    return;
+  }
 
-    const nombre = nombreCliente.value.trim();
-    const servicio = tipoServicio.value.trim();
-    const descripcion = descripcionSolicitud.value.trim();
+  // Spinner de carga
+  const spinner = document.getElementById("spinnerCarga");
+  spinner.classList.remove("d-none");
 
-    solicitudes.push({ nombre, servicio, descripcion }); //guarda en el arreglo
+  setTimeout(() => {
+    spinner.classList.add("d-none");
 
-    mensaje.innerHTML =
-        '<div class="alert alert-success">Solicitud registrada correctamente.</div>';
+    solicitudes.push({
+      nombre: nombreCliente.value.trim(),
+      servicio: tipoServicio.value.trim(),
+      descripcion: descripcionSolicitud.value.trim()
+    });
 
-    mostrarSolicitudes(); // renderizacion de todo el arreglo
+    mostrarSolicitudes();
+
+    // Abre modal de éxito
+    new bootstrap.Modal(document.getElementById("solicitudSuccessModal")).show();
 
     formulario.reset();
-    nombreCliente.classList.remove("is-valid", "is-invalid");
-    tipoServicio.classList.remove("is-valid", "is-invalid");
-    descripcionSolicitud.classList.remove("is-valid", "is-invalid");
+    [nombreCliente, tipoServicio, descripcionSolicitud].forEach(campo =>
+      campo.classList.remove("is-valid", "is-invalid")
+    );
+  }, 1000);
 });
+
 
 
 // ===== Muestra la solicitudes =====

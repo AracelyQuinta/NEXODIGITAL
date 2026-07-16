@@ -80,16 +80,27 @@ formularioContacto.addEventListener("submit", function (e) {
     const asuntoOk = validarAsuntoContacto();
     const mensajeOk = validarMensajeContacto();
 
+    // Actualizacion semana 7
+/*
     if (!nombreOk || !correoOk || !asuntoOk || !mensajeOk) {
         resultado.innerHTML = `<div class="alert alert-danger">❌ Por favor corrige los campos marcados.</div>`;
         return;
     }
-
     //  Alerta emergente
     alert("¡Mensaje enviado correctamente! Te contactaremos pronto.");
 
     //  Mensaje visible en pantalla
     resultado.innerHTML = `<div class="alert alert-success">✅ Mensaje capturado correctamente. ¡Gracias ${nombreContacto.value.trim()}!</div>`;
+*/
+
+        if (!nombreOk || !correoOk || !asuntoOk || !mensajeOk) {
+      let modalError = new bootstrap.Modal(document.getElementById("statusErrorsModal"));
+      modalError.show();
+      return;
+    }
+
+    let modalExito = new bootstrap.Modal(document.getElementById("statusSuccessModal"));
+    modalExito.show();
 
     // Limpiar formulario
     formularioContacto.reset();
