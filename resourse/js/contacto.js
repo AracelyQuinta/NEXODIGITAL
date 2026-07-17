@@ -10,7 +10,10 @@ const mensajeContacto = document.getElementById("mensaje");
 // Validaciones dinámicas
 function validarNombreContacto() {
     const valor = nombreContacto.value.trim();
-    if (valor.length < 3) {
+
+    const patron = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{3,}$/;
+
+    if (!patron.test(valor)) {
         nombreContacto.classList.add("is-invalid");
         nombreContacto.classList.remove("is-valid");
         return false;

@@ -10,7 +10,11 @@ const totalSolicitudes = document.getElementById("totalSolicitudes");
 // Validación dinámica del campo nombre
 function validarNombre() {
     const valor = nombreCliente.value.trim();
-    if (valor.length < 3) {
+
+    // Solo letras (incluye tildes y ñ) y espacios
+    const patron = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{3,}$/;
+
+    if (!patron.test(valor)) {
         nombreCliente.classList.add("is-invalid");
         nombreCliente.classList.remove("is-valid");
         return false;
