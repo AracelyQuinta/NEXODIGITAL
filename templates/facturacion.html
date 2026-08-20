@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{%extends "base.html" %}
 
 {% block titulo %}Facturación - Nexo Digital{% endblock %}
 
@@ -6,11 +6,19 @@
 
 <section class="py-5">
     <div class="container">
+
         <h2 class="text-center mb-4">Facturación</h2>
-        <p class="text-center text-muted mb-5">Registro de facturas emitidas a nuestros clientes.</p>
+
+        <p class="text-center text-muted mb-5">
+            Registro de facturas emitidas a nuestros clientes.
+        </p>
+
+        {% if facturas %}
 
         <div class="table-responsive">
+
             <table class="table table-striped table-hover align-middle">
+
                 <thead class="table-dark">
                     <tr>
                         <th>N° Factura</th>
@@ -20,38 +28,63 @@
                         <th>Estado</th>
                     </tr>
                 </thead>
+
                 <tbody>
+
+                    {% for factura in facturas %}
+
                     <tr>
-                        <td>001-001-0001</td>
-                        <td>Panadería El Trigal</td>
-                        <td>2026-01-15</td>
-                        <td>$350.00</td>
-                        <td><span class="badge bg-success">Pagada</span></td>
+                        <td>{{ factura.numero }}</td>
+
+                        <td>{{ factura.cliente }}</td>
+
+                        <td>{{ factura.fecha }}</td>
+
+                        <td>
+                            ${{ "%.2f"|format(factura.monto) }}
+                        </td>
+
+                        <td>
+
+                            {% if factura.estado == "Pagada" %}
+
+                                <span class="badge bg-success">
+                                    {{ factura.estado }}
+                                </span>
+
+                            {% elif factura.estado == "Pendiente" %}
+
+                                <span class="badge bg-warning text-dark">
+                                    {{ factura.estado }}
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge bg-danger">
+                                    {{ factura.estado }}
+                                </span>
+
+                            {% endif %}
+
+                        </td>
                     </tr>
-                    <tr>
-                        <td>001-001-0002</td>
-                        <td>Boutique Bella</td>
-                        <td>2026-02-03</td>
-                        <td>$220.00</td>
-                        <td><span class="badge bg-success">Pagada</span></td>
-                    </tr>
-                    <tr>
-                        <td>001-001-0003</td>
-                        <td>Taller Mecánico RPM</td>
-                        <td>2026-02-20</td>
-                        <td>$180.00</td>
-                        <td><span class="badge bg-warning text-dark">Pendiente</span></td>
-                    </tr>
-                    <tr>
-                        <td>001-001-0004</td>
-                        <td>Café Aroma</td>
-                        <td>2026-03-10</td>
-                        <td>$400.00</td>
-                        <td><span class="badge bg-danger">Vencida</span></td>
-                    </tr>
+
+                    {% endfor %}
+
                 </tbody>
+
             </table>
+
         </div>
+
+        {% else %}
+
+        <div class="alert alert-info text-center">
+            Actualmente no existen facturas registradas.
+        </div>
+
+        {% endif %}
+
     </div>
 </section>
 

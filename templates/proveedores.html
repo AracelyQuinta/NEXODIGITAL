@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+ {% extends "base.html" %}
 
 {% block titulo %}Proveedores - Nexo Digital{% endblock %}
 
@@ -6,11 +6,18 @@
 
 <section class="py-5">
     <div class="container">
+
         <h2 class="text-center mb-4">Proveedores</h2>
-        <p class="text-center text-muted mb-5">Servicios y herramientas que contratamos para operar.</p>
+
+        <p class="text-center text-muted mb-5">
+            Servicios y herramientas que contratamos para operar.
+        </p>
+
+        {% if proveedores %}
 
         <div class="table-responsive">
             <table class="table table-striped table-hover align-middle">
+
                 <thead class="table-dark">
                     <tr>
                         <th>Proveedor</th>
@@ -19,34 +26,52 @@
                         <th>Estado</th>
                     </tr>
                 </thead>
+
                 <tbody>
+
+                    {% for proveedor in proveedores %}
+
                     <tr>
-                        <td>Hostinger</td>
-                        <td>Hosting web</td>
-                        <td>hostinger.com</td>
-                        <td><span class="badge bg-success">Activo</span></td>
+                        <td>{{ proveedor.nombre }}</td>
+
+                        <td>{{ proveedor.servicio }}</td>
+
+                        <td>{{ proveedor.sitio }}</td>
+
+                        <td>
+
+                            {% if proveedor.estado == "Activo" %}
+
+                                <span class="badge bg-success">
+                                    {{ proveedor.estado }}
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge bg-warning text-dark">
+                                    {{ proveedor.estado }}
+                                </span>
+
+                            {% endif %}
+
+                        </td>
                     </tr>
-                    <tr>
-                        <td>GoDaddy</td>
-                        <td>Dominios</td>
-                        <td>godaddy.com</td>
-                        <td><span class="badge bg-success">Activo</span></td>
-                    </tr>
-                    <tr>
-                        <td>Figma</td>
-                        <td>Licencia de diseño</td>
-                        <td>figma.com</td>
-                        <td><span class="badge bg-success">Activo</span></td>
-                    </tr>
-                    <tr>
-                        <td>Cloudflare</td>
-                        <td>Seguridad y CDN</td>
-                        <td>cloudflare.com</td>
-                        <td><span class="badge bg-warning text-dark">Pendiente</span></td>
-                    </tr>
+
+                    {% endfor %}
+
                 </tbody>
+
             </table>
         </div>
+
+        {% else %}
+
+        <div class="alert alert-info text-center">
+            Actualmente no existen proveedores registrados.
+        </div>
+
+        {% endif %}
+
     </div>
 </section>
 
