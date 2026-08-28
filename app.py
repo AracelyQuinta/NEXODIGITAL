@@ -202,8 +202,6 @@ def inicio():
     }
     return render_template('index.html', mensaje=mensaje, empresa=empresa, servicios=lista_servicios)
 
-
-@app.route('/servicios')
 @app.route('/servicio')
 def servicios():
     """
@@ -309,7 +307,6 @@ def eliminar_cliente(id):
 # MÓDULO CRUD: SERVICIOS
 # ==============================================================================
 
-@app.route('/servicios/nuevo', methods=['GET', 'POST'])
 @app.route('/servicio/nuevo', methods=['GET', 'POST'])
 def nuevo_servicio():
     """
