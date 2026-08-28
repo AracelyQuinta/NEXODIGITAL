@@ -1,0 +1,56 @@
+﻿# ==============================================================================
+# FORMULARIO: REGISTRO Y EDICIÓN DE PROVEEDORES
+# ==============================================================================
+# Modela los campos necesarios para registrar empresas y plataformas proveedoras
+# de infraestructura tecnológica (hosting, dominios, SSL, herramientas de diseño).
+# ==============================================================================
+
+from flask_wtf import FlaskForm
+from wtforms import StringField, SelectField, SubmitField
+from wtforms.validators import DataRequired, Length
+
+
+class ProveedorForm(FlaskForm):
+    """
+    Formulario para la gestión de proveedores de software e infraestructura.
+    """
+    # Nombre comercial del proveedor
+    nombre = StringField(
+        'Nombre del proveedor o plataforma',
+        validators=[
+            DataRequired(message='El nombre del proveedor es obligatorio.'),
+            Length(min=3, max=100, message='Debe contener entre 3 y 100 caracteres.')
+        ]
+    )
+
+    # Tipo de servicio o recurso suministrado
+    servicio = StringField(
+        'Servicio o recurso que ofrece',
+        validators=[
+            DataRequired(message='Indica el servicio suministrado por el proveedor.'),
+            Length(min=3, max=100, message='Debe contener entre 3 y 100 caracteres.')
+        ]
+    )
+
+    # Dominio o dirección web oficial
+    sitio = StringField(
+        'Sitio web oficial',
+        validators=[
+            DataRequired(message='El sitio web es obligatorio.'),
+            Length(min=3, max=100, message='Debe contener entre 3 y 100 caracteres.')
+        ]
+    )
+
+    # Estado operativo actual del servicio contratado
+    estado = SelectField(
+        'Estado operativo',
+        choices=[
+            ('Activo', 'Activo (En operación)'),
+            ('Pendiente', 'Pendiente (En evaluación / configuración)'),
+            ('Inactivo', 'Inactivo (Suspendido)')
+        ],
+        validators=[DataRequired(message='Selecciona un estado operativo válido.')]
+    )
+
+    # Botón de envío
+    submit = SubmitField('Guardar proveedor')

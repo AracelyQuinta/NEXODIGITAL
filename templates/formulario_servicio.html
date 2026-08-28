@@ -1,0 +1,131 @@
+﻿{% extends "base.html" %}
+
+{% block titulo %}{{ 'Editar Servicio' if editando else 'Nuevo Servicio' }} - Nexo Digital{% endblock %}
+
+{% block content %}
+<!-- ==============================================================================
+     ENCABEZADO DE PÁGINA: FORMULARIO DE SERVICIO
+     ============================================================================== -->
+<section class="page-header py-4 text-white">
+    <div class="container text-center">
+        <h1 class="h3 fw-bold mb-1">{{ 'Editar Servicio' if editando else 'Nuevo Servicio' }}</h1>
+        <p class="text-light-emerald small mb-0">
+            {{ 'Modifica los datos y tarifas del servicio seleccionado' if editando else 'Completa los datos para registrar una nueva opción en el catálogo comercial' }}
+        </p>
+    </div>
+</section>
+
+<!-- ==============================================================================
+     FORMULARIO CON FLASK-WTF
+     ============================================================================== -->
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-7 col-md-9">
+                <div class="card form-card shadow-sm border-0 rounded-4">
+                    <div class="card-header bg-white p-4 border-bottom">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="form-icon-box">
+                                <i class="bi {{ 'bi-pencil-square' if editando else 'bi-plus-square-fill' }}"></i>
+                            </div>
+                            <div>
+                                <h2 class="h5 fw-bold text-navy mb-0">{{ 'Datos del Servicio' if editando else 'Registrar Servicio' }}</h2>
+                                <small class="text-muted">Define precio base, tiempo de entrega y detalles técnicos</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-body p-4">
+                        <form method="POST" novalidate>
+                            <!-- Token CSRF generado por Flask-WTF -->
+                            {{ form.hidden_tag() }}
+
+                            <!-- 1. Nombre del Servicio -->
+                            <div class="mb-3">
+                                {{ form.nombre.label(class="form-label fw-semibold text-navy small") }}
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-laptop"></i></span>
+                                    {{ form.nombre(class="form-control" + (" is-invalid" if form.nombre.errors else ""), placeholder="Ej: Páginas Web para Negocios") }}
+                                </div>
+                                {% for error in form.nombre.errors %}
+                                    <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- 2. Precio y Tiempo Estimado -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    {{ form.precio.label(class="form-label fw-semibold text-navy small") }}
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light fw-bold text-emerald">$</span>
+                                        {{ form.precio(class="form-control" + (" is-invalid" if form.precio.errors else ""), placeholder="Ej: 150.00", step="0.01") }}
+                                    </div>
+                                    {% for error in form.precio.errors %}
+                                        <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="col-md-6">
+                                    {{ form.tiempo_estimado.label(class="form-label fw-semibold text-navy small") }}
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-clock"></i></span>
+                                        {{ form.tiempo_estimado(class="form-control" + (" is-invalid" if form.tiempo_estimado.errors else ""), placeholder="Ej: 3 a 5 días") }}
+                                    </div>
+                                    {% for error in form.tiempo_estimado.errors %}
+                                        <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- 3. URL de Imagen Ilustrativa -->
+                            <div class="mb-3">
+                                {{ form.imagen.label(class="form-label fw-semibold text-navy small") }}
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-image"></i></span>
+                                    {{ form.imagen(class="form-control" + (" is-invalid" if form.imagen.errors else ""), placeholder="https://images.unsplash.com/...") }}
+                                </div>
+                                <div class="form-text small text-muted">
+                                    Puedes pegar el enlace de una foto en internet (opcional).
+                                </div>
+                                {% for error in form.imagen.errors %}
+                                    <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- 4. Descripción Detallada -->
+                            <div class="mb-3">
+                                {{ form.descripcion.label(class="form-label fw-semibold text-navy small") }}
+                                {{ form.descripcion(class="form-control" + (" is-invalid" if form.descripcion.errors else ""), rows="3", placeholder="Describe las características y alcances del servicio...") }}
+                                {% for error in form.descripcion.errors %}
+                                    <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- 5. Switch de Disponibilidad Inmediata -->
+                            <div class="mb-4 p-3 bg-light rounded-3 border">
+                                <div class="form-check form-switch mb-0">
+                                    {{ form.disponible(class="form-check-input", role="switch", id="disponibleSwitch") }}
+                                    <label class="form-check-label fw-semibold text-navy small" for="disponibleSwitch">
+                                        Servicio disponible actualmente para contratación
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Botones de Acción -->
+                            <div class="d-flex gap-2 pt-2">
+                                <a href="{{ url_for('servicios') }}" class="btn btn-outline-secondary px-4">
+                                    <i class="bi bi-arrow-left me-1"></i>Volver
+                                </a>
+                                <button type="submit" class="btn btn-verde flex-grow-1 py-2">
+                                    <i class="bi {{ 'bi-check2-circle' if editando else 'bi-plus-lg' }} me-1"></i>
+                                    {{ 'Actualizar servicio' if editando else 'Guardar servicio' }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

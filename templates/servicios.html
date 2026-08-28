@@ -1,61 +1,120 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block titulo %}Servicios - Nexo Digital{% endblock %}
 
 {% block content %}
-
-<section class="py-5">
-    <div class="container">
-
-        <h2 class="text-center mb-4">Nuestros Servicios</h2>
-
-        <p class="text-center text-muted mb-5">
-            Soluciones digitales para hacer crecer tu negocio.
+<!-- ==============================================================================
+     ENCABEZADO DE PÁGINA: CATÁLOGO DE SERVICIOS
+     ============================================================================== -->
+<section class="page-header py-5 text-white">
+    <div class="container text-center">
+        <span class="badge bg-emerald mb-2 px-3 py-2 text-uppercase fw-semibold tracking-wider">Soluciones Web</span>
+        <h1 class="display-5 fw-bold mb-2">Servicios Disponibles</h1>
+        <p class="lead text-light-emerald mx-auto mb-4" style="max-width: 680px;">
+            Opciones de desarrollo web con precios claros, tiempos de entrega garantizados y soporte continuo para cada cliente.
         </p>
-
-        <div class="row g-4">
-
-            {% for servicio in servicios %}
-
-            <div class="col-md-4">
-
-                <div class="card h-100 shadow-sm border-0">
-
-                    <div class="card-body p-4 text-center">
-
-                        <h5 class="card-title">
-                            {{ servicio.nombre|upper }}
-                        </h5>
-
-                        <p class="card-text">
-                            {{ servicio.descripcion }}
-                        </p>
-
-                        {% if servicio.disponible %}
-
-                            <span class="badge bg-success">
-                                Disponible
-                            </span>
-
-                        {% else %}
-
-                            <span class="badge bg-warning text-dark">
-                                Próximamente
-                            </span>
-
-                        {% endif %}
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            {% endfor %}
-
+        <div>
+            <a href="{{ url_for('nuevo_servicio') }}" class="btn btn-verde btn-lg shadow-sm">
+                <i class="bi bi-plus-circle me-2"></i>Registrar nuevo servicio
+            </a>
         </div>
-
     </div>
 </section>
 
+<!-- ==============================================================================
+     LISTADO PRINCIPAL DE SERVICIOS (TARJETAS RESPONSIVAS)
+     ============================================================================== -->
+<section class="py-5">
+    <div class="container">
+        <!-- Barra de Control del Listado -->
+        <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom flex-wrap gap-2">
+            <div>
+                <h2 class="h4 fw-bold text-navy mb-0">Listado de Servicios</h2>
+                <p class="text-muted small mb-0">Administra las soluciones comerciales ofrecidas a los clientes</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-navy text-white px-3 py-2 rounded-pill">
+                    <i class="bi bi-grid-fill me-1"></i>{{ servicios|length }} servicios
+                </span>
+                <a href="{{ url_for('nuevo_servicio') }}" class="btn btn-outline-brand btn-sm">
+                    <i class="bi bi-plus-lg me-1"></i>Nuevo Servicio
+                </a>
+            </div>
+        </div>
+
+        {% if servicios %}
+        <div class="row g-4">
+            {% for servicio in servicios %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 service-card shadow-sm border-0 d-flex flex-column">
+                    <!-- Portada del Servicio con Precio Flotante -->
+                    <div class="card-img-wrapper">
+                        <img src="{{ servicio.imagen or 'https://images.unsplash.com/photo-1460925895917-afdab827c52f' }}"
+                             alt="{{ servicio.nombre }}"
+                             onerror="this.src='https://images.unsplash.com/photo-1460925895917-afdab827c52f';">
+                        
+                        <div class="price-tag">
+                            ${{ "%.2f"|format(servicio.precio or 0.0) }} <span>USD</span>
+                        </div>
+                    </div>
+
+                    <!-- Cuerpo de la Tarjeta -->
+                    <div class="card-body p-4 d-flex flex-column flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="time-badge">
+                                <i class="bi bi-clock-history text-emerald me-1"></i>{{ servicio.tiempo_estimado or '2 a 5 días' }}
+                            </span>
+                            
+                            {% if servicio.disponible %}
+                                <span class="badge badge-disponible">
+                                    <i class="bi bi-check-circle-fill me-1"></i>Disponible
+                                </span>
+                            {% else %}
+                                <span class="badge badge-proximamente">
+                                    <i class="bi bi-clock-fill me-1"></i>Próximamente
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <h3 class="h5 card-title fw-bold text-navy my-2">
+                            {{ servicio.nombre }}
+                        </h3>
+
+                        <p class="card-text text-muted small flex-grow-1 mb-4">
+                            {{ servicio.descripcion }}
+                        </p>
+
+                        <!-- Botones de Acción (Cotizar, Editar, Eliminar) -->
+                        <div class="pt-3 border-top mt-auto d-flex justify-content-between align-items-center gap-2">
+                            <a href="{{ url_for('nueva_factura', servicio_id=loop.index0, tipo='Cotizacion') }}" class="btn btn-verde btn-sm rounded-pill flex-grow-1">
+                                <i class="bi bi-receipt me-1"></i>Cotizar
+                            </a>
+                            <a href="{{ url_for('editar_servicio', id=loop.index0) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar servicio">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <form method="POST" action="{{ url_for('eliminar_servicio', id=loop.index0) }}" onsubmit="return confirm('¿Deseas eliminar este servicio?');" class="d-inline">
+                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar servicio">
+                                    <i class="bi bi-trash-fill"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Estado Vacío cuando no hay servicios registrados -->
+        <div class="card p-5 text-center shadow-sm border-0">
+            <h4 class="text-navy fw-bold">No hay servicios registrados</h4>
+            <p class="text-muted">Agrega el primer servicio para comenzar a nutrir el catálogo comercial.</p>
+            <div class="mt-3">
+                <a href="{{ url_for('nuevo_servicio') }}" class="btn btn-verde">
+                    <i class="bi bi-plus-circle me-1"></i>Registrar Servicio
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
 {% endblock %}

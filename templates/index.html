@@ -1,1002 +1,524 @@
-{%extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block titulo %}Inicio - Nexo Digital{% endblock %}
 
 {% block content %}
 
-<!-- Sección Inicio -->
-<section id="inicio" class="inicio text-center text-white">
-    <div class="container">
-
-        <h2 class="display-4 fw-bold">
+<!-- ==============================================================================
+     SECCIÓN 1: HERO BANNER (PORTADA PRINCIPAL)
+     ============================================================================== -->
+<section id="inicio" class="hero-section text-center text-white py-5">
+    <div class="container py-lg-5">
+        <span class="badge bg-emerald px-3 py-2 text-uppercase fw-semibold mb-3">
+            Emprendimiento Tecnológico
+        </span>
+        <h1 class="display-4 fw-bold mb-3 text-white">
             Impulsamos tu negocio en el mundo digital
-        </h2>
-
-        <!-- Variable simple enviada desde Flask -->
-        <p class="lead mt-3 mx-auto">
+        </h1>
+        <p class="lead text-light-emerald mx-auto mb-4" style="max-width: 760px;">
             {{ mensaje }}
         </p>
-
-        <div class="mt-4 d-flex gap-3 justify-content-center flex-wrap">
-            <a href="#servicios" class="btn btn-verde btn-lg">
-                Ver servicios
+        <div class="d-flex gap-3 justify-content-center flex-wrap">
+            <a href="{{ url_for('servicios') }}" class="btn btn-verde btn-lg">
+                <i class="bi bi-grid me-2"></i>Ver Servicios
             </a>
-
-            <a href="#contacto" class="btn btn-outline-light btn-lg">
-                Contáctanos
+            <a href="{{ url_for('nueva_factura', tipo='Cotizacion') }}" class="btn btn-outline-light btn-lg">
+                <i class="bi bi-calculator me-2"></i>Cotizar Proyecto
+            </a>
+            <a href="#contacto" class="btn btn-light btn-lg text-navy fw-semibold">
+                <i class="bi bi-envelope me-2"></i>Contacto
             </a>
         </div>
-
     </div>
 </section>
 
-
-<!-- Sección Quiénes Somos -->
+<!-- ==============================================================================
+     SECCIÓN 2: QUIÉNES SOMOS (SOBRE NOSOTROS)
+     ============================================================================== -->
 <section id="quienes-somos" class="py-5">
-
-    <div class="container">
-
-        <div class="row align-items-center g-4">
-
+    <div class="container py-lg-4">
+        <div class="row align-items-center g-5">
             <div class="col-lg-5 col-md-6">
-
-                <img
-                    src="https://images.unsplash.com/photo-1498050108023-c5249f4df085"
-                    alt="Persona trabajando en desarrollo web"
-                    class="img-fluid rounded shadow"
-                >
-
+                <div class="position-relative">
+                    <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085"
+                        alt="Desarrollo web y tecnología" class="img-fluid rounded-4 shadow w-100 object-fit-cover" style="height: 380px;">
+                </div>
             </div>
 
             <article class="col-lg-7 col-md-6">
-
-                <h2>Quiénes Somos</h2>
-
-                <!-- Datos de un diccionario enviado desde Flask -->
-                <p>
-                    <strong>{{ empresa.nombre }}</strong> es un emprendimiento
-                    tecnológico creado por estudiantes de Tecnologías de la
-                    Información. Nuestro propósito es apoyar a pequeños negocios,
-                    emprendedores y profesionales que desean darse a conocer en
-                    el mundo digital.
+                <span class="badge bg-navy text-white mb-2 px-3 py-1 text-uppercase fw-semibold">Sobre nosotros</span>
+                <h2 class="display-6 fw-bold text-navy mb-3">Quiénes Somos</h2>
+                <p class="text-body lead">
+                    <strong>{{ empresa.nombre }}</strong> es un proyecto creado por estudiantes de la carrera de Tecnologías de la Información. Nuestro objetivo es ayudar a pequeños negocios, locales y emprendedores a tener presencia en internet con herramientas digitales útiles y accesibles.
                 </p>
-
-                <p>
-                    Ofrecemos soluciones sencillas, accesibles y adaptadas a cada
-                    cliente, ayudando a mejorar la imagen, organización y
-                    comunicación de los negocios locales.
+                <p class="text-body">
+                    Creamos páginas web sencillas, menús digitales con código QR y catálogos de productos para facilitar la comunicación con los clientes.
                 </p>
-
-                <p>
-                    <strong>Ubicación:</strong>
-                    {{ empresa.ubicacion }}
-                    <br>
-
-                    <strong>Modalidad:</strong>
-                    {{ empresa.modalidad }}
-                </p>
-
+                <div class="row g-3 mt-2">
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3 border-start border-4 border-emerald">
+                            <small class="text-muted d-block fw-semibold">Ubicación</small>
+                            <span class="fw-bold text-navy"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ empresa.ubicacion }}</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-light rounded-3 border-start border-4 border-navy">
+                            <small class="text-muted d-block fw-semibold">Modalidad</small>
+                            <span class="fw-bold text-navy"><i class="bi bi-globe me-1 text-primary"></i>{{ empresa.modalidad }}</span>
+                        </div>
+                    </div>
+                </div>
             </article>
-
         </div>
-
     </div>
-
 </section>
 
+<!-- ==============================================================================
+     SECCIÓN 3: MISIÓN Y VISIÓN
+     ============================================================================== -->
+<section id="mision-vision" class="py-5 bg-soft">
+    <div class="container py-lg-4">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold text-navy">Misión y Visión</h2>
+            <p class="text-muted">Nuestros objetivos y proyección como equipo de trabajo.</p>
+        </div>
 
-<!-- Sección Misión y Visión -->
-<section id="mision-vision" class="py-5 bg-light">
-
-    <div class="container">
-
-        <div class="row">
-
+        <div class="row g-4">
             <!-- Misión -->
-            <div class="col-md-6 mb-4">
-
-                <div class="card h-100 shadow-sm border-0">
-
-                    <div class="card-body p-4 text-center">
-
-                        <h2 class="mb-3">Misión</h2>
-
-                        <p>
-                            Nuestra misión es brindar soluciones digitales prácticas
-                            y efectivas para emprendedores y pequeños negocios,
-                            ayudándolos a mejorar su presencia en línea y alcanzar
-                            sus objetivos comerciales.
-                        </p>
-
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm border-0 rounded-4 p-4">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="icon-circle bg-emerald-subtle text-emerald" style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-compass-fill fs-4"></i>
+                        </div>
+                        <h3 class="h4 fw-bold text-navy mb-0">Misión</h3>
                     </div>
-
+                    <p class="text-body mb-0">
+                        Brindar soluciones digitales prácticas y efectivas para emprendedores y pequeños negocios, ayudándolos a mejorar su presencia en línea y alcanzar sus objetivos comerciales.
+                    </p>
                 </div>
-
             </div>
-
 
             <!-- Visión -->
-            <div class="col-md-6 mb-4">
-
-                <div class="card h-100 shadow-sm border-0">
-
-                    <div class="card-body p-4 text-center">
-
-                        <h2 class="mb-3">Visión</h2>
-
-                        <p>
-                            Consolidarse en los próximos cinco años como la agencia
-                            de referencia en presencia digital para pequeños negocios
-                            en el Ecuador, reconocida por su innovación, cercanía con
-                            el cliente y capacidad de transformar emprendimientos
-                            locales en marcas modernas y competitivas dentro del
-                            entorno digital.
-                        </p>
-
+            <div class="col-md-6">
+                <div class="card h-100 shadow-sm border-0 rounded-4 p-4">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="icon-circle bg-navy-subtle text-navy" style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-eye-fill fs-4"></i>
+                        </div>
+                        <h3 class="h4 fw-bold text-navy mb-0">Visión</h3>
                     </div>
-
+                    <p class="text-body mb-0">
+                        Consolidarse como una iniciativa de referencia en presencia digital para negocios en el Ecuador, reconocida por la calidad de sus proyectos y la cercanía con cada cliente.
+                    </p>
                 </div>
-
             </div>
-
         </div>
-
     </div>
-
 </section>
 
-
-<!-- Sección Servicios -->
-<section id="servicios" class="py-5 bg-light">
-
-    <div class="container">
-
-        <h2 class="text-center mb-4">
-            Servicios
-        </h2>
-
-        <p class="text-center text-muted mb-5">
-            Soluciones digitales prácticas para emprendedores y pequeños negocios.
-        </p>
-
+<!-- ==============================================================================
+     SECCIÓN 4: CATÁLOGO DE SERVICIOS DESTACADOS
+     ============================================================================== -->
+<section id="servicios" class="py-5">
+    <div class="container py-lg-4">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold text-navy">Servicios Disponibles</h2>
+            <p class="text-muted">Opciones digitales diseñadas a la medida de tu presupuesto.</p>
+        </div>
 
         <div class="row g-4">
-
-            <article class="col-lg-4 col-md-6">
-
-                <div class="card h-100 shadow-sm border-0">
-
-                    <div class="card-body p-4 text-center">
-
-                        <div class="icono">🌐</div>
-
-                        <h5 class="card-title">
-                            Páginas web
-                        </h5>
-
-                        <p class="card-text">
-                            Diseño de páginas web modernas, responsivas y fáciles de navegar.
-                        </p>
-
+            {% for s in servicios[:6] %}
+            <div class="col-lg-4 col-md-6">
+                <div class="card h-100 service-card shadow-sm border-0 d-flex flex-column">
+                    <div class="card-img-wrapper">
+                        <img src="{{ s.imagen or 'https://images.unsplash.com/photo-1460925895917-afdab827c52f' }}"
+                             alt="{{ s.nombre }}"
+                             onerror="this.src='https://images.unsplash.com/photo-1460925895917-afdab827c52f';">
+                        <div class="price-tag">
+                            ${{ "%.2f"|format(s.precio or 0.0) }} <span>USD</span>
+                        </div>
                     </div>
 
-                </div>
+                    <div class="card-body p-4 d-flex flex-column flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="time-badge">
+                                <i class="bi bi-clock-history text-emerald me-1"></i>{{ s.tiempo_estimado or '2 a 5 días' }}
+                            </span>
+                            {% if s.disponible %}
+                                <span class="badge badge-disponible">
+                                    <i class="bi bi-check-circle-fill me-1"></i>Disponible
+                                </span>
+                            {% else %}
+                                <span class="badge badge-proximamente">
+                                    <i class="bi bi-clock-fill me-1"></i>Próximamente
+                                </span>
+                            {% endif %}
+                        </div>
 
-            </article>
+                        <h3 class="h5 fw-bold text-navy my-2">{{ s.nombre }}</h3>
+                        <p class="text-body small flex-grow-1 mb-3">{{ s.descripcion }}</p>
 
-
-            <article class="col-lg-4 col-md-6">
-
-                <div class="card h-100 shadow-sm border-0">
-
-                    <div class="card-body p-4 text-center">
-
-                        <div class="icono">📋</div>
-
-                        <h5 class="card-title">
-                            Catálogos digitales
-                        </h5>
-
-                        <p class="card-text">
-                            Organización visual de productos y servicios para compartir en línea.
-                        </p>
-
+                        <div class="pt-3 border-top mt-auto">
+                            <a href="{{ url_for('nueva_factura', servicio_id=loop.index0, tipo='Cotizacion') }}" class="btn btn-verde btn-sm rounded-pill w-100">
+                                <i class="bi bi-receipt me-1"></i>Cotizar este servicio
+                            </a>
+                        </div>
                     </div>
-
                 </div>
-
-            </article>
-
-
-            <article class="col-lg-4 col-md-6">
-
-                <div class="card h-100 shadow-sm border-0">
-
-                    <div class="card-body p-4 text-center">
-
-                        <div class="icono">📱</div>
-
-                        <h5 class="card-title">
-                            Menús QR
-                        </h5>
-
-                        <p class="card-text">
-                            Menús digitales para restaurantes, cafeterías y
-                            emprendimientos gastronómicos.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </article>
-
-
-            <article class="col-lg-4 col-md-6">
-
-                <div class="card h-100 shadow-sm border-0">
-
-                    <div class="card-body p-4 text-center">
-
-                        <div class="icono">📩</div>
-
-                        <h5 class="card-title">
-                            Formularios
-                        </h5>
-
-                        <p class="card-text">
-                            Formularios de contacto, pedidos, reservas o solicitudes
-                            de información.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </article>
-
-
-            <article class="col-lg-4 col-md-6">
-
-                <div class="card h-100 shadow-sm border-0">
-
-                    <div class="card-body p-4 text-center">
-
-                        <div class="icono">💬</div>
-
-                        <h5 class="card-title">
-                            WhatsApp y redes
-                        </h5>
-
-                        <p class="card-text">
-                            Integración de botones de WhatsApp, Facebook,
-                            Instagram y TikTok.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </article>
-
-
-            <article class="col-lg-4 col-md-6">
-
-                <div class="card h-100 shadow-sm border-0">
-
-                    <div class="card-body p-4 text-center">
-
-                        <div class="icono">📈</div>
-
-                        <h5 class="card-title">
-                            Asesoría digital
-                        </h5>
-
-                        <p class="card-text">
-                            Orientación básica para mejorar la presencia digital
-                            de un negocio.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </article>
-
+            </div>
+            {% endfor %}
         </div>
 
+        <div class="text-center mt-5">
+            <a href="{{ url_for('servicios') }}" class="btn btn-outline-brand btn-lg">
+                <i class="bi bi-arrow-right-circle me-2"></i>Ver catálogo completo
+            </a>
+        </div>
     </div>
-
 </section>
 
+<!-- ==============================================================================
+     SECCIÓN 5: VIDEO DEMOSTRATIVO
+     ============================================================================== -->
+<section id="video" class="py-5 bg-soft">
+    <div class="container py-lg-4">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold text-navy">Video Relacionado</h2>
+            <p class="text-muted">Importancia del desarrollo web para los pequeños comercios.</p>
+        </div>
 
-<!-- Sección Video -->
-<section id="video" class="py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-9">
+                <div class="ratio ratio-16x9 shadow rounded-4 overflow-hidden border">
+                    <iframe src="https://www.youtube.com/embed/cVoTm6OvsfI" title="Video de desarrollo web"
+                        allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
+<!-- ==============================================================================
+     SECCIÓN 6: INFORMACIÓN COMPLEMENTARIA
+     ============================================================================== -->
+<section class="py-4">
     <div class="container">
-
-        <h2 class="text-center mb-3">
-            Video relacionado
-        </h2>
-
-        <p class="text-center text-muted">
-            El siguiente video presenta información relacionada con el
-            desarrollo web y la presencia digital.
-        </p>
-
-        <div class="ratio ratio-16x9 shadow rounded">
-
-            <iframe
-                src="https://www.youtube.com/embed/cVoTm6OvsfI"
-                title="Video relacionado con desarrollo web"
-                allowfullscreen>
-            </iframe>
-
-        </div>
-
+        <aside class="p-4 rounded-4 shadow-sm promo-aside">
+            <div class="row align-items-center g-3">
+                <div class="col-md-8">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="text-emerald fs-2">
+                            <i class="bi bi-info-circle"></i>
+                        </div>
+                        <div>
+                            <h3 class="h5 fw-bold text-navy mb-1">Información de Atención</h3>
+                            <p class="text-body mb-0 small">Asesoría inicial gratuita para evaluar el proyecto web de tu negocio.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <div class="text-body small">
+                        <i class="bi bi-clock me-1 text-navy"></i><strong>Horario:</strong> Lunes a viernes (09h00 a 17h00)
+                    </div>
+                </div>
+            </div>
+        </aside>
     </div>
-
 </section>
 
-
-<!-- Información complementaria -->
-<aside class="container my-4 p-4 rounded shadow-sm">
-
-    <h2>Información complementaria</h2>
-
-    <p>
-        <strong>Promoción:</strong>
-        Diseño de página web básica con asesoría inicial gratuita.
-    </p>
-
-    <p>
-        <strong>Horario de atención:</strong>
-        Lunes a viernes de 09h00 a 17h00.
-    </p>
-
-</aside>
-
-
-<!-- Sección Contacto -->
+<!-- ==============================================================================
+     SECCIÓN 7: FORMULARIO DE CONTACTO INTERACTIVO
+     ============================================================================== -->
 <section id="contacto" class="py-5">
-
-    <div class="container">
-
-        <h2 class="text-center mb-5">
-            Contacto
-        </h2>
+    <div class="container py-lg-4">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold text-navy">Contáctanos</h2>
+            <p class="text-muted">Escríbenos para consultar detalles o solicitar una cotización.</p>
+        </div>
 
         <div class="row g-5">
-
+            <!-- Formulario con Validación en JS -->
             <div class="col-lg-7">
-
-                <form
-                    id="contactoForm"
-                    method="post"
-                    class="p-4 rounded shadow-sm bg-white">
+                <form id="contactoForm" method="post" class="p-4 p-md-5 rounded-4 shadow-sm bg-white border" novalidate>
+                    <h3 class="h5 fw-bold text-navy mb-4 border-bottom pb-2">
+                        <i class="bi bi-envelope-fill text-emerald me-2"></i>Envíanos un mensaje
+                    </h3>
 
                     <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="nombre" class="form-label fw-semibold text-navy small">Nombre completo</label>
+                            <input type="text" id="nombre" name="nombre" class="form-control"
+                                placeholder="Tu nombre" minlength="3" required>
+                            <div class="invalid-feedback">Ingresa solo letras (mínimo 3 caracteres).</div>
+                        </div>
 
                         <div class="col-md-6">
-
-                            <label
-                                for="nombre"
-                                class="form-label fw-bold">
-                                Nombre completo
-                            </label>
-
-                            <input
-                                type="text"
-                                id="nombre"
-                                name="nombre"
-                                class="form-control"
-                                placeholder="Tu nombre"
-                                minlength="3"
-                                required>
-
-                            <div class="invalid-feedback">
-                                El nombre debe contener únicamente letras y tener
-                                al menos 3 caracteres.
-                            </div>
-
-                            <div class="valid-feedback">
-                                ¡Nombre válido!
-                            </div>
-
+                            <label for="correo" class="form-label fw-semibold text-navy small">Correo electrónico</label>
+                            <input type="email" id="correo" name="correo" class="form-control"
+                                placeholder="correo@ejemplo.com" required>
+                            <div class="invalid-feedback">Ingresa un correo electrónico válido.</div>
                         </div>
-
-
-                        <div class="col-md-6">
-
-                            <label
-                                for="correo"
-                                class="form-label fw-bold">
-                                Correo electrónico
-                            </label>
-
-                            <input
-                                type="email"
-                                id="correo"
-                                name="correo"
-                                class="form-control"
-                                placeholder="correo@ejemplo.com"
-                                required>
-
-                            <div class="invalid-feedback">
-                                Ingresa un correo electrónico válido.
-                            </div>
-
-                            <div class="valid-feedback">
-                                ¡Correo válido!
-                            </div>
-
-                        </div>
-
 
                         <div class="col-12">
-
-                            <label
-                                for="asunto"
-                                class="form-label fw-bold">
-                                Asunto
-                            </label>
-
-                            <input
-                                type="text"
-                                id="asunto"
-                                name="asunto"
-                                class="form-control"
-                                placeholder="¿En qué podemos ayudarte?"
-                                minlength="5"
-                                required>
-
-                            <div class="invalid-feedback">
-                                El asunto debe tener al menos 5 caracteres.
-                            </div>
-
-                            <div class="valid-feedback">
-                                ¡Asunto válido!
-                            </div>
-
+                            <label for="asunto" class="form-label fw-semibold text-navy small">Asunto</label>
+                            <input type="text" id="asunto" name="asunto" class="form-control"
+                                placeholder="Tema de la consulta" minlength="5" required>
+                            <div class="invalid-feedback">El asunto debe tener al menos 5 caracteres.</div>
                         </div>
 
-
                         <div class="col-12">
-
-                            <label
-                                for="mensaje"
-                                class="form-label fw-bold">
-                                Mensaje
-                            </label>
-
-                            <textarea
-                                id="mensaje"
-                                name="mensaje"
-                                class="form-control"
-                                rows="5"
-                                placeholder="Escribe tu mensaje aquí..."
-                                minlength="10"
-                                required></textarea>
-
-                            <div class="invalid-feedback">
-                                El mensaje debe tener al menos 10 caracteres.
-                            </div>
-
-                            <div class="valid-feedback">
-                                ¡Mensaje válido!
-                            </div>
-
+                            <label for="mensaje" class="form-label fw-semibold text-navy small">Mensaje</label>
+                            <textarea id="mensaje" name="mensaje" class="form-control" rows="4"
+                                placeholder="Escribe aquí los requerimientos de tu proyecto..." minlength="10" required></textarea>
+                            <div class="invalid-feedback">El mensaje debe tener al menos 10 caracteres.</div>
                         </div>
 
-
-                        <div class="col-12">
-
-                            <button
-                                type="submit"
-                                class="btn btn-verde btn-lg w-100">
-
-                                Enviar mensaje ✉️
-
+                        <div class="col-12 pt-2">
+                            <button type="submit" class="btn btn-verde btn-lg w-100">
+                                <i class="bi bi-send me-2"></i>Enviar mensaje
                             </button>
-
                         </div>
-
                     </div>
-
                 </form>
 
-
-                <!-- Modales Bootstrap -->
-                <div class="mt-4">
-
-                    <!-- Modal de éxito -->
-                    <div
-                        class="modal fade"
-                        id="statusSuccessModal"
-                        tabindex="-1"
-                        data-bs-backdrop="static"
-                        data-bs-keyboard="false">
-
-                        <div class="modal-dialog modal-dialog-centered modal-sm">
-
-                            <div class="modal-content">
-
-                                <div class="modal-body text-center p-lg-4">
-
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 130.2 130.2"
-                                        class="mb-3"
-                                        style="max-width:80px;">
-
-                                        <circle
-                                            fill="none"
-                                            stroke="#198754"
-                                            stroke-width="6"
-                                            cx="65.1"
-                                            cy="65.1"
-                                            r="62.1"/>
-
-                                        <polyline
-                                            fill="none"
-                                            stroke="#198754"
-                                            stroke-width="6"
-                                            points="100.2,40.2 51.5,88.8 29.8,67.5"/>
-
-                                    </svg>
-
-                                    <h4 class="text-success">
-                                        ¡Registro exitoso!
-                                    </h4>
-
-                                    <p>
-                                        Tu mensaje fue enviado correctamente.
-                                        NexoDigital se pondrá en contacto contigo pronto.
-                                    </p>
-
-                                    <button
-                                        type="button"
-                                        class="btn btn-success btn-sm mt-3"
-                                        data-bs-dismiss="modal">
-                                        Aceptar
-                                    </button>
-
+                <!-- Modales de Respuesta de Contacto -->
+                <div class="modal fade" id="statusSuccessModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-sm">
+                        <div class="modal-content rounded-4 border-0 text-center p-4">
+                            <div class="modal-body p-0">
+                                <div class="text-success mb-3" style="font-size: 3rem;">
+                                    <i class="bi bi-check-circle-fill"></i>
                                 </div>
-
+                                <h4 class="text-navy fw-bold">¡Mensaje Enviado!</h4>
+                                <p class="text-muted small">Tu mensaje fue registrado correctamente. Nos pondremos en contacto contigo pronto.</p>
+                                <button type="button" class="btn btn-verde btn-sm w-100 mt-2" data-bs-dismiss="modal">Aceptar</button>
                             </div>
-
                         </div>
-
                     </div>
-
-
-                    <!-- Modal de error -->
-                    <div
-                        class="modal fade"
-                        id="statusErrorsModal"
-                        tabindex="-1"
-                        data-bs-backdrop="static"
-                        data-bs-keyboard="false">
-
-                        <div class="modal-dialog modal-dialog-centered modal-sm">
-
-                            <div class="modal-content">
-
-                                <div class="modal-body text-center p-lg-4">
-
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 130.2 130.2"
-                                        class="mb-3"
-                                        style="max-width:80px;">
-
-                                        <circle
-                                            fill="none"
-                                            stroke="#dc3545"
-                                            stroke-width="6"
-                                            cx="65.1"
-                                            cy="65.1"
-                                            r="62.1"/>
-
-                                        <line
-                                            fill="none"
-                                            stroke="#dc3545"
-                                            stroke-width="6"
-                                            x1="34.4"
-                                            y1="37.9"
-                                            x2="95.8"
-                                            y2="92.3"/>
-
-                                        <line
-                                            fill="none"
-                                            stroke="#dc3545"
-                                            stroke-width="6"
-                                            x1="95.8"
-                                            y1="38"
-                                            x2="34.4"
-                                            y2="92.2"/>
-
-                                    </svg>
-
-                                    <h4 class="text-danger">
-                                        ¡Error en el formulario!
-                                    </h4>
-
-                                    <p>
-                                        Por favor corrige los campos marcados.
-                                    </p>
-
-                                    <button
-                                        type="button"
-                                        class="btn btn-danger btn-sm mt-3"
-                                        data-bs-dismiss="modal">
-                                        Aceptar
-                                    </button>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
                 </div>
 
+                <div class="modal fade" id="statusErrorsModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-sm">
+                        <div class="modal-content rounded-4 border-0 text-center p-4">
+                            <div class="modal-body p-0">
+                                <div class="text-danger mb-3" style="font-size: 3rem;">
+                                    <i class="bi bi-exclamation-octagon-fill"></i>
+                                </div>
+                                <h4 class="text-danger fw-bold">Campos Incompletos</h4>
+                                <p class="text-muted small">Por favor completa los campos requeridos antes de enviar.</p>
+                                <button type="button" class="btn btn-danger btn-sm w-100 mt-2" data-bs-dismiss="modal">Entendido</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-
-            <!-- Datos de contacto -->
+            <!-- Datos de Contacto Directo -->
             <div class="col-lg-5">
+                <div class="p-4 p-md-5 rounded-4 shadow-sm bg-white border h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <h3 class="h5 fw-bold text-navy mb-4 border-bottom pb-2">
+                            <i class="bi bi-telephone-fill text-emerald me-2"></i>Datos de Contacto
+                        </h3>
+                        
+                        <div class="d-flex flex-column gap-3 mb-4">
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="contact-icon-box text-emerald bg-emerald-subtle" style="width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                                    <i class="bi bi-envelope"></i>
+                                </div>
+                                <div>
+                                    <span class="d-block small text-muted">Correo</span>
+                                    <span class="fw-bold text-navy">nexodigital.ec@gmail.com</span>
+                                </div>
+                            </div>
 
-                <div class="p-4 rounded shadow-sm bg-white h-100">
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="contact-icon-box text-emerald bg-emerald-subtle" style="width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                                    <i class="bi bi-telephone"></i>
+                                </div>
+                                <div>
+                                    <span class="d-block small text-muted">Teléfono</span>
+                                    <span class="fw-bold text-navy">096 977 3007</span>
+                                </div>
+                            </div>
 
-                    <h3>Datos de contacto</h3>
-
-                    <p>
-                        <strong>Correo:</strong>
-                        nexodigital.ec@gmail.com
-                    </p>
-
-                    <p>
-                        <strong>Teléfono:</strong>
-                        096 977 3007
-                    </p>
-
-                    <p>
-                        <strong>Dirección:</strong>
-                        Puyo, Ecuador
-                    </p>
-
-                    <p>
-                        <strong>Redes sociales:</strong>
-                    </p>
-
-                    <div class="d-flex flex-column gap-2">
-
-                        <a
-                            href="https://www.facebook.com"
-                            target="_blank"
-                            class="btn btn-primary">
-                            📘 Facebook
-                        </a>
-
-                        <a
-                            href="https://www.instagram.com"
-                            target="_blank"
-                            class="btn btn-danger">
-                            📸 Instagram
-                        </a>
-
-                        <a
-                            href="https://www.tiktok.com"
-                            target="_blank"
-                            class="btn btn-dark">
-                            🎵 TikTok
-                        </a>
-
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="contact-icon-box text-emerald bg-emerald-subtle" style="width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                                    <i class="bi bi-geo-alt"></i>
+                                </div>
+                                <div>
+                                    <span class="d-block small text-muted">Ciudad</span>
+                                    <span class="fw-bold text-navy">Puyo / Quito, Ecuador</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
+                    <div>
+                        <h4 class="h6 fw-bold text-navy mb-3">Redes Sociales</h4>
+                        <div class="d-grid gap-2">
+                            <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm text-start ps-3">
+                                <i class="bi bi-facebook me-2"></i>Facebook
+                            </a>
+                            <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer" class="btn btn-danger btn-sm text-start ps-3">
+                                <i class="bi bi-instagram me-2"></i>Instagram
+                            </a>
+                            <a href="https://www.tiktok.com" target="_blank" rel="noopener noreferrer" class="btn btn-dark btn-sm text-start ps-3">
+                                <i class="bi bi-tiktok me-2"></i>TikTok
+                            </a>
+                        </div>
+                    </div>
                 </div>
-
             </div>
-
         </div>
-
     </div>
-
 </section>
 
-
-<!-- Herramientas utilizadas -->
-<section id="herramientas" class="py-5 bg-light">
-
-    <div class="container">
-
-        <h2 class="text-center mb-4">
-            Herramientas utilizadas
-        </h2>
+<!-- ==============================================================================
+     SECCIÓN 8: HERRAMIENTAS Y TECNOLOGÍAS
+     ============================================================================== -->
+<section id="herramientas" class="py-5 bg-soft">
+    <div class="container py-lg-4">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold text-navy">Herramientas de Desarrollo</h2>
+            <p class="text-muted">Tecnologías empleadas en el proyecto.</p>
+        </div>
 
         <div class="row g-4">
-
-            <article class="col-md-4">
-
-                <div class="card h-100 shadow-sm border-0 text-center">
-
-                    <div class="card-body">
-
-                        <h3>Visual Studio Code</h3>
-
-                        <p>
-                            Herramienta utilizada para crear y editar
-                            el archivo HTML.
-                        </p>
-
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm border-0 rounded-4 text-center p-4">
+                    <div class="text-primary mb-3">
+                        <i class="bi bi-code-slash fs-1"></i>
                     </div>
-
+                    <h3 class="h5 fw-bold text-navy">VS Code & Python</h3>
+                    <p class="text-body small mb-0">Editor de código y lenguaje backend utilizado en el proyecto.</p>
                 </div>
+            </div>
 
-            </article>
-
-
-            <article class="col-md-4">
-
-                <div class="card h-100 shadow-sm border-0 text-center">
-
-                    <div class="card-body">
-
-                        <h3>HTML5</h3>
-
-                        <p>
-                            Lenguaje utilizado para estructurar el
-                            contenido del sitio web.
-                        </p>
-
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm border-0 rounded-4 text-center p-4">
+                    <div class="text-danger mb-3">
+                        <i class="bi bi-filetype-html fs-1"></i>
                     </div>
-
+                    <h3 class="h5 fw-bold text-navy">HTML5 & CSS3</h3>
+                    <p class="text-body small mb-0">Estructura del contenido y estilos visuales responsivos.</p>
                 </div>
+            </div>
 
-            </article>
-
-
-            <article class="col-md-4">
-
-                <div class="card h-100 shadow-sm border-0 text-center">
-
-                    <div class="card-body">
-
-                        <h3>CSS3 y Bootstrap</h3>
-
-                        <p>
-                            Tecnologías aplicadas para mejorar el
-                            diseño visual y responsivo.
-                        </p>
-
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm border-0 rounded-4 text-center p-4">
+                    <div class="text-emerald mb-3">
+                        <i class="bi bi-bootstrap-fill fs-1"></i>
                     </div>
-
+                    <h3 class="h5 fw-bold text-navy">Bootstrap 5 & Flask</h3>
+                    <p class="text-body small mb-0">Framework de interfaz junto al microframework Flask.</p>
                 </div>
-
-            </article>
-
+            </div>
         </div>
-
     </div>
-
 </section>
 
-
-<!-- Sección Solicitudes dinámicas -->
+<!-- ==============================================================================
+     SECCIÓN 9: MÓDULO JS DE SOLICITUDES DINÁMICAS (LOCALSTORAGE)
+     ============================================================================== -->
 <section id="solicitudes" class="py-5 bg-white">
-
-    <div class="container">
-
-        <h2 class="text-center mb-4">
-            Registro de Solicitudes
-        </h2>
-
-        <p class="text-center text-muted mb-4">
-            Registra solicitudes de servicios digitales de manera dinámica.
-        </p>
-
-
-        <!-- Formulario para registrar datos -->
-        <form
-            id="formSolicitud"
-            class="card p-4 shadow-sm mb-4">
-
-            <div class="mb-3">
-
-                <label class="form-label">
-                    Nombre del cliente
-                </label>
-
-                <input
-                    type="text"
-                    id="nombreCliente"
-                    class="form-control"
-                    minlength="3"
-                    required>
-
-                <div class="invalid-feedback">
-                    El nombre debe contener únicamente letras y tener al menos
-                    3 caracteres.
-                </div>
-
-                <div class="valid-feedback">
-                    ¡Nombre válido!
-                </div>
-
-            </div>
-
-
-            <div class="mb-3">
-
-                <label class="form-label">
-                    Tipo de servicio
-                </label>
-
-                <select
-                    id="tipoServicio"
-                    class="form-select"
-                    required>
-
-                    <option value="">
-                        Seleccione un servicio
-                    </option>
-
-                    <option>Página web</option>
-                    <option>Catálogo digital</option>
-                    <option>Menú QR</option>
-                    <option>Formulario</option>
-                    <option>WhatsApp Business</option>
-
-                </select>
-
-                <div class="invalid-feedback">
-                    Debes seleccionar un tipo de servicio.
-                </div>
-
-                <div class="valid-feedback">
-                    ¡Servicio seleccionado!
-                </div>
-
-            </div>
-
-
-            <div class="mb-3">
-
-                <label class="form-label">
-                    Descripción
-                </label>
-
-                <textarea
-                    id="descripcionSolicitud"
-                    class="form-control"
-                    rows="3"
-                    minlength="10"
-                    required></textarea>
-
-                <div class="invalid-feedback">
-                    La descripción debe tener al menos 10 caracteres.
-                </div>
-
-                <div class="valid-feedback">
-                    ¡Descripción válida!
-                </div>
-
-            </div>
-
-
-            <button
-                type="submit"
-                class="btn btn-verde">
-
-                Registrar solicitud
-
-            </button>
-
-        </form>
-
-
-        <!-- Spinner de carga -->
-        <div
-            id="spinnerCarga"
-            class="text-center d-none mt-3">
-
-            <div
-                class="spinner-border text-primary"
-                role="status">
-
-                <span class="visually-hidden">
-                    Cargando...
-                </span>
-
-            </div>
-
+    <div class="container py-lg-4">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold text-navy">Registro Rápido de Solicitudes</h2>
+            <p class="text-muted">Módulo interactivo con almacenamiento local en el navegador.</p>
         </div>
 
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <form id="formSolicitud" class="card p-4 p-md-5 shadow-sm border-0 rounded-4 mb-4" novalidate>
+                    <h3 class="h5 fw-bold text-navy mb-3">
+                        <i class="bi bi-pencil-square text-emerald me-2"></i>Nueva Solicitud
+                    </h3>
 
-        <!-- Modal éxito -->
-        <div
-            class="modal fade"
-            id="solicitudSuccessModal"
-            tabindex="-1">
+                    <div class="mb-3">
+                        <label for="nombreCliente" class="form-label fw-semibold text-navy small">Nombre del cliente</label>
+                        <input type="text" id="nombreCliente" class="form-control" placeholder="Ej: Carlos Mendoza" minlength="3" required>
+                        <div class="invalid-feedback">Ingresa al menos 3 caracteres.</div>
+                    </div>
 
-            <div class="modal-dialog modal-dialog-centered">
+                    <div class="mb-3">
+                        <label for="tipoServicio" class="form-label fw-semibold text-navy small">Tipo de servicio</label>
+                        <select id="tipoServicio" class="form-select" required>
+                            <option value="">Seleccione un servicio...</option>
+                            <option value="Página web">Página web</option>
+                            <option value="Catálogo digital">Catálogo digital</option>
+                            <option value="Menú QR">Menú QR</option>
+                            <option value="Formulario">Formulario</option>
+                            <option value="WhatsApp Business">WhatsApp Business</option>
+                        </select>
+                        <div class="invalid-feedback">Selecciona una opción.</div>
+                    </div>
 
-                <div class="modal-content text-center p-4">
+                    <div class="mb-3">
+                        <label for="descripcionSolicitud" class="form-label fw-semibold text-navy small">Descripción del requerimiento</label>
+                        <textarea id="descripcionSolicitud" class="form-control" rows="3" placeholder="Describe lo que necesitas..." minlength="10" required></textarea>
+                        <div class="invalid-feedback">Mínimo 10 caracteres.</div>
+                    </div>
 
-                    <h4 class="text-success">
-                        ✅ Solicitud registrada
-                    </h4>
-
-                    <p>
-                        Tu solicitud fue guardada correctamente.
-                    </p>
-
-                    <button
-                        type="button"
-                        class="btn btn-success"
-                        data-bs-dismiss="modal">
-                        Aceptar
+                    <button type="submit" class="btn btn-verde btn-lg">
+                        <i class="bi bi-plus-circle me-2"></i>Registrar solicitud
                     </button>
+                </form>
 
+                <!-- Spinner de Carga -->
+                <div id="spinnerCarga" class="text-center d-none my-4">
+                    <div class="spinner-border text-emerald" role="status">
+                        <span class="visually-hidden">Guardando...</span>
+                    </div>
                 </div>
 
-            </div>
-
-        </div>
-
-
-        <!-- Modal error -->
-        <div
-            class="modal fade"
-            id="solicitudErrorModal"
-            tabindex="-1">
-
-            <div class="modal-dialog modal-dialog-centered">
-
-                <div class="modal-content text-center p-4">
-
-                    <h4 class="text-danger">
-                        ❌ Error en la solicitud
-                    </h4>
-
-                    <p>
-                        Por favor corrige los campos antes de registrar.
-                    </p>
-
-                    <button
-                        type="button"
-                        class="btn btn-danger"
-                        data-bs-dismiss="modal">
-                        Aceptar
-                    </button>
-
+                <!-- Modales de Solicitud -->
+                <div class="modal fade" id="solicitudSuccessModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-sm">
+                        <div class="modal-content rounded-4 border-0 text-center p-4">
+                            <div class="modal-body p-0">
+                                <div class="text-success mb-3" style="font-size: 3rem;">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                </div>
+                                <h4 class="text-navy fw-bold">¡Solicitud Guardada!</h4>
+                                <p class="text-muted small">La solicitud ha sido registrada en la lista.</p>
+                                <button type="button" class="btn btn-verde btn-sm w-100 mt-2" data-bs-dismiss="modal">Aceptar</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
+                <div class="modal fade" id="solicitudErrorModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-sm">
+                        <div class="modal-content rounded-4 border-0 text-center p-4">
+                            <div class="modal-body p-0">
+                                <div class="text-danger mb-3" style="font-size: 3rem;">
+                                    <i class="bi bi-exclamation-octagon-fill"></i>
+                                </div>
+                                <h4 class="text-danger fw-bold">Campos Incompletos</h4>
+                                <p class="text-muted small">Por favor revisa los campos antes de guardar.</p>
+                                <button type="button" class="btn btn-danger btn-sm w-100 mt-2" data-bs-dismiss="modal">Aceptar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Listado Dinámico de Solicitudes -->
+        <div class="mt-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                <h3 class="h5 fw-bold text-navy mb-0">
+                    Solicitudes Activas (<span id="totalSolicitudes">0</span>)
+                </h3>
             </div>
 
+            <div id="listaSolicitudes" class="row g-3">
+                <!-- Se inyectan tarjetas dinámicamente con JavaScript -->
+            </div>
         </div>
-
-
-        <!-- Arreglo dinámico -->
-        <h4 class="mt-4">
-
-            Total de solicitudes:
-            <span id="totalSolicitudes">0</span>
-
-        </h4>
-
-
-        <!-- Aquí se renderizan las tarjetas dinámicas -->
-        <div
-            id="listaSolicitudes"
-            class="row g-3 mt-3">
-        </div>
-
     </div>
-
 </section>
 
 {% endblock %}

@@ -1,60 +1,67 @@
-<!-- Menu de navegacion -->
-<nav class="navbar navbar-expand-lg navbar-dark sticky-top">
-
+﻿<!-- ==============================================================================
+     COMPONENTE MODULAR: BARRA DE NAVEGACIÓN PRINCIPAL
+     ==============================================================================
+     Incluye logotipo de marca, detección automática del enlace activo mediante
+     'request.endpoint' y diseño adaptable para dispositivos móviles.
+     ============================================================================== -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-navy sticky-top shadow-sm py-2">
     <div class="container">
-
-        <a class="navbar-brand fw-bold" href="{{ url_for('inicio') }}">
-            ⚡ NexoDigital
+        <!-- Logotipo e Identidad de Marca -->
+        <a class="navbar-brand fw-bold d-flex align-items-center gap-2 py-1" href="{{ url_for('inicio') }}">
+            <span class="brand-badge"><i class="bi bi-lightning-charge-fill"></i></span>
+            <span class="text-white">Nexo<span class="text-mint">Digital</span></span>
         </a>
 
-        <button
-            class="navbar-toggler"
-            type="button"
-            data-bs-toggle="collapse"
-            data-bs-target="#menuNav">
-
+        <!-- Botón Hamburguesa para Pantallas Pequeñas -->
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#menuNav" aria-controls="menuNav" aria-expanded="false" aria-label="Alternar navegación">
             <span class="navbar-toggler-icon"></span>
-
         </button>
 
+        <!-- Lista de Enlaces de Navegación del Sistema -->
         <div class="collapse navbar-collapse" id="menuNav">
-
-            <ul class="navbar-nav ms-auto">
-
+            <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+                <!-- 1. Inicio -->
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('inicio') }}">
-                        Inicio
+                    <a class="nav-link px-2 {{ 'active' if request.endpoint == 'inicio' else '' }}" href="{{ url_for('inicio') }}">
+                        <i class="bi bi-house-door me-1"></i>Inicio
                     </a>
                 </li>
 
+                <!-- 2. Catálogo de Servicios -->
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('servicios') }}">
-                        Servicios
+                    <a class="nav-link px-2 {{ 'active' if request.endpoint in ['servicios', 'nuevo_servicio', 'editar_servicio'] else '' }}" href="{{ url_for('servicios') }}">
+                        <i class="bi bi-grid me-1"></i>Servicios
                     </a>
                 </li>
 
+                <!-- 3. Directorio de Proveedores -->
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('proveedores') }}">
-                        Proveedores
+                    <a class="nav-link px-2 {{ 'active' if request.endpoint in ['proveedores', 'nuevo_proveedor', 'editar_proveedor'] else '' }}" href="{{ url_for('proveedores') }}">
+                        <i class="bi bi-truck me-1"></i>Proveedores
                     </a>
                 </li>
 
+                <!-- 4. Directorio de Clientes -->
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('clientes') }}">
-                        Clientes
+                    <a class="nav-link px-2 {{ 'active' if request.endpoint in ['clientes', 'nuevo_cliente', 'editar_cliente'] else '' }}" href="{{ url_for('clientes') }}">
+                        <i class="bi bi-people me-1"></i>Clientes
                     </a>
                 </li>
 
+                <!-- 5. Panel Comercial de Facturación & Cotizaciones -->
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('facturacion') }}">
-                        Facturación
+                    <a class="nav-link px-2 {{ 'active' if request.endpoint in ['facturacion', 'nueva_factura', 'editar_factura', 'ver_comprobante'] else '' }}" href="{{ url_for('facturacion') }}">
+                        <i class="bi bi-receipt me-1"></i>Facturación & Cotizaciones
                     </a>
                 </li>
 
+                <!-- 6. Botón de Acción Directa: Contacto -->
+                <li class="nav-item ms-lg-2">
+                    <a class="btn btn-verde btn-sm px-3 rounded-pill" href="{{ url_for('inicio') }}#contacto">
+                        <i class="bi bi-envelope me-1"></i>Contacto
+                    </a>
+                </li>
             </ul>
-
         </div>
-
     </div>
-
 </nav>
