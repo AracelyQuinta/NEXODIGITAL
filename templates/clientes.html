@@ -86,10 +86,10 @@
                                 </td>
                                 <td class="py-3 text-center pe-4">
                                     <div class="d-inline-flex gap-1">
-                                        <a href="{{ url_for('editar_cliente', id=loop.index0) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar cliente">
+                                        <a href="{{ url_for('editar_cliente', id=cliente.id) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar cliente"></a>
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
-                                        <form method="POST" action="{{ url_for('eliminar_cliente', id=loop.index0) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar a «{{ cliente.nombre }}»?');" class="d-inline">
+                                        <form method="POST" action="{{ url_for('eliminar_cliente', id=cliente.id) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar a «{{ cliente.nombre }}»?');" class="d-inline"></form>
                                             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar cliente">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>

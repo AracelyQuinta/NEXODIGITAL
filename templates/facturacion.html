@@ -122,13 +122,13 @@
                                 </td>
                                 <td class="py-3 text-center pe-4">
                                     <div class="d-inline-flex gap-1">
-                                        <a href="{{ url_for('ver_comprobante', id=loop.index0) }}" class="btn btn-outline-success btn-sm rounded-pill" title="Ver e imprimir {{ 'cotización' if doc.tipo == 'Cotizacion' else 'factura' }}">
+                                        <a href="{{ url_for('ver_comprobante', id=doc.id) }}" class="btn btn-outline-success btn-sm rounded-pill" title="Ver e imprimir {{ 'cotización' if doc.tipo == 'Cotizacion' else 'factura' }}"></a>
                                             <i class="bi bi-file-earmark-text-fill me-1"></i>{{ 'Cotización' if doc.tipo == 'Cotizacion' else 'Factura' }}
                                         </a>
-                                        <a href="{{ url_for('editar_factura', id=loop.index0) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar">
+                                        <a href="{{ url_for('editar_factura', id=doc.id) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar"></a>
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
-                                        <form method="POST" action="{{ url_for('eliminar_factura', id=loop.index0) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este registro?');" class="d-inline">
+                                        <form method="POST" action="{{ url_for('eliminar_factura', id=doc.id) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este registro?');" class="d-inline"></form>
                                             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>
