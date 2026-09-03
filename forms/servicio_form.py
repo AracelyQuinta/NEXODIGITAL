@@ -6,7 +6,7 @@
 # ==============================================================================
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, FloatField, BooleanField, SubmitField
+from wtforms import StringField, TextAreaField, FloatField, BooleanField, SubmitField, SelectField
 from wtforms.validators import DataRequired, Length, NumberRange, Optional
 
 
@@ -14,6 +14,13 @@ class ServicioForm(FlaskForm):
     """
     Formulario para la administración de servicios web y soluciones digitales.
     """
+    # Categoría a la que pertenece el servicio (clave foránea hacia tipos_servicio)
+    tipo_servicio_id = SelectField(
+        'Tipo de servicio',
+        coerce=int,
+        validators=[DataRequired(message='Selecciona una categoría.')]
+    )
+
     # Título descriptivo del servicio
     nombre = StringField(
         'Nombre del servicio',
@@ -29,15 +36,6 @@ class ServicioForm(FlaskForm):
         validators=[
             DataRequired(message='Ingresa un precio numérico válido.'),
             NumberRange(min=0.01, message='El precio debe ser un valor positivo mayor a 0.')
-        ]
-    )
-
-    # Plazo estimado de entrega (opcional)
-    tiempo_estimado = StringField(
-        'Tiempo estimado de entrega',
-        validators=[
-            Optional(),
-            Length(max=50, message='Máximo 50 caracteres para el tiempo estimado.')
         ]
     )
 

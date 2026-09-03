@@ -11,7 +11,8 @@ DB_PATH = os.path.join(DATA_DIR, 'nexodigital.db')
 def get_connection():
     os.makedirs(DATA_DIR, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # permite leer filas como fila['nombre']
+    conn.row_factory = sqlite3.Row       # permite leer filas como fila['nombre']
+    conn.execute('PRAGMA foreign_keys = ON')  # SQLite exige activar las FK en cada conexión
     return conn
 
 
@@ -20,106 +21,169 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Tabla de clientes
+    # Tabla de clientes: la cédula es la clave primaria real (identificador único
+    # y natural de cada persona/negocio), no un id autoincremental aparte.
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS clientes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cedula TEXT PRIMARY KEY,
             nombre TEXT NOT NULL,
-            negocio TEXT NOT NULL,
-            servicio TEXT NOT NULL,
+            telefono TEXT NOT NULL,
+            correo TEXT NOT NULL,
+            negocio TEXT,
             ciudad TEXT NOT NULL
         )
     ''')
 
-    # Tabla de servicios
+    # Tabla de categorías de servicio (ej: Desarrollo Web, Marketing, Diseño)
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS servicios (
+        CREATE TABLE IF NOT EXISTS tipos_servicio (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT NOT NULL,
-            precio REAL NOT NULL,
-            tiempo_estimado TEXT,
-            imagen TEXT,
-            descripcion TEXT NOT NULL,
-            disponible INTEGER NOT NULL DEFAULT 1
+            nombre TEXT NOT NULL UNIQUE
         )
     ''')
 
-    # Tabla de proveedores
+    # Tabla de servicios: cada servicio pertenece a un tipo_servicio (clave foránea)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS servicios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tipo_servicio_id INTEGER NOT NULL,
+            nombre TEXT NOT NULL,
+            precio_base REAL NOT NULL,
+            imagen TEXT,
+            descripcion TEXT NOT NULL,
+            disponible INTEGER NOT NULL DEFAULT 1,
+            FOREIGN KEY (tipo_servicio_id) REFERENCES tipos_servicio (id)
+        )
+    ''')
+
+    # Tabla de estados posibles para un proveedor (Activo, Pendiente, Inactivo)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS estados_proveedor (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL UNIQUE
+        )
+    ''')
+
+    # Tabla de proveedores: estado_id es clave foránea hacia estados_proveedor
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS proveedores (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT NOT NULL,
-            servicio TEXT NOT NULL,
+            tipo_servicio TEXT NOT NULL,
             sitio TEXT NOT NULL,
-            estado TEXT NOT NULL
+            estado_id INTEGER NOT NULL,
+            FOREIGN KEY (estado_id) REFERENCES estados_proveedor (id)
         )
     ''')
 
-    # Tabla de facturación
+    # Tabla de estados posibles para un documento de facturación
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS estados_documento (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL UNIQUE
+        )
+    ''')
+
+    # Tabla de facturación: numero es la clave primaria real (identificador único
+    # y natural de cada documento), igual que cedula lo es para clientes.
+    # cliente_cedula y estado_id son claves foráneas hacia sus tablas relacionadas.
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS facturacion (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            numero TEXT PRIMARY KEY,
             tipo TEXT NOT NULL,
-            numero TEXT NOT NULL,
-            cliente TEXT NOT NULL,
+            cliente_cedula TEXT NOT NULL,
             fecha TEXT NOT NULL,
             validez TEXT,
-            servicios_json TEXT,
             subtotal REAL,
             iva REAL,
             monto REAL NOT NULL,
             anticipo REAL DEFAULT 0,
             saldo_pendiente REAL DEFAULT 0,
-            estado TEXT NOT NULL,
-            notas TEXT
+            estado_id INTEGER NOT NULL,
+            notas TEXT,
+            FOREIGN KEY (cliente_cedula) REFERENCES clientes (cedula) ON UPDATE CASCADE,
+            FOREIGN KEY (estado_id) REFERENCES estados_documento (id)
         )
     ''')
 
-    # Si la tabla de clientes está vacía, se insertan los datos de ejemplo
-    # (esto solo ocurre la primera vez; después se maneja todo desde el formulario)
+    # Tabla de detalle: cada fila es un servicio dentro de una factura (relación N:M).
+    # Se conecta con facturacion mediante su clave primaria real: numero.
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS detalle_factura (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            factura_numero TEXT NOT NULL,
+            servicio_id INTEGER,
+            nombre_servicio TEXT NOT NULL,
+            cantidad INTEGER NOT NULL DEFAULT 1,
+            precio_base REAL NOT NULL DEFAULT 0,
+            ajuste REAL NOT NULL DEFAULT 0,
+            total REAL NOT NULL,
+            FOREIGN KEY (factura_numero) REFERENCES facturacion (numero) ON DELETE CASCADE ON UPDATE CASCADE,
+            FOREIGN KEY (servicio_id) REFERENCES servicios (id) ON DELETE SET NULL
+        )
+    ''')
+
+    # --- Datos de ejemplo (solo se insertan una vez, si la tabla está vacía) ---
+
     cursor.execute('SELECT COUNT(*) FROM clientes')
     if cursor.fetchone()[0] == 0:
         clientes_iniciales = [
-            ('Panadería El Trigal', 'Panadería', 'Página Web + Menú QR', 'Santo Domingo'),
-            ('Boutique Bella', 'Tienda de Ropa', 'Catálogo Digital', 'Quito'),
-            ('Taller Mecánico RPM', 'Taller Automotriz', 'Formulario de Citas', 'Santo Domingo'),
-            ('Café Aroma Amazónico', 'Cafetería', 'Menú QR + WhatsApp', 'Puyo')
+            ('1700111222', 'Panadería El Trigal', '0991234567', 'trigal@correo.com', 'Panadería', 'Santo Domingo'),
+            ('1700333444', 'Boutique Bella', '0987654321', 'bella@correo.com', 'Tienda de Ropa', 'Quito'),
+            ('1700555666', 'Taller Mecánico RPM', '0976543210', 'rpm@correo.com', 'Taller Automotriz', 'Santo Domingo'),
+            ('1700777888', 'Café Aroma Amazónico', '0965432109', 'aroma@correo.com', 'Cafetería', 'Puyo')
         ]
         cursor.executemany(
-            'INSERT INTO clientes (nombre, negocio, servicio, ciudad) VALUES (?, ?, ?, ?)',
+            'INSERT INTO clientes (cedula, nombre, telefono, correo, negocio, ciudad) VALUES (?, ?, ?, ?, ?, ?)',
             clientes_iniciales
         )
 
-    # Si la tabla de servicios está vacía, se insertan los servicios de ejemplo
+    cursor.execute('SELECT COUNT(*) FROM tipos_servicio')
+    if cursor.fetchone()[0] == 0:
+        tipos_iniciales = [
+            ('Desarrollo Web',),
+            ('Marketing Digital',),
+            ('Diseño y Catálogos',),
+            ('Soporte y Asesoría',)
+        ]
+        cursor.executemany('INSERT INTO tipos_servicio (nombre) VALUES (?)', tipos_iniciales)
+
     cursor.execute('SELECT COUNT(*) FROM servicios')
     if cursor.fetchone()[0] == 0:
+        # tipo_servicio_id: 1=Desarrollo Web, 2=Marketing Digital, 3=Diseño y Catálogos, 4=Soporte y Asesoría
         servicios_iniciales = [
-            ('Páginas Web para Negocios', 250.00, '5 a 7 días',
+            (1, 'Páginas Web para Negocios', 250.00,
              'https://images.unsplash.com/photo-1547658719-da2b51169166',
              'Diseño de sitios web claros, rápidos y adaptados para celulares y computadoras.', 1),
-            ('Catálogo Digital de Productos', 120.00, '3 a 4 días',
+            (3, 'Catálogo Digital de Productos', 120.00,
              'https://images.unsplash.com/photo-1460925895917-afdab827c52f',
              'Muestra tus productos con fotos, precios y botón para hacer pedidos por WhatsApp.', 1),
-            ('Menú Digital con Código QR', 65.00, '24 a 48 horas',
+            (3, 'Menú Digital con Código QR', 65.00,
              'https://images.unsplash.com/photo-1595079672139-5470887216e9',
              'Menú interactivo para restaurantes y cafeterías accesible escaneando un código QR.', 1),
-            ('Formularios de Contacto y Pedidos', 85.00, '2 a 3 días',
+            (1, 'Formularios de Contacto y Pedidos', 85.00,
              'https://images.unsplash.com/photo-1551288049-bebda4e38f71',
              'Formularios personalizados para recibir solicitudes, cotizaciones y reservas.', 1),
-            ('Botón de WhatsApp y Redes Sociales', 45.00, '24 horas',
+            (2, 'Botón de WhatsApp y Redes Sociales', 45.00,
              'https://images.unsplash.com/photo-1611746872915-64382b5c76da',
              'Integración de enlaces directos a WhatsApp, Instagram, Facebook y TikTok.', 1),
-            ('Asesoría y Optimización Web', 110.00, '3 a 5 días',
+            (4, 'Asesoría y Optimización Web', 110.00,
              'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8',
              'Revisión técnica de páginas web para mejorar su velocidad y accesibilidad.', 0)
         ]
         cursor.executemany(
-            '''INSERT INTO servicios (nombre, precio, tiempo_estimado, imagen, descripcion, disponible)
+            '''INSERT INTO servicios (tipo_servicio_id, nombre, precio_base, imagen, descripcion, disponible)
                VALUES (?, ?, ?, ?, ?, ?)''',
             servicios_iniciales
         )
 
-    # Si la tabla de proveedores está vacía, se insertan los proveedores de ejemplo
+    cursor.execute('SELECT COUNT(*) FROM estados_proveedor')
+    if cursor.fetchone()[0] == 0:
+        cursor.executemany(
+            'INSERT INTO estados_proveedor (nombre) VALUES (?)',
+            [('Activo',), ('Pendiente',), ('Inactivo',)]
+        )
+
     cursor.execute('SELECT COUNT(*) FROM proveedores')
     if cursor.fetchone()[0] == 0:
         proveedores_iniciales = [
@@ -128,9 +192,20 @@ def init_db():
             ('Figma', 'Diseño de Interfaces', 'figma.com', 'Activo'),
             ('Cloudflare', 'Certificados SSL y Seguridad', 'cloudflare.com', 'Pendiente')
         ]
+        for nombre, tipo_serv, sitio, nombre_estado in proveedores_iniciales:
+            estado_id = cursor.execute(
+                'SELECT id FROM estados_proveedor WHERE nombre = ?', (nombre_estado,)
+            ).fetchone()['id']
+            cursor.execute(
+                'INSERT INTO proveedores (nombre, tipo_servicio, sitio, estado_id) VALUES (?, ?, ?, ?)',
+                (nombre, tipo_serv, sitio, estado_id)
+            )
+
+    cursor.execute('SELECT COUNT(*) FROM estados_documento')
+    if cursor.fetchone()[0] == 0:
         cursor.executemany(
-            'INSERT INTO proveedores (nombre, servicio, sitio, estado) VALUES (?, ?, ?, ?)',
-            proveedores_iniciales
+            'INSERT INTO estados_documento (nombre) VALUES (?)',
+            [('Pagada',), ('Pendiente',), ('Aprobada',), ('En revision',), ('Vencida',)]
         )
 
     conn.commit()  # guarda los cambios

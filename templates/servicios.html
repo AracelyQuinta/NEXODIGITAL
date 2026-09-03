@@ -54,17 +54,13 @@
                              onerror="this.src='https://images.unsplash.com/photo-1460925895917-afdab827c52f';">
                         
                         <div class="price-tag">
-                            ${{ "%.2f"|format(servicio.precio or 0.0) }} <span>USD</span>
+                            ${{ "%.2f"|format(servicio.precio_base or 0.0) }} <span>USD</span>
                         </div>
                     </div>
 
                     <!-- Cuerpo de la Tarjeta -->
                     <div class="card-body p-4 d-flex flex-column flex-grow-1">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="time-badge">
-                                <i class="bi bi-clock-history text-emerald me-1"></i>{{ servicio.tiempo_estimado or '2 a 5 días' }}
-                            </span>
-                            
+                        <div class="d-flex justify-content-end align-items-center mb-2">
                             {% if servicio.disponible %}
                                 <span class="badge badge-disponible">
                                     <i class="bi bi-check-circle-fill me-1"></i>Disponible
@@ -76,6 +72,10 @@
                             {% endif %}
                         </div>
 
+                        <span class="badge bg-light text-navy border px-2 py-1 mb-2 align-self-start">
+                            <i class="bi bi-collection me-1"></i>{{ servicio.tipo_nombre }}
+                        </span>
+
                         <h3 class="h5 card-title fw-bold text-navy my-2">
                             {{ servicio.nombre }}
                         </h3>
@@ -86,13 +86,13 @@
 
                         <!-- Botones de Acción (Cotizar, Editar, Eliminar) -->
                         <div class="pt-3 border-top mt-auto d-flex justify-content-between align-items-center gap-2">
-                            <a href="{{ url_for('nueva_factura', servicio_id=servicio.id, tipo='Cotizacion') }}" class="btn btn-verde btn-sm rounded-pill flex-grow-1"></a>
+                            <a href="{{ url_for('nueva_factura', servicio_id=servicio.id, tipo='Cotizacion') }}" class="btn btn-verde btn-sm rounded-pill flex-grow-1">
                                 <i class="bi bi-receipt me-1"></i>Cotizar
                             </a>
-                            <a href="{{ url_for('editar_servicio', id=servicio.id) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar servicio"></a>
+                            <a href="{{ url_for('editar_servicio', id=servicio.id) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar servicio">
                                 <i class="bi bi-pencil-square"></i>
                             </a>
-                            <form method="POST" action="{{ url_for('eliminar_servicio', id=servicio.id) }}" onsubmit="return confirm('¿Deseas eliminar este servicio?');" class="d-inline"></form>
+                            <form method="POST" action="{{ url_for('eliminar_servicio', id=servicio.id) }}" onsubmit="return confirm('¿Deseas eliminar este servicio?');" class="d-inline">
                                 <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar servicio">
                                     <i class="bi bi-trash-fill"></i>
                                 </button>

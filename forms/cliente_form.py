@@ -1,55 +1,60 @@
-﻿# ==============================================================================
-# FORMULARIO: REGISTRO Y EDICIÓN DE CLIENTES
-# ==============================================================================
-# Define la estructura de campos y validaciones para registrar clientes y
-# emprendimientos comerciales en la plataforma.
-# ==============================================================================
-
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
-from wtforms.validators import DataRequired, Length
+from wtforms.validators import DataRequired, Length, Regexp
 
 
 class ClienteForm(FlaskForm):
     """
-    Formulario para la gestión de clientes de NexoDigital.
-    Hereda de FlaskForm para incluir protección automática CSRF.
+    Formulario de registro y edición de clientes.
+    Contiene únicamente datos propios del cliente; los servicios que contrata
+    se gestionan de forma independiente en el módulo de Facturación.
     """
-    # Nombre o razón social del cliente
-    nombre = StringField(
-        'Nombre del cliente o negocio',
+    cedula = StringField(
+        'Cédula',
         validators=[
-            DataRequired(message='El nombre del cliente es obligatorio.'),
+            DataRequired(message='La cédula es obligatoria.'),
+            Regexp(r'^\d{10}$', message='La cédula debe tener 10 dígitos numéricos.')
+        ]
+    )
+
+    nombre = StringField(
+        'Nombre / Razón Social',
+        validators=[
+            DataRequired(message='El nombre es obligatorio.'),
             Length(min=3, max=100, message='Debe contener entre 3 y 100 caracteres.')
         ]
     )
 
-    # Giro o actividad económica del cliente
+    telefono = StringField(
+        'Teléfono',
+        validators=[
+            DataRequired(message='El teléfono es obligatorio.'),
+            Regexp(r'^\d{7,10}$', message='Ingresa un teléfono válido (7 a 10 dígitos).')
+        ]
+    )
+
+    correo = StringField(
+        'Correo electrónico',
+        validators=[
+            DataRequired(message='El correo es obligatorio.'),
+            Regexp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', message='Ingresa un correo electrónico válido.')
+        ]
+    )
+
     negocio = StringField(
-        'Tipo de negocio o actividad',
+        'Tipo de negocio',
         validators=[
             DataRequired(message='El tipo de negocio es obligatorio.'),
-            Length(min=3, max=100, message='Debe contener entre 3 y 100 caracteres.')
+            Length(max=100, message='Máximo 100 caracteres.')
         ]
     )
 
-    # Servicio o paquete digital contratado
-    servicio = StringField(
-        'Servicio contratado',
-        validators=[
-            DataRequired(message='Especifica el servicio acordado con el cliente.'),
-            Length(min=3, max=100, message='Debe contener entre 3 y 100 caracteres.')
-        ]
-    )
-
-    # Ciudad o localidad del cliente
     ciudad = StringField(
-        'Ciudad / Localidad',
+        'Ciudad',
         validators=[
             DataRequired(message='La ciudad es obligatoria.'),
-            Length(min=3, max=50, message='Debe contener entre 3 y 50 caracteres.')
+            Length(max=50, message='Máximo 50 caracteres.')
         ]
     )
 
-    # Botón de envío
-    submit = SubmitField('Guardar cliente')
+    submit = SubmitField('Guardar Cliente')

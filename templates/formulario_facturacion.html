@@ -48,24 +48,27 @@
                                 </div>
 
                                 <!-- Selector de Tipo de Documento -->
-                                <div class="btn-group" role="group" aria-label="Tipo de documento">
-                                    {{ form.tipo(class="form-select fw-semibold border-emerald", id="selectTipoDoc") }}
+                                <div class="btn-group" role="group" aria-label="Tipo de documento" style="min-width: 320px; flex-shrink: 0;">
+                                    {{ form.tipo(class="form-select fw-semibold border-emerald", id="selectTipoDoc", style="min-width: 320px;") }}
                                 </div>
                             </div>
                         </div>
 
                         <div class="card-body p-4">
                             <div class="row g-3">
-                                <!-- Número de Documento -->
+                                <!-- Número de Documento (clave primaria: no editable una vez creado) -->
                                 <div class="col-md-6">
                                     {{ form.numero.label(class="form-label fw-semibold text-navy small", id="lblNumeroDoc") }}
                                     <div class="input-group">
                                         <span class="input-group-text bg-light"><i class="bi bi-hash"></i></span>
-                                        {{ form.numero(class="form-control font-monospace" + (" is-invalid" if form.numero.errors else ""), placeholder="001-001-0001", id="inputNumeroDoc") }}
+                                        {{ form.numero(class="form-control font-monospace" + (" is-invalid" if form.numero.errors else ""), placeholder="001-001-0001", id="inputNumeroDoc", readonly=editando) }}
                                     </div>
                                     {% for error in form.numero.errors %}
                                         <div class="text-danger small mt-1">{{ error }}</div>
                                     {% endfor %}
+                                    {% if editando %}
+                                        <small class="text-muted">El número de documento es la clave primaria y no puede modificarse.</small>
+                                    {% endif %}
                                 </div>
 
                                 <!-- Fecha de Emisión -->
@@ -80,21 +83,22 @@
                                     {% endfor %}
                                 </div>
 
-                                <!-- Cliente / Razón Social con Datalist de Sugerencias -->
+                                <!-- Cliente: selección real de un cliente registrado (clave foránea) -->
                                 <div class="col-md-8">
-                                    {{ form.cliente.label(class="form-label fw-semibold text-navy small") }}
+                                    {{ form.cliente_cedula.label(class="form-label fw-semibold text-navy small") }}
                                     <div class="input-group">
                                         <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
-                                        {{ form.cliente(class="form-control" + (" is-invalid" if form.cliente.errors else ""), placeholder="Nombre del cliente o empresa", list="clientesDatalist") }}
+                                        <select name="{{ form.cliente_cedula.name }}" id="{{ form.cliente_cedula.id }}" class="form-select{{ ' is-invalid' if form.cliente_cedula.errors else '' }}">
+                                            <option value="">-- Selecciona un cliente registrado --</option>
+                                            {% for c in clientes_registrados %}
+                                            <option value="{{ c.cedula }}" {% if form.cliente_cedula.data == c.cedula %}selected{% endif %}>{{ c.nombre }} ({{ c.negocio }} — {{ c.ciudad }})</option>
+                                            {% endfor %}
+                                        </select>
                                     </div>
-                                    <datalist id="clientesDatalist">
-                                        {% for c in clientes_registrados %}
-                                            <option value="{{ c.nombre }}">({{ c.negocio }} — {{ c.ciudad }})</option>
-                                        {% endfor %}
-                                    </datalist>
-                                    {% for error in form.cliente.errors %}
+                                    {% for error in form.cliente_cedula.errors %}
                                         <div class="text-danger small mt-1">{{ error }}</div>
                                     {% endfor %}
+                                    <small class="text-muted">¿El cliente no existe todavía? <a href="{{ url_for('nuevo_cliente') }}">Regístralo aquí</a>.</small>
                                 </div>
 
                                 <!-- Validez / Plazo -->
@@ -108,8 +112,12 @@
 
                                 <!-- Estado Comercial -->
                                 <div class="col-12">
-                                    {{ form.estado.label(class="form-label fw-semibold text-navy small") }}
-                                    {{ form.estado(class="form-select", id="selectEstadoDoc") }}
+                                    {{ form.estado_id.label(class="form-label fw-semibold text-navy small") }}
+                                    <select name="{{ form.estado_id.name }}" id="selectEstadoDoc" class="form-select">
+                                        {% for value, label in form.estado_id.choices %}
+                                        <option value="{{ value }}" {% if form.estado_id.data == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -135,10 +143,9 @@
                                             {% for s in servicios_catalogo %}
                                                 <option value="{{ s.id }}"
                                                         data-nombre="{{ s.nombre }}"
-                                                        data-precio="{{ s.precio or 0.0 }}"
-                                                        data-tiempo="{{ s.tiempo_estimado or '' }}"
+                                                        data-precio="{{ s.precio_base or 0.0 }}"
                                                         {% if servicio_seleccionado_id is defined and servicio_seleccionado_id == s.id %}selected{% endif %}>
-                                                    {{ s.nombre }} — ${{ "%.2f"|format(s.precio or 0.0) }} ({{ s.tiempo_estimado or '2 a 5 días' }})
+                                                    {{ s.nombre }} — ${{ "%.2f"|format(s.precio_base or 0.0) }}
                                                 </option>
                                             {% endfor %}
                                         </select>
@@ -180,7 +187,7 @@
 
                 <!-- Columna Derecha: Panel de Liquidación Financiera -->
                 <div class="col-lg-4">
-                    <div class="card shadow-sm border-0 rounded-4 sticky-top" style="top: 80px;">
+                    <div class="card shadow-sm border-0 rounded-4 sticky-lg-top" style="top: 80px;">
                         <div class="card-header bg-navy text-white p-4">
                             <h3 class="h5 fw-bold mb-0 text-white d-flex align-items-center justify-content-between">
                                 <span id="lblTituloPanel">Liquidación Comercial</span>
@@ -219,13 +226,13 @@
                             <div class="box-anticipo mb-3">
                                 <div class="mb-2">
                                     <label class="form-label fw-bold text-navy small mb-1">
-                                        <i class="bi bi-cash-coin text-emerald me-1"></i>Anticipo / Abono Recibido ($)
+                                        <i class="bi bi-cash-coin text-emerald me-1"></i>Abono Recibido ($)
                                     </label>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text">$</span>
                                         {{ form.anticipo(class="form-control fw-bold", id="inputAnticipo", step="0.01", min="0", value="0.00") }}
                                     </div>
-                                    <small class="text-muted" style="font-size: 0.75rem;">Monto pagado por el cliente por adelantado.</small>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Monto pagado por el cliente.</small>
                                 </div>
 
                                 <div id="boxDiferencia" class="saldo-alerta mt-2">
@@ -406,6 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         itemsFactura.push({
+            id: opt.value ? parseInt(opt.value) : null,
             servicio: opt.getAttribute("data-nombre"),
             precio: parseFloat(opt.getAttribute("data-precio")) || 0,
             cantidad: 1,

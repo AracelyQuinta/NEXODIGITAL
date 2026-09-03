@@ -45,21 +45,21 @@
                                 {{ form.nombre.label(class="form-label fw-semibold text-navy small") }}
                                 <div class="input-group">
                                     <span class="input-group-text bg-light"><i class="bi bi-hdd-network"></i></span>
-                                    {{ form.nombre(class="form-control" + (" is-invalid" if form.nombre.errors else ""), placeholder="Ej: AWS, Hostinger, Cloudflare") }}
+                                    {{ form.nombre(class="form-control" + (" is-invalid" if form.nombre.errors else ""), placeholder="Ej: AWS, Hostinger, Cloudflare", autocomplete="off") }}
                                 </div>
                                 {% for error in form.nombre.errors %}
                                     <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
                                 {% endfor %}
                             </div>
 
-                            <!-- 2. Servicio Suministrado -->
+                            <!-- 2. Tipo de Servicio -->
                             <div class="mb-3">
-                                {{ form.servicio.label(class="form-label fw-semibold text-navy small") }}
+                                {{ form.tipo_servicio.label(class="form-label fw-semibold text-navy small") }}
                                 <div class="input-group">
                                     <span class="input-group-text bg-light"><i class="bi bi-box"></i></span>
-                                    {{ form.servicio(class="form-control" + (" is-invalid" if form.servicio.errors else ""), placeholder="Ej: Servidores Cloud, Base de datos, SSL") }}
+                                    {{ form.tipo_servicio(class="form-control" + (" is-invalid" if form.tipo_servicio.errors else ""), placeholder="Ej: Servidores Cloud, Base de datos, SSL") }}
                                 </div>
-                                {% for error in form.servicio.errors %}
+                                {% for error in form.tipo_servicio.errors %}
                                     <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
                                 {% endfor %}
                             </div>
@@ -76,14 +76,18 @@
                                 {% endfor %}
                             </div>
 
-                            <!-- 4. Estado Operativo -->
+                            <!-- 4. Estado Operativo (clave foránea hacia estados_proveedor) -->
                             <div class="mb-4">
-                                {{ form.estado.label(class="form-label fw-semibold text-navy small") }}
+                                {{ form.estado_id.label(class="form-label fw-semibold text-navy small") }}
                                 <div class="input-group">
                                     <span class="input-group-text bg-light"><i class="bi bi-toggle2-on"></i></span>
-                                    {{ form.estado(class="form-select") }}
+                                    <select name="{{ form.estado_id.name }}" id="{{ form.estado_id.id }}" class="form-select{{ ' is-invalid' if form.estado_id.errors else '' }}">
+                                        {% for value, label in form.estado_id.choices %}
+                                        <option value="{{ value }}" {% if form.estado_id.data == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
-                                {% for error in form.estado.errors %}
+                                {% for error in form.estado_id.errors %}
                                     <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
                                 {% endfor %}
                             </div>

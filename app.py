@@ -1,14 +1,19 @@
-﻿# ==============================================================================
+# ==============================================================================
 # PROYECTO: NEXODIGITAL - SOLUCIONES WEB Y COMERCIALES
 # Control Principal de la Aplicación Flask (Backend)
 # ==============================================================================
 # Este archivo contiene la configuración central del servidor y los controladores
 # (rutas y vistas) que gestionan la lógica de negocio para:
 # 1. Página de inicio y presentación de la empresa
-# 2. Catálogo y gestión de Servicios (CRUD) - persistencia en SQLite
-# 3. Directorio de Proveedores e infraestructura (CRUD) - persistencia en SQLite
-# 4. Directorio de Clientes y cartera comercial (CRUD) - persistencia en SQLite
-# 5. Emisión de Facturas y Cotizaciones (CRUD) - persistencia en SQLite
+# 2. Catálogo y gestión de Servicios (CRUD) y sus Categorías (CRUD)
+# 3. Directorio de Proveedores e infraestructura (CRUD)
+# 4. Directorio de Clientes y cartera comercial (CRUD)
+# 5. Emisión de Facturas y Cotizaciones (CRUD) con detalle relacional real
+#
+# Persistencia de datos: SQLite, mediante el módulo db.py (conexión y tablas).
+# Todas las tablas están relacionadas mediante claves primarias y foráneas:
+#   clientes  <--(cliente_cedula)--  facturacion  --(factura_numero)-->  detalle_factura
+#   tipos_servicio <--(tipo_servicio_id)--  servicios  <--(servicio_id)--  detalle_factura
 # ==============================================================================
 
 import json
@@ -18,6 +23,7 @@ from flask import Flask, render_template, redirect, url_for, flash, request
 # Importación de clases de formularios creadas con Flask-WTF
 from forms.cliente_form import ClienteForm
 from forms.servicio_form import ServicioForm
+from forms.tipo_servicio_form import TipoServicioForm
 from forms.proveedor_form import ProveedorForm
 from forms.facturacion_form import FacturacionForm
 
@@ -32,7 +38,7 @@ app = Flask(__name__)
 # Clave secreta para la protección de sesiones y seguridad contra ataques CSRF en formularios
 app.config['SECRET_KEY'] = 'nexodigital_clave_secreta_2026'
 
-# Crea las tablas en SQLite si todavía no existen (clientes, servicios, proveedores, facturacion)
+# Crea las tablas en SQLite si todavía no existen
 db.init_db()
 
 
@@ -53,7 +59,11 @@ def inicio():
         "modalidad": "Atención 100% en línea"
     }
     conn = db.get_connection()
-    servicios_destacados = conn.execute('SELECT * FROM servicios').fetchall()
+    servicios_destacados = conn.execute('''
+        SELECT s.*, t.nombre AS tipo_nombre
+        FROM servicios s
+        JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
+    ''').fetchall()
     conn.close()
     return render_template('index.html', mensaje=mensaje, empresa=empresa, servicios=servicios_destacados)
 
@@ -61,10 +71,15 @@ def inicio():
 @app.route('/servicio')
 def servicios():
     """
-    Ruta del catálogo completo de servicios, leyendo desde SQLite.
+    Ruta del catálogo completo de servicios.
+    Usa JOIN para mostrar el nombre de la categoría (tipo_servicio) de cada servicio.
     """
     conn = db.get_connection()
-    lista_servicios = conn.execute('SELECT * FROM servicios').fetchall()
+    lista_servicios = conn.execute('''
+        SELECT s.*, t.nombre AS tipo_nombre
+        FROM servicios s
+        JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
+    ''').fetchall()
     conn.close()
     return render_template('servicios.html', servicios=lista_servicios)
 
@@ -72,10 +87,15 @@ def servicios():
 @app.route('/proveedores')
 def proveedores():
     """
-    Ruta del directorio de proveedores tecnológicos, leyendo desde SQLite.
+    Ruta del directorio de proveedores tecnológicos.
+    Usa JOIN con estados_proveedor para mostrar el nombre del estado relacionado.
     """
     conn = db.get_connection()
-    lista_proveedores = conn.execute('SELECT * FROM proveedores').fetchall()
+    lista_proveedores = conn.execute('''
+        SELECT p.*, e.nombre AS estado_nombre
+        FROM proveedores p
+        JOIN estados_proveedor e ON p.estado_id = e.id
+    ''').fetchall()
     conn.close()
     return render_template('proveedores.html', proveedores=lista_proveedores)
 
@@ -95,18 +115,28 @@ def clientes():
 def facturacion():
     """
     Ruta principal del panel comercial de Facturación y Cotizaciones.
-    Lee los documentos desde SQLite y convierte servicios_json a lista.
+    Usa JOIN con clientes y estados_documento para mostrar los nombres relacionados,
+    y agrega el conteo de servicios incluidos en cada documento.
     """
     conn = db.get_connection()
-    filas = conn.execute('SELECT * FROM facturacion').fetchall()
-    conn.close()
+    filas = conn.execute('''
+        SELECT f.*, c.nombre AS cliente_nombre, e.nombre AS estado_nombre
+        FROM facturacion f
+        JOIN clientes c ON f.cliente_cedula = c.cedula
+        JOIN estados_documento e ON f.estado_id = e.id
+        ORDER BY f.numero DESC
+    ''').fetchall()
 
     lista_facturas = []
     for f in filas:
         doc = dict(f)
-        doc['servicios_detalle'] = json.loads(doc['servicios_json']) if doc['servicios_json'] else []
+        conteo = conn.execute(
+            'SELECT COUNT(*) FROM detalle_factura WHERE factura_numero = ?', (doc['numero'],)
+        ).fetchone()[0]
+        doc['servicios_detalle'] = [None] * conteo  # solo se usa para |length en la plantilla
         lista_facturas.append(doc)
 
+    conn.close()
     return render_template('facturacion.html', facturas=lista_facturas)
 
 
@@ -117,17 +147,22 @@ def facturacion():
 @app.route('/clientes/nuevo', methods=['GET', 'POST'])
 def nuevo_cliente():
     """
-    Crea y registra un nuevo cliente en el sistema.
-    - GET: Renderiza el formulario vacío.
-    - POST: Valida los campos ingresados y guarda el cliente en SQLite.
+    Crea y registra un nuevo cliente en el sistema. La cédula es la clave primaria.
     """
     form = ClienteForm()
     if form.validate_on_submit():
         conn = db.get_connection()
+        existente = conn.execute('SELECT * FROM clientes WHERE cedula = ?', (form.cedula.data.strip(),)).fetchone()
+        if existente is not None:
+            conn.close()
+            flash('Ya existe un cliente registrado con esa cédula.', 'danger')
+            return render_template('formulario_cliente.html', form=form, editando=False)
+
         conn.execute(
-            'INSERT INTO clientes (nombre, negocio, servicio, ciudad) VALUES (?, ?, ?, ?)',
-            (form.nombre.data.strip(), form.negocio.data.strip(),
-             form.servicio.data.strip(), form.ciudad.data.strip())
+            '''INSERT INTO clientes (cedula, nombre, telefono, correo, negocio, ciudad)
+               VALUES (?, ?, ?, ?, ?, ?)''',
+            (form.cedula.data.strip(), form.nombre.data.strip(), form.telefono.data.strip(),
+             form.correo.data.strip(), form.negocio.data.strip(), form.ciudad.data.strip())
         )
         conn.commit()
         conn.close()
@@ -136,15 +171,14 @@ def nuevo_cliente():
     return render_template('formulario_cliente.html', form=form, editando=False)
 
 
-@app.route('/clientes/editar/<int:id>', methods=['GET', 'POST'])
-def editar_cliente(id):
+@app.route('/clientes/editar/<cedula>', methods=['GET', 'POST'])
+def editar_cliente(cedula):
     """
-    Edita la información de un cliente existente identificado por su id de SQLite.
-    - GET: Carga la información actual en el formulario.
-    - POST: Actualiza los campos tras pasar la validación.
+    Edita la información de un cliente existente identificado por su cédula (PK).
+    La cédula no se modifica desde este formulario, ya que otras tablas dependen de ella.
     """
     conn = db.get_connection()
-    cliente = conn.execute('SELECT * FROM clientes WHERE id = ?', (id,)).fetchone()
+    cliente = conn.execute('SELECT * FROM clientes WHERE cedula = ?', (cedula,)).fetchone()
 
     if cliente is None:
         conn.close()
@@ -155,9 +189,10 @@ def editar_cliente(id):
 
     if form.validate_on_submit():
         conn.execute(
-            'UPDATE clientes SET nombre=?, negocio=?, servicio=?, ciudad=? WHERE id=?',
-            (form.nombre.data.strip(), form.negocio.data.strip(),
-             form.servicio.data.strip(), form.ciudad.data.strip(), id)
+            '''UPDATE clientes SET nombre=?, telefono=?, correo=?, negocio=?, ciudad=?
+               WHERE cedula=?''',
+            (form.nombre.data.strip(), form.telefono.data.strip(),
+             form.correo.data.strip(), form.negocio.data.strip(), form.ciudad.data.strip(), cedula)
         )
         conn.commit()
         conn.close()
@@ -165,27 +200,119 @@ def editar_cliente(id):
         return redirect(url_for('clientes'))
 
     conn.close()
-    return render_template('formulario_cliente.html', form=form, editando=True, id=id)
+    return render_template('formulario_cliente.html', form=form, editando=True, cedula=cedula)
 
 
-@app.route('/clientes/eliminar/<int:id>', methods=['POST', 'GET'])
-def eliminar_cliente(id):
+@app.route('/clientes/eliminar/<cedula>', methods=['POST', 'GET'])
+def eliminar_cliente(cedula):
     """
-    Elimina un cliente de SQLite según su id.
+    Elimina un cliente de SQLite según su cédula, siempre que no tenga facturas asociadas.
     """
     conn = db.get_connection()
-    cliente = conn.execute('SELECT * FROM clientes WHERE id = ?', (id,)).fetchone()
+    cliente = conn.execute('SELECT * FROM clientes WHERE cedula = ?', (cedula,)).fetchone()
 
     if cliente is None:
         conn.close()
         flash('El cliente seleccionado no existe.', 'danger')
         return redirect(url_for('clientes'))
 
-    conn.execute('DELETE FROM clientes WHERE id = ?', (id,))
+    facturas_asociadas = conn.execute(
+        'SELECT COUNT(*) FROM facturacion WHERE cliente_cedula = ?', (cedula,)
+    ).fetchone()[0]
+
+    if facturas_asociadas > 0:
+        conn.close()
+        flash(f'No se puede eliminar a "{cliente["nombre"]}" porque tiene {facturas_asociadas} factura(s) o cotización(es) registradas.', 'danger')
+        return redirect(url_for('clientes'))
+
+    conn.execute('DELETE FROM clientes WHERE cedula = ?', (cedula,))
     conn.commit()
     conn.close()
     flash(f'Cliente "{cliente["nombre"]}" eliminado correctamente.', 'success')
     return redirect(url_for('clientes'))
+
+
+# ==============================================================================
+# MÓDULO CRUD: TIPOS DE SERVICIO (categorías)
+# ==============================================================================
+
+@app.route('/tipos-servicio')
+def tipos_servicio():
+    """
+    Lista las categorías de servicio disponibles en el catálogo.
+    """
+    conn = db.get_connection()
+    lista_tipos = conn.execute('SELECT * FROM tipos_servicio ORDER BY nombre').fetchall()
+    conn.close()
+    return render_template('tipos_servicio.html', tipos=lista_tipos)
+
+
+@app.route('/tipos-servicio/nuevo', methods=['GET', 'POST'])
+def nuevo_tipo_servicio():
+    """
+    Registra una nueva categoría de servicio.
+    """
+    form = TipoServicioForm()
+    if form.validate_on_submit():
+        conn = db.get_connection()
+        conn.execute('INSERT INTO tipos_servicio (nombre) VALUES (?)', (form.nombre.data.strip(),))
+        conn.commit()
+        conn.close()
+        flash('Categoría registrada correctamente.', 'success')
+        return redirect(url_for('tipos_servicio'))
+    return render_template('formulario_tipo_servicio.html', form=form, editando=False)
+
+
+@app.route('/tipos-servicio/editar/<int:id>', methods=['GET', 'POST'])
+def editar_tipo_servicio(id):
+    """
+    Edita el nombre de una categoría de servicio existente.
+    """
+    conn = db.get_connection()
+    tipo = conn.execute('SELECT * FROM tipos_servicio WHERE id = ?', (id,)).fetchone()
+
+    if tipo is None:
+        conn.close()
+        flash('La categoría seleccionada no existe.', 'danger')
+        return redirect(url_for('tipos_servicio'))
+
+    form = TipoServicioForm(data=dict(tipo)) if request.method == 'GET' else TipoServicioForm()
+
+    if form.validate_on_submit():
+        conn.execute('UPDATE tipos_servicio SET nombre=? WHERE id=?', (form.nombre.data.strip(), id))
+        conn.commit()
+        conn.close()
+        flash(f'Categoría "{form.nombre.data.strip()}" actualizada correctamente.', 'success')
+        return redirect(url_for('tipos_servicio'))
+
+    conn.close()
+    return render_template('formulario_tipo_servicio.html', form=form, editando=True, id=id)
+
+
+@app.route('/tipos-servicio/eliminar/<int:id>', methods=['POST', 'GET'])
+def eliminar_tipo_servicio(id):
+    """
+    Elimina una categoría de servicio, siempre que ningún servicio la esté usando.
+    """
+    conn = db.get_connection()
+    tipo = conn.execute('SELECT * FROM tipos_servicio WHERE id = ?', (id,)).fetchone()
+
+    if tipo is None:
+        conn.close()
+        flash('La categoría seleccionada no existe.', 'danger')
+        return redirect(url_for('tipos_servicio'))
+
+    en_uso = conn.execute('SELECT COUNT(*) FROM servicios WHERE tipo_servicio_id = ?', (id,)).fetchone()[0]
+    if en_uso > 0:
+        conn.close()
+        flash(f'No se puede eliminar "{tipo["nombre"]}" porque hay servicios asignados a esta categoría.', 'danger')
+        return redirect(url_for('tipos_servicio'))
+
+    conn.execute('DELETE FROM tipos_servicio WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+    flash(f'Categoría "{tipo["nombre"]}" eliminada correctamente.', 'success')
+    return redirect(url_for('tipos_servicio'))
 
 
 # ==============================================================================
@@ -195,25 +322,29 @@ def eliminar_cliente(id):
 @app.route('/servicio/nuevo', methods=['GET', 'POST'])
 def nuevo_servicio():
     """
-    Registra un nuevo servicio en el catálogo, guardándolo en SQLite.
-    Asigna una imagen y tiempo estimado por defecto si no son proporcionados.
+    Registra un nuevo servicio en el catálogo, asociado a una categoría (tipo_servicio_id).
     """
+    conn = db.get_connection()
+    tipos = conn.execute('SELECT * FROM tipos_servicio ORDER BY nombre').fetchall()
+
     form = ServicioForm()
+    form.tipo_servicio_id.choices = [(t['id'], t['nombre']) for t in tipos]
+
     if form.validate_on_submit():
         imagen_url = form.imagen.data.strip() if form.imagen.data and form.imagen.data.strip() else "https://images.unsplash.com/photo-1460925895917-afdab827c52f"
-        tiempo = form.tiempo_estimado.data.strip() if form.tiempo_estimado.data and form.tiempo_estimado.data.strip() else "2 a 5 días"
 
-        conn = db.get_connection()
         conn.execute(
-            '''INSERT INTO servicios (nombre, precio, tiempo_estimado, imagen, descripcion, disponible)
+            '''INSERT INTO servicios (tipo_servicio_id, nombre, precio_base, imagen, descripcion, disponible)
                VALUES (?, ?, ?, ?, ?, ?)''',
-            (form.nombre.data.strip(), float(form.precio.data), tiempo,
+            (form.tipo_servicio_id.data, form.nombre.data.strip(), float(form.precio.data),
              imagen_url, form.descripcion.data.strip(), int(form.disponible.data))
         )
         conn.commit()
         conn.close()
         flash('Servicio registrado correctamente.', 'success')
         return redirect(url_for('servicios'))
+
+    conn.close()
     return render_template('formulario_servicio.html', form=form, editando=False)
 
 
@@ -231,16 +362,23 @@ def editar_servicio(id):
         flash('El servicio seleccionado no existe.', 'danger')
         return redirect(url_for('servicios'))
 
-    form = ServicioForm(data=dict(servicio)) if request.method == 'GET' else ServicioForm()
+    tipos = conn.execute('SELECT * FROM tipos_servicio ORDER BY nombre').fetchall()
+
+    datos_form = dict(servicio)
+    datos_form['precio'] = servicio['precio_base']  # el form usa 'precio', la BD usa 'precio_base'
+
+    form = ServicioForm(data=datos_form) if request.method == 'GET' else ServicioForm()
+    form.tipo_servicio_id.choices = [(t['id'], t['nombre']) for t in tipos]
+    if request.method == 'GET':
+        form.tipo_servicio_id.data = servicio['tipo_servicio_id']
 
     if form.validate_on_submit():
         imagen_url = form.imagen.data.strip() if form.imagen.data and form.imagen.data.strip() else servicio['imagen']
-        tiempo = form.tiempo_estimado.data.strip() if form.tiempo_estimado.data and form.tiempo_estimado.data.strip() else "2 a 5 días"
 
         conn.execute(
-            '''UPDATE servicios SET nombre=?, precio=?, tiempo_estimado=?, imagen=?, descripcion=?, disponible=?
+            '''UPDATE servicios SET tipo_servicio_id=?, nombre=?, precio_base=?, imagen=?, descripcion=?, disponible=?
                WHERE id=?''',
-            (form.nombre.data.strip(), float(form.precio.data), tiempo,
+            (form.tipo_servicio_id.data, form.nombre.data.strip(), float(form.precio.data),
              imagen_url, form.descripcion.data.strip(), int(form.disponible.data), id)
         )
         conn.commit()
@@ -282,18 +420,24 @@ def nuevo_proveedor():
     """
     Registra un nuevo proveedor de servicios o infraestructura en SQLite.
     """
+    conn = db.get_connection()
+    estados = conn.execute('SELECT * FROM estados_proveedor ORDER BY id').fetchall()
+
     form = ProveedorForm()
+    form.estado_id.choices = [(e['id'], e['nombre']) for e in estados]
+
     if form.validate_on_submit():
-        conn = db.get_connection()
         conn.execute(
-            'INSERT INTO proveedores (nombre, servicio, sitio, estado) VALUES (?, ?, ?, ?)',
-            (form.nombre.data.strip(), form.servicio.data.strip(),
-             form.sitio.data.strip(), form.estado.data)
+            'INSERT INTO proveedores (nombre, tipo_servicio, sitio, estado_id) VALUES (?, ?, ?, ?)',
+            (form.nombre.data.strip(), form.tipo_servicio.data.strip(),
+             form.sitio.data.strip(), form.estado_id.data)
         )
         conn.commit()
         conn.close()
         flash('Proveedor registrado correctamente.', 'success')
         return redirect(url_for('proveedores'))
+
+    conn.close()
     return render_template('formulario_proveedor.html', form=form, editando=False)
 
 
@@ -310,13 +454,18 @@ def editar_proveedor(id):
         flash('El proveedor seleccionado no existe.', 'danger')
         return redirect(url_for('proveedores'))
 
+    estados = conn.execute('SELECT * FROM estados_proveedor ORDER BY id').fetchall()
+
     form = ProveedorForm(data=dict(proveedor)) if request.method == 'GET' else ProveedorForm()
+    form.estado_id.choices = [(e['id'], e['nombre']) for e in estados]
+    if request.method == 'GET':
+        form.estado_id.data = proveedor['estado_id']
 
     if form.validate_on_submit():
         conn.execute(
-            'UPDATE proveedores SET nombre=?, servicio=?, sitio=?, estado=? WHERE id=?',
-            (form.nombre.data.strip(), form.servicio.data.strip(),
-             form.sitio.data.strip(), form.estado.data, id)
+            'UPDATE proveedores SET nombre=?, tipo_servicio=?, sitio=?, estado_id=? WHERE id=?',
+            (form.nombre.data.strip(), form.tipo_servicio.data.strip(),
+             form.sitio.data.strip(), form.estado_id.data, id)
         )
         conn.commit()
         conn.close()
@@ -354,34 +503,50 @@ def eliminar_proveedor(id):
 @app.route('/facturacion/nueva', methods=['GET', 'POST'])
 def nueva_factura():
     """
-    Emite un nuevo documento comercial (Factura o Cotización) y lo guarda en SQLite.
-    - Permite cargar automáticamente ítems desde el catálogo de servicios.
-    - Calcula en tiempo real: Subtotal, IVA (15%), Total, Anticipo y Saldo Pendiente.
-    - Serializa la lista de servicios en un campo oculto JSON (servicios_json).
+    Emite un nuevo documento comercial (Factura o Cotización).
+    El cliente se selecciona de una lista real (cliente_cedula), y cada servicio
+    incluido se guarda como una fila propia en detalle_factura.
     """
     form = FacturacionForm()
     tipo_solicitado = request.args.get('tipo', 'Cotizacion' if request.args.get('servicio_id') is not None else 'Factura')
 
     conn = db.get_connection()
 
-    # Inicialización de valores predeterminados para la petición GET
+    clientes_registrados = conn.execute('SELECT * FROM clientes ORDER BY nombre').fetchall()
+    form.cliente_cedula.choices = [(c['cedula'], c['nombre']) for c in clientes_registrados]
+
+    estados = conn.execute('SELECT * FROM estados_documento ORDER BY id').fetchall()
+    form.estado_id.choices = [(e['id'], e['nombre']) for e in estados]
+    id_por_nombre = {e['nombre']: e['id'] for e in estados}
+
     if request.method == 'GET':
         total_docs = conn.execute('SELECT COUNT(*) FROM facturacion').fetchone()[0]
         form.tipo.data = tipo_solicitado
         if tipo_solicitado == 'Cotizacion':
             form.numero.data = f"COT-2026-{total_docs + 1:04d}"
             form.validez.data = "15 días"
-            form.estado.data = "En revision"
+            form.estado_id.data = id_por_nombre.get('En revision')
         else:
             form.numero.data = f"001-001-{total_docs + 1:04d}"
             form.validez.data = "30 días"
-            form.estado.data = "Pendiente"
+            form.estado_id.data = id_por_nombre.get('Pendiente')
         form.fecha.data = str(date.today())
         form.anticipo.data = 0.00
         form.saldo_pendiente.data = 0.00
 
-    # Procesamiento y validación del formulario al enviar con POST
     if form.validate_on_submit():
+        numero_limpio = form.numero.data.strip()
+        existente = conn.execute('SELECT * FROM facturacion WHERE numero = ?', (numero_limpio,)).fetchone()
+        if existente is not None:
+            servicios_catalogo = conn.execute('SELECT * FROM servicios').fetchall()
+            conn.close()
+            flash(f'Ya existe un documento con el número "{numero_limpio}". Usa un número distinto.', 'danger')
+            return render_template(
+                'formulario_facturacion.html', form=form, editando=False,
+                servicios_catalogo=servicios_catalogo, clientes_registrados=clientes_registrados,
+                servicio_seleccionado_id=request.args.get('servicio_id', type=int)
+            )
+
         servicios_detalle = []
         if form.servicios_json.data:
             try:
@@ -389,7 +554,6 @@ def nueva_factura():
             except Exception:
                 servicios_detalle = []
 
-        # Cálculos de valores monetarios con protección contra nulos
         subtotal_val = float(form.subtotal.data) if form.subtotal.data is not None else float(form.monto.data)
         iva_val = float(form.iva.data) if form.iva.data is not None else round(subtotal_val * 0.15, 2)
         total_val = float(form.monto.data)
@@ -397,11 +561,9 @@ def nueva_factura():
         saldo_val = float(form.saldo_pendiente.data) if form.saldo_pendiente.data is not None else max(0.0, total_val - anticipo_val)
 
         tipo_doc = form.tipo.data
-        estado_final = form.estado.data
-
-        # Si una factura se emite con saldo 0, se clasifica automáticamente como 'Pagada'
-        if tipo_doc == 'Factura' and saldo_val <= 0 and estado_final == 'Pendiente':
-            estado_final = 'Pagada'
+        estado_id_final = form.estado_id.data
+        if tipo_doc == 'Factura' and saldo_val <= 0 and estado_id_final == id_por_nombre.get('Pendiente'):
+            estado_id_final = id_por_nombre.get('Pagada')
 
         notas_final = form.notas.data.strip() if form.notas.data else (
             "Propuesta emitida por NexoDigital." if tipo_doc == 'Cotizacion' else "Comprobante emitido por NexoDigital."
@@ -409,22 +571,30 @@ def nueva_factura():
 
         conn.execute(
             '''INSERT INTO facturacion
-               (tipo, numero, cliente, fecha, validez, servicios_json, subtotal, iva, monto, anticipo, saldo_pendiente, estado, notas)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-            (tipo_doc, form.numero.data.strip(), form.cliente.data.strip(), str(form.fecha.data),
+               (numero, tipo, cliente_cedula, fecha, validez, subtotal, iva, monto, anticipo, saldo_pendiente, estado_id, notas)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+            (numero_limpio, tipo_doc, form.cliente_cedula.data, str(form.fecha.data),
              form.validez.data.strip() if form.validez.data else "15 días",
-             json.dumps(servicios_detalle), subtotal_val, iva_val, total_val,
-             anticipo_val, saldo_val, estado_final, notas_final)
+             subtotal_val, iva_val, total_val, anticipo_val, saldo_val, estado_id_final, notas_final)
         )
+
+        for item in servicios_detalle:
+            conn.execute(
+                '''INSERT INTO detalle_factura (factura_numero, servicio_id, nombre_servicio, cantidad, precio_base, ajuste, total)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                (numero_limpio, item.get('id'), item.get('servicio', 'Servicio'),
+                 int(item.get('cantidad', 1)), float(item.get('precio', 0)),
+                 float(item.get('ajuste', 0)), float(item.get('total', item.get('precio', 0))))
+            )
+
         conn.commit()
         conn.close()
 
         nombre_doc = "Cotización" if tipo_doc == 'Cotizacion' else "Factura"
-        flash(f'{nombre_doc} "{form.numero.data}" guardada correctamente.', 'success')
+        flash(f'{nombre_doc} "{numero_limpio}" guardada correctamente.', 'success')
         return redirect(url_for('facturacion'))
 
     servicios_catalogo = conn.execute('SELECT * FROM servicios').fetchall()
-    clientes_registrados = conn.execute('SELECT * FROM clientes').fetchall()
     conn.close()
 
     return render_template(
@@ -437,13 +607,14 @@ def nueva_factura():
     )
 
 
-@app.route('/facturacion/editar/<int:id>', methods=['GET', 'POST'])
-def editar_factura(id):
+@app.route('/facturacion/editar/<numero>', methods=['GET', 'POST'])
+def editar_factura(numero):
     """
-    Edita un documento comercial (Factura o Cotización) existente en SQLite.
+    Edita un documento comercial existente, identificado por su número (clave primaria).
+    El número no se modifica desde este formulario, ya que detalle_factura depende de él.
     """
     conn = db.get_connection()
-    fila = conn.execute('SELECT * FROM facturacion WHERE id = ?', (id,)).fetchone()
+    fila = conn.execute('SELECT * FROM facturacion WHERE numero = ?', (numero,)).fetchone()
 
     if fila is None:
         conn.close()
@@ -451,11 +622,23 @@ def editar_factura(id):
         return redirect(url_for('facturacion'))
 
     factura = dict(fila)
-    factura['servicios_detalle'] = json.loads(factura['servicios_json']) if factura['servicios_json'] else []
+    detalle_actual = conn.execute('SELECT * FROM detalle_factura WHERE factura_numero = ?', (numero,)).fetchall()
+    factura['servicios_detalle'] = [
+        {'id': d['servicio_id'], 'servicio': d['nombre_servicio'], 'cantidad': d['cantidad'],
+         'precio': d['precio_base'], 'ajuste': d['ajuste'], 'total': d['total']}
+        for d in detalle_actual
+    ]
+
+    clientes_registrados = conn.execute('SELECT * FROM clientes ORDER BY nombre').fetchall()
+    estados = conn.execute('SELECT * FROM estados_documento ORDER BY id').fetchall()
 
     form = FacturacionForm(data=factura) if request.method == 'GET' else FacturacionForm()
+    form.cliente_cedula.choices = [(c['cedula'], c['nombre']) for c in clientes_registrados]
+    form.estado_id.choices = [(e['id'], e['nombre']) for e in estados]
 
     if request.method == 'GET':
+        form.cliente_cedula.data = factura['cliente_cedula']
+        form.estado_id.data = factura['estado_id']
         form.servicios_json.data = json.dumps(factura['servicios_detalle'])
 
     if form.validate_on_submit():
@@ -476,43 +659,53 @@ def editar_factura(id):
 
         conn.execute(
             '''UPDATE facturacion SET
-               tipo=?, numero=?, cliente=?, fecha=?, validez=?, servicios_json=?,
-               subtotal=?, iva=?, monto=?, anticipo=?, saldo_pendiente=?, estado=?, notas=?
-               WHERE id=?''',
-            (tipo_doc, form.numero.data.strip(), form.cliente.data.strip(), str(form.fecha.data),
+               tipo=?, cliente_cedula=?, fecha=?, validez=?,
+               subtotal=?, iva=?, monto=?, anticipo=?, saldo_pendiente=?, estado_id=?, notas=?
+               WHERE numero=?''',
+            (tipo_doc, form.cliente_cedula.data, str(form.fecha.data),
              form.validez.data.strip() if form.validez.data else "15 días",
-             json.dumps(servicios_detalle), subtotal_val, iva_val, total_val,
-             anticipo_val, saldo_val, form.estado.data, notas_final, id)
+             subtotal_val, iva_val, total_val, anticipo_val, saldo_val, form.estado_id.data, notas_final, numero)
         )
+
+        conn.execute('DELETE FROM detalle_factura WHERE factura_numero = ?', (numero,))
+        for item in servicios_detalle:
+            conn.execute(
+                '''INSERT INTO detalle_factura (factura_numero, servicio_id, nombre_servicio, cantidad, precio_base, ajuste, total)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                (numero, item.get('id'), item.get('servicio', 'Servicio'),
+                 int(item.get('cantidad', 1)), float(item.get('precio', 0)),
+                 float(item.get('ajuste', 0)), float(item.get('total', item.get('precio', 0))))
+            )
+
         conn.commit()
         conn.close()
 
         nombre_doc = "Cotización" if tipo_doc == 'Cotizacion' else "Factura"
-        flash(f'{nombre_doc} "{form.numero.data}" actualizada correctamente.', 'success')
+        flash(f'{nombre_doc} "{numero}" actualizada correctamente.', 'success')
         return redirect(url_for('facturacion'))
 
     servicios_catalogo = conn.execute('SELECT * FROM servicios').fetchall()
-    clientes_registrados = conn.execute('SELECT * FROM clientes').fetchall()
     conn.close()
 
     return render_template(
         'formulario_facturacion.html',
         form=form,
         editando=True,
-        id=id,
+        numero=numero,
         servicios_catalogo=servicios_catalogo,
         clientes_registrados=clientes_registrados,
         detalle_existente=factura['servicios_detalle']
     )
 
 
-@app.route('/facturacion/eliminar/<int:id>', methods=['POST', 'GET'])
-def eliminar_factura(id):
+@app.route('/facturacion/eliminar/<numero>', methods=['POST', 'GET'])
+def eliminar_factura(numero):
     """
-    Elimina un documento comercial de SQLite.
+    Elimina un documento comercial identificado por su número. El detalle asociado
+    se borra automáticamente gracias a ON DELETE CASCADE en detalle_factura.
     """
     conn = db.get_connection()
-    fila = conn.execute('SELECT * FROM facturacion WHERE id = ?', (id,)).fetchone()
+    fila = conn.execute('SELECT * FROM facturacion WHERE numero = ?', (numero,)).fetchone()
 
     if fila is None:
         conn.close()
@@ -520,9 +713,8 @@ def eliminar_factura(id):
         return redirect(url_for('facturacion'))
 
     tipo_str = "Cotización" if fila['tipo'] == 'Cotizacion' else "Factura"
-    numero = fila['numero']
 
-    conn.execute('DELETE FROM facturacion WHERE id = ?', (id,))
+    conn.execute('DELETE FROM facturacion WHERE numero = ?', (numero,))
     conn.commit()
     conn.close()
 
@@ -530,24 +722,36 @@ def eliminar_factura(id):
     return redirect(url_for('facturacion'))
 
 
-@app.route('/facturacion/comprobante/<int:id>')
-def ver_comprobante(id):
+@app.route('/facturacion/comprobante/<numero>')
+def ver_comprobante(numero):
     """
-    Genera la vista limpia e imprimible del comprobante o cotización.
-    Optimizado con estilos CSS para impresión (@media print) o guardado en PDF.
+    Genera la vista imprimible del comprobante, identificado por su número (PK).
     """
     conn = db.get_connection()
-    fila = conn.execute('SELECT * FROM facturacion WHERE id = ?', (id,)).fetchone()
-    conn.close()
+    fila = conn.execute('''
+        SELECT f.*, c.nombre AS cliente_nombre, e.nombre AS estado_nombre
+        FROM facturacion f
+        JOIN clientes c ON f.cliente_cedula = c.cedula
+        JOIN estados_documento e ON f.estado_id = e.id
+        WHERE f.numero = ?
+    ''', (numero,)).fetchone()
 
     if fila is None:
+        conn.close()
         flash('El documento seleccionado no existe.', 'danger')
         return redirect(url_for('facturacion'))
 
     factura = dict(fila)
-    factura['servicios_detalle'] = json.loads(factura['servicios_json']) if factura['servicios_json'] else []
+    detalle = conn.execute('SELECT * FROM detalle_factura WHERE factura_numero = ?', (numero,)).fetchall()
+    conn.close()
 
-    return render_template('comprobante_factura.html', factura=factura, id=id)
+    factura['servicios_detalle'] = [
+        {'id': d['servicio_id'], 'servicio': d['nombre_servicio'], 'cantidad': d['cantidad'],
+         'precio': d['precio_base'], 'ajuste': d['ajuste'], 'total': d['total']}
+        for d in detalle
+    ]
+
+    return render_template('comprobante_factura.html', factura=factura, numero=numero)
 
 
 # ==============================================================================

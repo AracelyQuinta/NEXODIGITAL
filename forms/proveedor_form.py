@@ -24,10 +24,10 @@ class ProveedorForm(FlaskForm):
     )
 
     # Tipo de servicio o recurso suministrado
-    servicio = StringField(
-        'Servicio o recurso que ofrece',
+    tipo_servicio = StringField(
+        'Tipo de servicio que ofrece',
         validators=[
-            DataRequired(message='Indica el servicio suministrado por el proveedor.'),
+            DataRequired(message='Indica el tipo de servicio suministrado por el proveedor.'),
             Length(min=3, max=100, message='Debe contener entre 3 y 100 caracteres.')
         ]
     )
@@ -41,14 +41,10 @@ class ProveedorForm(FlaskForm):
         ]
     )
 
-    # Estado operativo actual del servicio contratado
-    estado = SelectField(
+    # Estado operativo actual: selección real desde la tabla estados_proveedor (clave foránea)
+    estado_id = SelectField(
         'Estado operativo',
-        choices=[
-            ('Activo', 'Activo (En operación)'),
-            ('Pendiente', 'Pendiente (En evaluación / configuración)'),
-            ('Inactivo', 'Inactivo (Suspendido)')
-        ],
+        coerce=int,
         validators=[DataRequired(message='Selecciona un estado operativo válido.')]
     )
 

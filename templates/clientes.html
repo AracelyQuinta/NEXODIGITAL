@@ -48,9 +48,10 @@
                     <table class="table table-hover align-middle mb-0 custom-table">
                         <thead class="table-navy text-white">
                             <tr>
-                                <th class="ps-4 py-3">Cliente / Empresa</th>
+                                <th class="ps-4 py-3">Cédula</th>
+                                <th class="py-3">Cliente / Empresa</th>
                                 <th class="py-3">Tipo de Negocio</th>
-                                <th class="py-3">Servicio Contratado</th>
+                                <th class="py-3">Contacto</th>
                                 <th class="py-3">Ciudad</th>
                                 <th class="py-3 text-center pe-4">Acciones</th>
                             </tr>
@@ -59,6 +60,9 @@
                             {% for cliente in clientes %}
                             <tr>
                                 <td class="ps-4 py-3">
+                                    <span class="fw-bold text-navy font-monospace">{{ cliente.cedula }}</span>
+                                </td>
+                                <td class="py-3">
                                     <div class="d-flex align-items-center gap-3">
                                         <div class="avatar-circle">
                                             <i class="bi bi-building"></i>
@@ -75,9 +79,8 @@
                                     </span>
                                 </td>
                                 <td class="py-3">
-                                    <span class="fw-semibold text-emerald">
-                                        {{ cliente.servicio }}
-                                    </span>
+                                    <span class="d-block small"><i class="bi bi-telephone text-emerald me-1"></i>{{ cliente.telefono }}</span>
+                                    <span class="d-block small text-muted"><i class="bi bi-envelope me-1"></i>{{ cliente.correo }}</span>
                                 </td>
                                 <td class="py-3">
                                     <span class="text-muted">
@@ -86,10 +89,10 @@
                                 </td>
                                 <td class="py-3 text-center pe-4">
                                     <div class="d-inline-flex gap-1">
-                                        <a href="{{ url_for('editar_cliente', id=cliente.id) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar cliente"></a>
+                                        <a href="{{ url_for('editar_cliente', cedula=cliente.cedula) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar cliente">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
-                                        <form method="POST" action="{{ url_for('eliminar_cliente', id=cliente.id) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar a «{{ cliente.nombre }}»?');" class="d-inline"></form>
+                                        <form method="POST" action="{{ url_for('eliminar_cliente', cedula=cliente.cedula) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar a «{{ cliente.nombre }}»?');" class="d-inline">
                                             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar cliente">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>

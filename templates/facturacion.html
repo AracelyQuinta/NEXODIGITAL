@@ -75,7 +75,7 @@
                                     </div>
                                 </td>
                                 <td class="py-3">
-                                    <span class="fw-bold text-dark d-block">{{ doc.cliente }}</span>
+                                    <span class="fw-bold text-dark d-block">{{ doc.cliente_nombre }}</span>
                                     {% if doc.servicios_detalle and doc.servicios_detalle|length > 0 %}
                                         <small class="text-muted">{{ doc.servicios_detalle|length }} servicio(s) incluidos</small>
                                     {% endif %}
@@ -106,29 +106,29 @@
                                     {% endif %}
                                 </td>
                                 <td class="py-3 text-center">
-                                    {% if doc.estado in ["Pagada", "Aprobada"] %}
+                                    {% if doc.estado_nombre in ["Pagada", "Aprobada"] %}
                                         <span class="badge badge-disponible px-3 py-2">
-                                            <i class="bi bi-check-circle-fill me-1"></i>{{ doc.estado }}
+                                            <i class="bi bi-check-circle-fill me-1"></i>{{ doc.estado_nombre }}
                                         </span>
-                                    {% elif doc.estado in ["Pendiente", "En revision"] %}
+                                    {% elif doc.estado_nombre in ["Pendiente", "En revision"] %}
                                         <span class="badge badge-proximamente px-3 py-2">
-                                            <i class="bi bi-hourglass-split me-1"></i>{{ doc.estado }}
+                                            <i class="bi bi-hourglass-split me-1"></i>{{ doc.estado_nombre }}
                                         </span>
                                     {% else %}
                                         <span class="badge badge-vencida px-3 py-2">
-                                            <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ doc.estado }}
+                                            <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ doc.estado_nombre }}
                                         </span>
                                     {% endif %}
                                 </td>
                                 <td class="py-3 text-center pe-4">
                                     <div class="d-inline-flex gap-1">
-                                        <a href="{{ url_for('ver_comprobante', id=doc.id) }}" class="btn btn-outline-success btn-sm rounded-pill" title="Ver e imprimir {{ 'cotización' if doc.tipo == 'Cotizacion' else 'factura' }}"></a>
+                                        <a href="{{ url_for('ver_comprobante', numero=doc.numero) }}" class="btn btn-outline-success btn-sm rounded-pill" title="Ver e imprimir {{ 'cotización' if doc.tipo == 'Cotizacion' else 'factura' }}">
                                             <i class="bi bi-file-earmark-text-fill me-1"></i>{{ 'Cotización' if doc.tipo == 'Cotizacion' else 'Factura' }}
                                         </a>
-                                        <a href="{{ url_for('editar_factura', id=doc.id) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar"></a>
+                                        <a href="{{ url_for('editar_factura', numero=doc.numero) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
-                                        <form method="POST" action="{{ url_for('eliminar_factura', id=doc.id) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este registro?');" class="d-inline"></form>
+                                        <form method="POST" action="{{ url_for('eliminar_factura', numero=doc.numero) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este registro?');" class="d-inline">
                                             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>

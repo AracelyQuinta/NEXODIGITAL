@@ -33,13 +33,10 @@ class FacturacionForm(FlaskForm):
         ]
     )
 
-    # Nombre o razón social del cliente receptor
-    cliente = StringField(
-        'Cliente / Razón Social',
-        validators=[
-            DataRequired(message='El nombre del cliente es obligatorio.'),
-            Length(min=3, max=100, message='Debe contener entre 3 y 100 caracteres.')
-        ]
+    # Cliente receptor: selección real por su cédula (clave primaria y foránea)
+    cliente_cedula = SelectField(
+        'Cliente',
+        validators=[DataRequired(message='Debes seleccionar un cliente registrado.')]
     )
 
     # Fecha de emisión del documento (formato YYYY-MM-DD)
@@ -92,7 +89,7 @@ class FacturacionForm(FlaskForm):
 
     # Valor abonado o anticipo entregado por el cliente
     anticipo = FloatField(
-        'Anticipo / Abono Recibido ($)',
+        'Abono Recibido ($)',
         validators=[
             Optional(),
             NumberRange(min=0, message='El anticipo no puede ser negativo.')
@@ -110,16 +107,10 @@ class FacturacionForm(FlaskForm):
         default=0.00
     )
     
-    # Estado actual del proceso de cobranza o aprobación
-    estado = SelectField(
+    # Estado actual del proceso de cobranza o aprobación (clave foránea hacia estados_documento)
+    estado_id = SelectField(
         'Estado del Documento',
-        choices=[
-            ('Pagada', 'Pagada (Totalmente Cancelada)'),
-            ('Pendiente', 'Pendiente (Con Saldo por Cobrar)'),
-            ('Aprobada', 'Aprobada por el Cliente (Cotización)'),
-            ('En revision', 'En Revisión / Enviada (Cotización)'),
-            ('Vencida', 'Vencida / Expirada')
-        ],
+        coerce=int,
         validators=[DataRequired(message='Selecciona el estado actual del documento.')]
     )
 

@@ -18,7 +18,7 @@
             </a>
         </div>
         <div class="d-flex gap-2">
-            <a href="{{ url_for('editar_factura', id=id) }}" class="btn btn-outline-primary btn-sm">
+            <a href="{{ url_for('editar_factura', numero=numero) }}" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-pencil-square me-1"></i>Editar Datos
             </a>
             <button type="button" class="btn btn-verde btn-sm" onclick="window.print();">
@@ -62,17 +62,17 @@
                     {% endif %}
 
                     <div class="mt-2">
-                        {% if factura.estado in ["Pagada", "Aprobada"] %}
+                        {% if factura.estado_nombre in ["Pagada", "Aprobada"] %}
                             <span class="badge badge-disponible px-3 py-2">
-                                <i class="bi bi-check-circle-fill me-1"></i>{{ factura.estado|upper }}
+                                <i class="bi bi-check-circle-fill me-1"></i>{{ factura.estado_nombre|upper }}
                             </span>
-                        {% elif factura.estado in ["Pendiente", "En revision"] %}
+                        {% elif factura.estado_nombre in ["Pendiente", "En revision"] %}
                             <span class="badge badge-proximamente px-3 py-2">
-                                <i class="bi bi-hourglass-split me-1"></i>{{ factura.estado|upper }}
+                                <i class="bi bi-hourglass-split me-1"></i>{{ factura.estado_nombre|upper }}
                             </span>
                         {% else %}
                             <span class="badge badge-vencida px-3 py-2">
-                                <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ factura.estado|upper }}
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ factura.estado_nombre|upper }}
                             </span>
                         {% endif %}
                     </div>
@@ -85,7 +85,7 @@
                     <small class="text-muted text-uppercase fw-semibold d-block">
                         {{ 'Propuesta presentada a:' if es_cotizacion else 'Facturado a:' }}
                     </small>
-                    <h4 class="h5 fw-bold text-navy mb-0">{{ factura.cliente }}</h4>
+                    <h4 class="h5 fw-bold text-navy mb-0">{{ factura.cliente_nombre }}</h4>
                     <span class="small text-muted">Cliente comercial de NexoDigital</span>
                 </div>
                 <div class="col-sm-5 text-sm-end">
