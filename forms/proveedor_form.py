@@ -23,13 +23,11 @@ class ProveedorForm(FlaskForm):
         ]
     )
 
-    # Tipo de servicio o recurso suministrado
-    tipo_servicio = StringField(
+    # Categoría de infraestructura: selección real desde categorias_proveedor (clave foránea)
+    categoria_id = SelectField(
         'Tipo de servicio que ofrece',
-        validators=[
-            DataRequired(message='Indica el tipo de servicio suministrado por el proveedor.'),
-            Length(min=3, max=100, message='Debe contener entre 3 y 100 caracteres.')
-        ]
+        coerce=int,
+        validators=[DataRequired(message='Selecciona una categoría válida.')]
     )
 
     # Dominio o dirección web oficial

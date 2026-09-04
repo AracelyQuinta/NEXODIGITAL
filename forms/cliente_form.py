@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField
+from wtforms import StringField, SelectField, SubmitField
 from wtforms.validators import DataRequired, Length, Regexp
 
 
@@ -41,12 +41,11 @@ class ClienteForm(FlaskForm):
         ]
     )
 
-    negocio = StringField(
+    # Categoría de negocio: selección real desde tipos_negocio (clave foránea)
+    tipo_negocio_id = SelectField(
         'Tipo de negocio',
-        validators=[
-            DataRequired(message='El tipo de negocio es obligatorio.'),
-            Length(max=100, message='Máximo 100 caracteres.')
-        ]
+        coerce=int,
+        validators=[DataRequired(message='Selecciona un tipo de negocio.')]
     )
 
     ciudad = StringField(

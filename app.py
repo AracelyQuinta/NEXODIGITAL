@@ -22,9 +22,11 @@ from flask import Flask, render_template, redirect, url_for, flash, request
 
 # Importación de clases de formularios creadas con Flask-WTF
 from forms.cliente_form import ClienteForm
+from forms.tipo_negocio_form import TipoNegocioForm
 from forms.servicio_form import ServicioForm
 from forms.tipo_servicio_form import TipoServicioForm
 from forms.proveedor_form import ProveedorForm
+from forms.categoria_proveedor_form import CategoriaProveedorForm
 from forms.facturacion_form import FacturacionForm
 
 # Módulo propio de conexión y creación de tablas SQLite
@@ -88,13 +90,14 @@ def servicios():
 def proveedores():
     """
     Ruta del directorio de proveedores tecnológicos.
-    Usa JOIN con estados_proveedor para mostrar el nombre del estado relacionado.
+    Usa JOIN con estados_proveedor y categorias_proveedor para mostrar los nombres relacionados.
     """
     conn = db.get_connection()
     lista_proveedores = conn.execute('''
-        SELECT p.*, e.nombre AS estado_nombre
+        SELECT p.*, e.nombre AS estado_nombre, c.nombre AS categoria_nombre
         FROM proveedores p
         JOIN estados_proveedor e ON p.estado_id = e.id
+        JOIN categorias_proveedor c ON p.categoria_id = c.id
     ''').fetchall()
     conn.close()
     return render_template('proveedores.html', proveedores=lista_proveedores)
@@ -103,10 +106,15 @@ def proveedores():
 @app.route('/clientes')
 def clientes():
     """
-    Ruta del directorio de clientes comerciales, leyendo desde SQLite.
+    Ruta del directorio de clientes comerciales.
+    Usa JOIN con tipos_negocio para mostrar el nombre de la categoría de negocio.
     """
     conn = db.get_connection()
-    lista_clientes = conn.execute('SELECT * FROM clientes').fetchall()
+    lista_clientes = conn.execute('''
+        SELECT c.*, t.nombre AS negocio_nombre
+        FROM clientes c
+        JOIN tipos_negocio t ON c.tipo_negocio_id = t.id
+    ''').fetchall()
     conn.close()
     return render_template('clientes.html', clientes=lista_clientes)
 
@@ -149,9 +157,13 @@ def nuevo_cliente():
     """
     Crea y registra un nuevo cliente en el sistema. La cédula es la clave primaria.
     """
+    conn = db.get_connection()
+    tipos_negocio = conn.execute('SELECT * FROM tipos_negocio ORDER BY nombre').fetchall()
+
     form = ClienteForm()
+    form.tipo_negocio_id.choices = [(t['id'], t['nombre']) for t in tipos_negocio]
+
     if form.validate_on_submit():
-        conn = db.get_connection()
         existente = conn.execute('SELECT * FROM clientes WHERE cedula = ?', (form.cedula.data.strip(),)).fetchone()
         if existente is not None:
             conn.close()
@@ -159,15 +171,17 @@ def nuevo_cliente():
             return render_template('formulario_cliente.html', form=form, editando=False)
 
         conn.execute(
-            '''INSERT INTO clientes (cedula, nombre, telefono, correo, negocio, ciudad)
+            '''INSERT INTO clientes (cedula, nombre, telefono, correo, tipo_negocio_id, ciudad)
                VALUES (?, ?, ?, ?, ?, ?)''',
             (form.cedula.data.strip(), form.nombre.data.strip(), form.telefono.data.strip(),
-             form.correo.data.strip(), form.negocio.data.strip(), form.ciudad.data.strip())
+             form.correo.data.strip(), form.tipo_negocio_id.data, form.ciudad.data.strip())
         )
         conn.commit()
         conn.close()
         flash('Cliente registrado correctamente.', 'success')
         return redirect(url_for('clientes'))
+
+    conn.close()
     return render_template('formulario_cliente.html', form=form, editando=False)
 
 
@@ -185,14 +199,19 @@ def editar_cliente(cedula):
         flash('El cliente seleccionado no existe.', 'danger')
         return redirect(url_for('clientes'))
 
+    tipos_negocio = conn.execute('SELECT * FROM tipos_negocio ORDER BY nombre').fetchall()
+
     form = ClienteForm(data=dict(cliente)) if request.method == 'GET' else ClienteForm()
+    form.tipo_negocio_id.choices = [(t['id'], t['nombre']) for t in tipos_negocio]
+    if request.method == 'GET':
+        form.tipo_negocio_id.data = cliente['tipo_negocio_id']
 
     if form.validate_on_submit():
         conn.execute(
-            '''UPDATE clientes SET nombre=?, telefono=?, correo=?, negocio=?, ciudad=?
+            '''UPDATE clientes SET nombre=?, telefono=?, correo=?, tipo_negocio_id=?, ciudad=?
                WHERE cedula=?''',
             (form.nombre.data.strip(), form.telefono.data.strip(),
-             form.correo.data.strip(), form.negocio.data.strip(), form.ciudad.data.strip(), cedula)
+             form.correo.data.strip(), form.tipo_negocio_id.data, form.ciudad.data.strip(), cedula)
         )
         conn.commit()
         conn.close()
@@ -230,6 +249,89 @@ def eliminar_cliente(cedula):
     conn.close()
     flash(f'Cliente "{cliente["nombre"]}" eliminado correctamente.', 'success')
     return redirect(url_for('clientes'))
+
+
+# ==============================================================================
+# MÓDULO CRUD: TIPOS DE NEGOCIO (categorías de clientes)
+# ==============================================================================
+
+@app.route('/tipos-negocio')
+def tipos_negocio():
+    """
+    Lista las categorías de tipo de negocio disponibles para clasificar clientes.
+    """
+    conn = db.get_connection()
+    lista_tipos = conn.execute('SELECT * FROM tipos_negocio ORDER BY nombre').fetchall()
+    conn.close()
+    return render_template('tipos_negocio.html', tipos=lista_tipos)
+
+
+@app.route('/tipos-negocio/nuevo', methods=['GET', 'POST'])
+def nuevo_tipo_negocio():
+    """
+    Registra una nueva categoría de tipo de negocio.
+    """
+    form = TipoNegocioForm()
+    if form.validate_on_submit():
+        conn = db.get_connection()
+        conn.execute('INSERT INTO tipos_negocio (nombre) VALUES (?)', (form.nombre.data.strip(),))
+        conn.commit()
+        conn.close()
+        flash('Tipo de negocio registrado correctamente.', 'success')
+        return redirect(url_for('tipos_negocio'))
+    return render_template('formulario_tipo_negocio.html', form=form, editando=False)
+
+
+@app.route('/tipos-negocio/editar/<int:id>', methods=['GET', 'POST'])
+def editar_tipo_negocio(id):
+    """
+    Edita el nombre de una categoría de tipo de negocio existente.
+    """
+    conn = db.get_connection()
+    tipo = conn.execute('SELECT * FROM tipos_negocio WHERE id = ?', (id,)).fetchone()
+
+    if tipo is None:
+        conn.close()
+        flash('El tipo de negocio seleccionado no existe.', 'danger')
+        return redirect(url_for('tipos_negocio'))
+
+    form = TipoNegocioForm(data=dict(tipo)) if request.method == 'GET' else TipoNegocioForm()
+
+    if form.validate_on_submit():
+        conn.execute('UPDATE tipos_negocio SET nombre=? WHERE id=?', (form.nombre.data.strip(), id))
+        conn.commit()
+        conn.close()
+        flash(f'Tipo de negocio "{form.nombre.data.strip()}" actualizado correctamente.', 'success')
+        return redirect(url_for('tipos_negocio'))
+
+    conn.close()
+    return render_template('formulario_tipo_negocio.html', form=form, editando=True, id=id)
+
+
+@app.route('/tipos-negocio/eliminar/<int:id>', methods=['POST', 'GET'])
+def eliminar_tipo_negocio(id):
+    """
+    Elimina un tipo de negocio, siempre que ningún cliente lo esté usando.
+    """
+    conn = db.get_connection()
+    tipo = conn.execute('SELECT * FROM tipos_negocio WHERE id = ?', (id,)).fetchone()
+
+    if tipo is None:
+        conn.close()
+        flash('El tipo de negocio seleccionado no existe.', 'danger')
+        return redirect(url_for('tipos_negocio'))
+
+    en_uso = conn.execute('SELECT COUNT(*) FROM clientes WHERE tipo_negocio_id = ?', (id,)).fetchone()[0]
+    if en_uso > 0:
+        conn.close()
+        flash(f'No se puede eliminar "{tipo["nombre"]}" porque hay clientes asignados a esta categoría.', 'danger')
+        return redirect(url_for('tipos_negocio'))
+
+    conn.execute('DELETE FROM tipos_negocio WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+    flash(f'Tipo de negocio "{tipo["nombre"]}" eliminado correctamente.', 'success')
+    return redirect(url_for('tipos_negocio'))
 
 
 # ==============================================================================
@@ -422,14 +524,16 @@ def nuevo_proveedor():
     """
     conn = db.get_connection()
     estados = conn.execute('SELECT * FROM estados_proveedor ORDER BY id').fetchall()
+    categorias = conn.execute('SELECT * FROM categorias_proveedor ORDER BY nombre').fetchall()
 
     form = ProveedorForm()
     form.estado_id.choices = [(e['id'], e['nombre']) for e in estados]
+    form.categoria_id.choices = [(c['id'], c['nombre']) for c in categorias]
 
     if form.validate_on_submit():
         conn.execute(
-            'INSERT INTO proveedores (nombre, tipo_servicio, sitio, estado_id) VALUES (?, ?, ?, ?)',
-            (form.nombre.data.strip(), form.tipo_servicio.data.strip(),
+            'INSERT INTO proveedores (nombre, categoria_id, sitio, estado_id) VALUES (?, ?, ?, ?)',
+            (form.nombre.data.strip(), form.categoria_id.data,
              form.sitio.data.strip(), form.estado_id.data)
         )
         conn.commit()
@@ -455,16 +559,19 @@ def editar_proveedor(id):
         return redirect(url_for('proveedores'))
 
     estados = conn.execute('SELECT * FROM estados_proveedor ORDER BY id').fetchall()
+    categorias = conn.execute('SELECT * FROM categorias_proveedor ORDER BY nombre').fetchall()
 
     form = ProveedorForm(data=dict(proveedor)) if request.method == 'GET' else ProveedorForm()
     form.estado_id.choices = [(e['id'], e['nombre']) for e in estados]
+    form.categoria_id.choices = [(c['id'], c['nombre']) for c in categorias]
     if request.method == 'GET':
         form.estado_id.data = proveedor['estado_id']
+        form.categoria_id.data = proveedor['categoria_id']
 
     if form.validate_on_submit():
         conn.execute(
-            'UPDATE proveedores SET nombre=?, tipo_servicio=?, sitio=?, estado_id=? WHERE id=?',
-            (form.nombre.data.strip(), form.tipo_servicio.data.strip(),
+            'UPDATE proveedores SET nombre=?, categoria_id=?, sitio=?, estado_id=? WHERE id=?',
+            (form.nombre.data.strip(), form.categoria_id.data,
              form.sitio.data.strip(), form.estado_id.data, id)
         )
         conn.commit()
@@ -494,6 +601,89 @@ def eliminar_proveedor(id):
     conn.close()
     flash(f'Proveedor "{proveedor["nombre"]}" eliminado correctamente.', 'success')
     return redirect(url_for('proveedores'))
+
+
+# ==============================================================================
+# MÓDULO CRUD: CATEGORÍAS DE PROVEEDOR
+# ==============================================================================
+
+@app.route('/categorias-proveedor')
+def categorias_proveedor():
+    """
+    Lista las categorías de infraestructura disponibles para clasificar proveedores.
+    """
+    conn = db.get_connection()
+    lista_categorias = conn.execute('SELECT * FROM categorias_proveedor ORDER BY nombre').fetchall()
+    conn.close()
+    return render_template('categorias_proveedor.html', categorias=lista_categorias)
+
+
+@app.route('/categorias-proveedor/nueva', methods=['GET', 'POST'])
+def nueva_categoria_proveedor():
+    """
+    Registra una nueva categoría de proveedor.
+    """
+    form = CategoriaProveedorForm()
+    if form.validate_on_submit():
+        conn = db.get_connection()
+        conn.execute('INSERT INTO categorias_proveedor (nombre) VALUES (?)', (form.nombre.data.strip(),))
+        conn.commit()
+        conn.close()
+        flash('Categoría registrada correctamente.', 'success')
+        return redirect(url_for('categorias_proveedor'))
+    return render_template('formulario_categoria_proveedor.html', form=form, editando=False)
+
+
+@app.route('/categorias-proveedor/editar/<int:id>', methods=['GET', 'POST'])
+def editar_categoria_proveedor(id):
+    """
+    Edita el nombre de una categoría de proveedor existente.
+    """
+    conn = db.get_connection()
+    categoria = conn.execute('SELECT * FROM categorias_proveedor WHERE id = ?', (id,)).fetchone()
+
+    if categoria is None:
+        conn.close()
+        flash('La categoría seleccionada no existe.', 'danger')
+        return redirect(url_for('categorias_proveedor'))
+
+    form = CategoriaProveedorForm(data=dict(categoria)) if request.method == 'GET' else CategoriaProveedorForm()
+
+    if form.validate_on_submit():
+        conn.execute('UPDATE categorias_proveedor SET nombre=? WHERE id=?', (form.nombre.data.strip(), id))
+        conn.commit()
+        conn.close()
+        flash(f'Categoría "{form.nombre.data.strip()}" actualizada correctamente.', 'success')
+        return redirect(url_for('categorias_proveedor'))
+
+    conn.close()
+    return render_template('formulario_categoria_proveedor.html', form=form, editando=True, id=id)
+
+
+@app.route('/categorias-proveedor/eliminar/<int:id>', methods=['POST', 'GET'])
+def eliminar_categoria_proveedor(id):
+    """
+    Elimina una categoría de proveedor, siempre que ningún proveedor la esté usando.
+    """
+    conn = db.get_connection()
+    categoria = conn.execute('SELECT * FROM categorias_proveedor WHERE id = ?', (id,)).fetchone()
+
+    if categoria is None:
+        conn.close()
+        flash('La categoría seleccionada no existe.', 'danger')
+        return redirect(url_for('categorias_proveedor'))
+
+    en_uso = conn.execute('SELECT COUNT(*) FROM proveedores WHERE categoria_id = ?', (id,)).fetchone()[0]
+    if en_uso > 0:
+        conn.close()
+        flash(f'No se puede eliminar "{categoria["nombre"]}" porque hay proveedores asignados a esta categoría.', 'danger')
+        return redirect(url_for('categorias_proveedor'))
+
+    conn.execute('DELETE FROM categorias_proveedor WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+    flash(f'Categoría "{categoria["nombre"]}" eliminada correctamente.', 'success')
+    return redirect(url_for('categorias_proveedor'))
 
 
 # ==============================================================================

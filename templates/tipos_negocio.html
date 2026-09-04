@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block titulo %}Tipos de Negocio - Nexo Digital{% endblock %}
+
+{% block content %}
+<!-- ==============================================================================
+     ENCABEZADO DE PÁGINA: TIPOS DE NEGOCIO
+     ============================================================================== -->
+<section class="page-header py-5 text-white">
+    <div class="container text-center">
+        <span class="badge bg-emerald mb-2 px-3 py-2 text-uppercase fw-semibold tracking-wider">Catálogo</span>
+        <h1 class="display-5 fw-bold mb-3">Tipos de Negocio</h1>
+        <p class="lead text-light-emerald mx-auto mb-4" style="max-width: 650px;">
+            Clasifica a tus clientes según el tipo de negocio que representan.
+        </p>
+        <div>
+            <a href="{{ url_for('nuevo_tipo_negocio') }}" class="btn btn-verde btn-lg shadow-sm">
+                <i class="bi bi-tag me-2"></i>Registrar nuevo tipo de negocio
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ==============================================================================
+     TABLA DE TIPOS DE NEGOCIO
+     ============================================================================== -->
+<section class="py-5">
+    <div class="container">
+        <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+            <div class="card-header bg-white p-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <h2 class="h4 fw-bold text-navy mb-1">Listado de Tipos de Negocio</h2>
+                    <p class="text-muted small mb-0">Cada cliente pertenece a uno de estos tipos de negocio</p>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-navy text-white px-3 py-2 rounded-pill">
+                        <i class="bi bi-tag me-1"></i>{{ tipos|length }} Tipos de Negocio
+                    </span>
+                    <a href="{{ url_for('nuevo_tipo_negocio') }}" class="btn btn-outline-brand btn-sm">
+                        <i class="bi bi-plus-lg me-1"></i>Nuevo Tipo de Negocio
+                    </a>
+                    <a href="{{ url_for('clientes') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left me-1"></i>Volver a Clientes
+                    </a>
+                </div>
+            </div>
+
+            <div class="card-body p-0">
+                {% if tipos %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 custom-table">
+                        <thead class="table-navy text-white">
+                            <tr>
+                                <th class="ps-4 py-3">Tipo de Negocio</th>
+                                <th class="py-3 text-center pe-4">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tipo in tipos %}
+                            <tr>
+                                <td class="ps-4 py-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="avatar-circle">
+                                            <i class="bi bi-tag"></i>
+                                        </div>
+                                        <span class="fw-bold text-navy d-block">{{ tipo.nombre }}</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 text-center pe-4">
+                                    <div class="d-inline-flex gap-1">
+                                        <a href="{{ url_for('editar_tipo_negocio', id=tipo.id) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar tipo de negocio">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a>
+                                        <form method="POST" action="{{ url_for('eliminar_tipo_negocio', id=tipo.id) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar el tipo de negocio «{{ tipo.nombre }}»?');" class="d-inline">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar tipo de negocio">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-5 text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-tag text-muted" style="font-size: 3rem;"></i>
+                    </div>
+                    <h4 class="text-navy fw-bold">No existen tipos de negocio registrados</h4>
+                    <p class="text-muted">Crea uno antes de registrar clientes.</p>
+                    <a href="{{ url_for('nuevo_tipo_negocio') }}" class="btn btn-verde mt-2">
+                        <i class="bi bi-plus-lg me-1"></i>Registrar Primer Tipo de Negocio
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

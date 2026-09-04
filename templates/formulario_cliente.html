@@ -52,16 +52,21 @@
                                 {% endfor %}
                             </div>
 
-                            <!-- 2. Tipo de Negocio -->
+                            <!-- 2. Tipo de Negocio (clave foránea hacia tipos_negocio) -->
                             <div class="mb-3">
-                                {{ form.negocio.label(class="form-label fw-semibold text-navy small") }}
+                                {{ form.tipo_negocio_id.label(class="form-label fw-semibold text-navy small") }}
                                 <div class="input-group">
                                     <span class="input-group-text bg-light"><i class="bi bi-tag"></i></span>
-                                    {{ form.negocio(class="form-control" + (" is-invalid" if form.negocio.errors else ""), placeholder="Ej: Panadería y Pastelería") }}
+                                    <select name="{{ form.tipo_negocio_id.name }}" id="{{ form.tipo_negocio_id.id }}" class="form-select{{ ' is-invalid' if form.tipo_negocio_id.errors else '' }}">
+                                        {% for value, label in form.tipo_negocio_id.choices %}
+                                        <option value="{{ value }}" {% if form.tipo_negocio_id.data == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
-                                {% for error in form.negocio.errors %}
+                                {% for error in form.tipo_negocio_id.errors %}
                                     <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
                                 {% endfor %}
+                                <small class="text-muted">¿No existe el tipo de negocio? <a href="{{ url_for('nuevo_tipo_negocio') }}">Créalo aquí</a>.</small>
                             </div>
 
                             <!-- 3. Cédula (clave primaria: no editable una vez creado el cliente) -->

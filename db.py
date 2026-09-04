@@ -21,16 +21,25 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
 
+    # Tabla de categorías de negocio (ej: Panadería, Tienda de Ropa, Cafetería)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tipos_negocio (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL UNIQUE
+        )
+    ''')
+
     # Tabla de clientes: la cédula es la clave primaria real (identificador único
-    # y natural de cada persona/negocio), no un id autoincremental aparte.
+    # y natural de cada persona/negocio). tipo_negocio_id es clave foránea.
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS clientes (
             cedula TEXT PRIMARY KEY,
             nombre TEXT NOT NULL,
             telefono TEXT NOT NULL,
             correo TEXT NOT NULL,
-            negocio TEXT,
-            ciudad TEXT NOT NULL
+            tipo_negocio_id INTEGER,
+            ciudad TEXT NOT NULL,
+            FOREIGN KEY (tipo_negocio_id) REFERENCES tipos_negocio (id)
         )
     ''')
 
@@ -64,14 +73,23 @@ def init_db():
         )
     ''')
 
-    # Tabla de proveedores: estado_id es clave foránea hacia estados_proveedor
+    # Tabla de categorías de infraestructura para proveedores (ej: Hosting, Dominios, SSL)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS categorias_proveedor (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL UNIQUE
+        )
+    ''')
+
+    # Tabla de proveedores: estado_id y categoria_id son claves foráneas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS proveedores (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT NOT NULL,
-            tipo_servicio TEXT NOT NULL,
+            categoria_id INTEGER NOT NULL,
             sitio TEXT NOT NULL,
             estado_id INTEGER NOT NULL,
+            FOREIGN KEY (categoria_id) REFERENCES categorias_proveedor (id),
             FOREIGN KEY (estado_id) REFERENCES estados_proveedor (id)
         )
     ''')
@@ -125,6 +143,13 @@ def init_db():
 
     # --- Datos de ejemplo (solo se insertan una vez, si la tabla está vacía) ---
 
+    cursor.execute('SELECT COUNT(*) FROM tipos_negocio')
+    if cursor.fetchone()[0] == 0:
+        cursor.executemany(
+            'INSERT INTO tipos_negocio (nombre) VALUES (?)',
+            [('Panadería',), ('Tienda de Ropa',), ('Taller Automotriz',), ('Cafetería',)]
+        )
+
     cursor.execute('SELECT COUNT(*) FROM clientes')
     if cursor.fetchone()[0] == 0:
         clientes_iniciales = [
@@ -133,10 +158,14 @@ def init_db():
             ('1700555666', 'Taller Mecánico RPM', '0976543210', 'rpm@correo.com', 'Taller Automotriz', 'Santo Domingo'),
             ('1700777888', 'Café Aroma Amazónico', '0965432109', 'aroma@correo.com', 'Cafetería', 'Puyo')
         ]
-        cursor.executemany(
-            'INSERT INTO clientes (cedula, nombre, telefono, correo, negocio, ciudad) VALUES (?, ?, ?, ?, ?, ?)',
-            clientes_iniciales
-        )
+        for cedula, nombre, tel, correo, nombre_negocio, ciudad in clientes_iniciales:
+            tipo_negocio_id = cursor.execute(
+                'SELECT id FROM tipos_negocio WHERE nombre = ?', (nombre_negocio,)
+            ).fetchone()['id']
+            cursor.execute(
+                'INSERT INTO clientes (cedula, nombre, telefono, correo, tipo_negocio_id, ciudad) VALUES (?, ?, ?, ?, ?, ?)',
+                (cedula, nombre, tel, correo, tipo_negocio_id, ciudad)
+            )
 
     cursor.execute('SELECT COUNT(*) FROM tipos_servicio')
     if cursor.fetchone()[0] == 0:
@@ -184,6 +213,13 @@ def init_db():
             [('Activo',), ('Pendiente',), ('Inactivo',)]
         )
 
+    cursor.execute('SELECT COUNT(*) FROM categorias_proveedor')
+    if cursor.fetchone()[0] == 0:
+        cursor.executemany(
+            'INSERT INTO categorias_proveedor (nombre) VALUES (?)',
+            [('Servidor y Hosting',), ('Registro de Dominios',), ('Diseño de Interfaces',), ('Certificados SSL y Seguridad',)]
+        )
+
     cursor.execute('SELECT COUNT(*) FROM proveedores')
     if cursor.fetchone()[0] == 0:
         proveedores_iniciales = [
@@ -192,13 +228,16 @@ def init_db():
             ('Figma', 'Diseño de Interfaces', 'figma.com', 'Activo'),
             ('Cloudflare', 'Certificados SSL y Seguridad', 'cloudflare.com', 'Pendiente')
         ]
-        for nombre, tipo_serv, sitio, nombre_estado in proveedores_iniciales:
+        for nombre, nombre_cat, sitio, nombre_estado in proveedores_iniciales:
+            categoria_id = cursor.execute(
+                'SELECT id FROM categorias_proveedor WHERE nombre = ?', (nombre_cat,)
+            ).fetchone()['id']
             estado_id = cursor.execute(
                 'SELECT id FROM estados_proveedor WHERE nombre = ?', (nombre_estado,)
             ).fetchone()['id']
             cursor.execute(
-                'INSERT INTO proveedores (nombre, tipo_servicio, sitio, estado_id) VALUES (?, ?, ?, ?)',
-                (nombre, tipo_serv, sitio, estado_id)
+                'INSERT INTO proveedores (nombre, categoria_id, sitio, estado_id) VALUES (?, ?, ?, ?)',
+                (nombre, categoria_id, sitio, estado_id)
             )
 
     cursor.execute('SELECT COUNT(*) FROM estados_documento')

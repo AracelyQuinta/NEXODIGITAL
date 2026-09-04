@@ -52,16 +52,21 @@
                                 {% endfor %}
                             </div>
 
-                            <!-- 2. Tipo de Servicio -->
+                            <!-- 2. Categoría (clave foránea hacia categorias_proveedor) -->
                             <div class="mb-3">
-                                {{ form.tipo_servicio.label(class="form-label fw-semibold text-navy small") }}
+                                {{ form.categoria_id.label(class="form-label fw-semibold text-navy small") }}
                                 <div class="input-group">
                                     <span class="input-group-text bg-light"><i class="bi bi-box"></i></span>
-                                    {{ form.tipo_servicio(class="form-control" + (" is-invalid" if form.tipo_servicio.errors else ""), placeholder="Ej: Servidores Cloud, Base de datos, SSL") }}
+                                    <select name="{{ form.categoria_id.name }}" id="{{ form.categoria_id.id }}" class="form-select{{ ' is-invalid' if form.categoria_id.errors else '' }}">
+                                        {% for value, label in form.categoria_id.choices %}
+                                        <option value="{{ value }}" {% if form.categoria_id.data == value %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
-                                {% for error in form.tipo_servicio.errors %}
+                                {% for error in form.categoria_id.errors %}
                                     <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
                                 {% endfor %}
+                                <small class="text-muted">¿No existe la categoría? <a href="{{ url_for('nueva_categoria_proveedor') }}">Créala aquí</a>.</small>
                             </div>
 
                             <!-- 3. Sitio Web Oficial -->
