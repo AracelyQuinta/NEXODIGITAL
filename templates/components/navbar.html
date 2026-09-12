@@ -17,9 +17,9 @@
             <span class="navbar-toggler-icon"></span>
         </button>
 
-        <!-- Lista de Enlaces de Navegación del Sistema -->
+        <!-- Lista de Enlaces de Navegación del Sistema (alineada a la derecha con ms-auto) -->
         <div class="collapse navbar-collapse" id="menuNav">
-            <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+            <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
                 <!-- 1. Inicio -->
                 <li class="nav-item">
                     <a class="nav-link px-2 {{ 'active' if request.endpoint == 'inicio' else '' }}" href="{{ url_for('inicio') }}">
@@ -51,11 +51,18 @@
                 <!-- 5. Panel Comercial de Facturación & Cotizaciones -->
                 <li class="nav-item">
                     <a class="nav-link px-2 {{ 'active' if request.endpoint in ['facturacion', 'nueva_factura', 'editar_factura', 'ver_comprobante'] else '' }}" href="{{ url_for('facturacion') }}">
-                        <i class="bi bi-receipt me-1"></i>Facturación & Cotizaciones
+                        <i class="bi bi-receipt me-1"></i>Facturación
                     </a>
                 </li>
 
-                <!-- 6. Botón de Acción Directa: Contacto -->
+                <!-- 6. Panel de Resultados (estadísticas) -->
+                <li class="nav-item">
+                    <a class="nav-link px-2 {{ 'active' if request.endpoint == 'estadisticas' else '' }}" href="{{ url_for('estadisticas') }}">
+                        <i class="bi bi-bar-chart-line me-1"></i>Panel
+                    </a>
+                </li>
+
+                <!-- 7. Botón de Acción Directa: Contacto -->
                 <li class="nav-item ms-lg-2">
                     <a class="btn btn-verde btn-sm px-3 rounded-pill" href="{{ url_for('inicio') }}#contacto">
                         <i class="bi bi-envelope me-1"></i>Contacto
