@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # DEPENDENCIAS DEL PROYECTO NEXODIGITAL
 # Desarrollado con Python 3 y el microframework Flask
 # ==============================================================================
@@ -32,3 +32,9 @@ click==8.4.2
 
 # Utilidad para salida de texto con colores en terminales multiplataforma
 colorama==0.4.6
+
+# Conector para bases de datos PostgreSQL (Semana 13)
+psycopg2-binary==2.9.9
+
+# Carga variables de entorno desde el archivo .env (para la contraseña)
+python-dotenv==1.0.1

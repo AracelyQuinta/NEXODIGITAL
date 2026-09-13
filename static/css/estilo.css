@@ -474,3 +474,32 @@ h1, h2, h3, h4, h5, h6 {
         box-shadow: none !important;
     }
 }
+
+/* ==============================================================================
+   MEJORAS SEMANA 13: campos numéricos de facturación
+   ==============================================================================
+   Quita las flechitas (spinners) de los inputs numéricos, que roban espacio
+   horizontal y hacían que números como 250.00 se vieran cortados. */
+
+/* Chrome, Edge, Safari */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+/* Firefox */
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* Asegura que el texto del precio/total no se recorte y quepa completo */
+.item-precio,
+.item-cantidad,
+.item-ajuste,
+.input-item-precio,
+.input-item-cantidad {
+    min-width: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
