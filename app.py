@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # PROYECTO: NEXODIGITAL - SOLUCIONES WEB Y COMERCIALES
 # Control Principal de la Aplicación Flask (Backend)
 # ==============================================================================
@@ -18,7 +18,7 @@
 
 import json
 from datetime import date
-from flask import Flask, render_template, redirect, url_for, flash, request
+from flask import Flask, render_template, redirect, url_for, flash, request, send_file
 
 # Importación de clases de formularios creadas con Flask-WTF
 from forms.cliente_form import ClienteForm
@@ -45,11 +45,19 @@ app.config['SECRET_KEY'] = 'nexodigital_clave_secreta_2026'
 # ==============================================================================
 
 @app.route('/')
+@app.route('/index.html')
 def inicio():
     """
-    Ruta raíz del sitio web.
-    Renderiza la vista principal con información de la empresa y catálogo destacado.
+    Portada pública del sitio web.
+    El inicio público se mantiene fuera de templates para separar la información
+    visible para cualquier usuario del panel interno del sistema.
     """
+    return send_file(app.root_path + '/index.html')
+
+
+@app.route('/sistema')
+def inicio_sistema():
+    """Inicio interno para usuarios que ya ingresaron al sistema."""
     mensaje = "Soluciones digitales para hacer crecer tu negocio"
     empresa = {
         "nombre": "Nexo Digital",
@@ -70,6 +78,7 @@ def inicio():
 
 
 @app.route('/servicio')
+@app.route('/servicios')
 def servicios():
     """
     Ruta del catálogo completo de servicios.

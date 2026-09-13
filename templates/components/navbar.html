@@ -7,7 +7,7 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-navy sticky-top shadow-sm py-2">
     <div class="container">
         <!-- Logotipo e Identidad de Marca -->
-        <a class="navbar-brand fw-bold d-flex align-items-center gap-2 py-1" href="{{ url_for('inicio') }}">
+        <a class="navbar-brand fw-bold d-flex align-items-center gap-2 py-1" href="{{ url_for('inicio_sistema') }}">
             <span class="brand-badge"><i class="bi bi-lightning-charge-fill"></i></span>
             <span class="text-white">Nexo<span class="text-mint">Digital</span></span>
         </a>
@@ -22,7 +22,7 @@
             <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
                 <!-- 1. Inicio -->
                 <li class="nav-item">
-                    <a class="nav-link px-2 {{ 'active' if request.endpoint == 'inicio' else '' }}" href="{{ url_for('inicio') }}">
+                    <a class="nav-link px-2 {{ 'active' if request.endpoint == 'inicio_sistema' else '' }}" href="{{ url_for('inicio_sistema') }}">
                         <i class="bi bi-house-door me-1"></i>Inicio
                     </a>
                 </li>
@@ -66,6 +66,11 @@
                 <li class="nav-item ms-lg-2">
                     <a class="btn btn-verde btn-sm px-3 rounded-pill" href="{{ url_for('inicio') }}#contacto">
                         <i class="bi bi-envelope me-1"></i>Contacto
+                    </a>
+                </li>
+                <li class="nav-item ms-lg-2">
+                    <a class="btn btn-outline-light btn-sm px-3 rounded-pill" href="{{ url_for('inicio') }}">
+                        <i class="bi bi-box-arrow-left me-1"></i>Salir del sistema
                     </a>
                 </li>
             </ul>
