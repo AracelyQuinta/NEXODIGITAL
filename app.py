@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # PROYECTO: NEXODIGITAL - SOLUCIONES WEB Y COMERCIALES
 # Control Principal de la Aplicación Flask (Backend)
 # ==============================================================================
@@ -18,7 +18,7 @@
 
 import json
 from datetime import date
-from flask import Flask, render_template, redirect, url_for, flash, request, send_file
+from flask import Flask, render_template, redirect, url_for, flash, request
 
 # Importación de clases de formularios creadas con Flask-WTF
 from forms.cliente_form import ClienteForm
@@ -32,6 +32,18 @@ from forms.facturacion_form import FacturacionForm
 # Módulo propio de conexión centralizada a PostgreSQL (carpeta conexion/)
 from conexion.conexion import get_db_connection
 
+# --- Semana 14: autenticación de usuarios ---
+# Flask-Login gestiona el inicio/cierre de sesión y la protección de rutas.
+from flask_login import (
+    LoginManager, login_user, logout_user, login_required, current_user
+)
+# Werkzeug protege las contraseñas: genera y verifica el hash (nunca texto plano).
+from werkzeug.security import generate_password_hash, check_password_hash
+# Formularios y modelo de usuario creados para la autenticación.
+from forms.login_form import LoginForm
+from forms.usuario_form import UsuarioForm
+from models import Usuario
+
 # ------------------------------------------------------------------------------
 # INICIALIZACIÓN DE LA APLICACIÓN FLASK
 # ------------------------------------------------------------------------------
@@ -40,24 +52,47 @@ app = Flask(__name__)
 # Clave secreta para la protección de sesiones y seguridad contra ataques CSRF en formularios
 app.config['SECRET_KEY'] = 'nexodigital_clave_secreta_2026'
 
+
+# ------------------------------------------------------------------------------
+# CONFIGURACIÓN DE FLASK-LOGIN (Semana 14: control de sesiones)
+# ------------------------------------------------------------------------------
+# LoginManager es el "gestor" que Flask-Login usa para saber quién tiene sesión.
+login_manager = LoginManager()
+login_manager.init_app(app)
+# Si un usuario NO autenticado entra a una ruta protegida, se le redirige aquí.
+login_manager.login_view = 'login'
+# Mensaje que se muestra al redirigir al login.
+login_manager.login_message = 'Debes iniciar sesión para acceder a esta página.'
+login_manager.login_message_category = 'warning'
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    """
+    Flask-Login llama a esta función en cada petición para recuperar al usuario
+    que tiene la sesión activa, a partir del id guardado en la sesión.
+    Devuelve un objeto Usuario, o None si no existe.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, usuario, password FROM usuarios WHERE id = %s', (user_id,))
+    fila = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    if fila:
+        return Usuario(id=fila['id'], usuario=fila['usuario'], password=fila['password'])
+    return None
+
 # ==============================================================================
 # RUTAS PÚBLICAS Y VISTAS GENERALES
 # ==============================================================================
 
 @app.route('/')
-@app.route('/index.html')
 def inicio():
     """
-    Portada pública del sitio web.
-    El inicio público se mantiene fuera de templates para separar la información
-    visible para cualquier usuario del panel interno del sistema.
+    Ruta raíz del sitio web.
+    Renderiza la vista principal con información de la empresa y catálogo destacado.
     """
-    return send_file(app.root_path + '/index.html')
-
-
-@app.route('/sistema')
-def inicio_sistema():
-    """Inicio interno para usuarios que ya ingresaron al sistema."""
     mensaje = "Soluciones digitales para hacer crecer tu negocio"
     empresa = {
         "nombre": "Nexo Digital",
@@ -78,7 +113,6 @@ def inicio_sistema():
 
 
 @app.route('/servicio')
-@app.route('/servicios')
 def servicios():
     """
     Ruta del catálogo completo de servicios.
@@ -174,6 +208,7 @@ def facturacion():
 # ==============================================================================
 
 @app.route('/clientes/nuevo', methods=['GET', 'POST'])
+@login_required
 def nuevo_cliente():
     """
     Crea y registra un nuevo cliente en el sistema. La cédula es la clave primaria.
@@ -213,6 +248,7 @@ def nuevo_cliente():
 
 
 @app.route('/clientes/editar/<cedula>', methods=['GET', 'POST'])
+@login_required
 def editar_cliente(cedula):
     """
     Edita la información de un cliente existente identificado por su cédula (PK).
@@ -256,6 +292,7 @@ def editar_cliente(cedula):
 
 
 @app.route('/clientes/eliminar/<cedula>', methods=['POST', 'GET'])
+@login_required
 def eliminar_cliente(cedula):
     """
     Elimina un cliente de PostgreSQL según su cédula, siempre que no tenga facturas asociadas.
@@ -309,6 +346,7 @@ def tipos_negocio():
 
 
 @app.route('/tipos-negocio/nuevo', methods=['GET', 'POST'])
+@login_required
 def nuevo_tipo_negocio():
     """
     Registra una nueva categoría de tipo de negocio.
@@ -327,6 +365,7 @@ def nuevo_tipo_negocio():
 
 
 @app.route('/tipos-negocio/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def editar_tipo_negocio(id):
     """
     Edita el nombre de una categoría de tipo de negocio existente.
@@ -358,6 +397,7 @@ def editar_tipo_negocio(id):
 
 
 @app.route('/tipos-negocio/eliminar/<int:id>', methods=['POST', 'GET'])
+@login_required
 def eliminar_tipo_negocio(id):
     """
     Elimina un tipo de negocio, siempre que ningún cliente lo esté usando.
@@ -408,6 +448,7 @@ def tipos_servicio():
 
 
 @app.route('/tipos-servicio/nuevo', methods=['GET', 'POST'])
+@login_required
 def nuevo_tipo_servicio():
     """
     Registra una nueva categoría de servicio.
@@ -426,6 +467,7 @@ def nuevo_tipo_servicio():
 
 
 @app.route('/tipos-servicio/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def editar_tipo_servicio(id):
     """
     Edita el nombre de una categoría de servicio existente.
@@ -457,6 +499,7 @@ def editar_tipo_servicio(id):
 
 
 @app.route('/tipos-servicio/eliminar/<int:id>', methods=['POST', 'GET'])
+@login_required
 def eliminar_tipo_servicio(id):
     """
     Elimina una categoría de servicio, siempre que ningún servicio la esté usando.
@@ -493,6 +536,7 @@ def eliminar_tipo_servicio(id):
 # ==============================================================================
 
 @app.route('/servicio/nuevo', methods=['GET', 'POST'])
+@login_required
 def nuevo_servicio():
     """
     Registra un nuevo servicio en el catálogo, asociado a una categoría (tipo_servicio_id).
@@ -527,6 +571,7 @@ def nuevo_servicio():
 
 @app.route('/servicios/editar/<int:id>', methods=['GET', 'POST'])
 @app.route('/servicio/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def editar_servicio(id):
     """
     Edita un servicio existente identificado por su id real de PostgreSQL.
@@ -575,6 +620,7 @@ def editar_servicio(id):
 
 @app.route('/servicios/eliminar/<int:id>', methods=['POST', 'GET'])
 @app.route('/servicio/eliminar/<int:id>', methods=['POST', 'GET'])
+@login_required
 def eliminar_servicio(id):
     """
     Elimina un servicio del catálogo en PostgreSQL.
@@ -603,6 +649,7 @@ def eliminar_servicio(id):
 # ==============================================================================
 
 @app.route('/proveedores/nuevo', methods=['GET', 'POST'])
+@login_required
 def nuevo_proveedor():
     """
     Registra un nuevo proveedor de servicios o infraestructura en PostgreSQL.
@@ -636,6 +683,7 @@ def nuevo_proveedor():
 
 
 @app.route('/proveedores/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def editar_proveedor(id):
     """
     Modifica los datos de un proveedor existente en PostgreSQL.
@@ -681,6 +729,7 @@ def editar_proveedor(id):
 
 
 @app.route('/proveedores/eliminar/<int:id>', methods=['POST', 'GET'])
+@login_required
 def eliminar_proveedor(id):
     """
     Elimina un proveedor de PostgreSQL.
@@ -723,6 +772,7 @@ def categorias_proveedor():
 
 
 @app.route('/categorias-proveedor/nueva', methods=['GET', 'POST'])
+@login_required
 def nueva_categoria_proveedor():
     """
     Registra una nueva categoría de proveedor.
@@ -741,6 +791,7 @@ def nueva_categoria_proveedor():
 
 
 @app.route('/categorias-proveedor/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
 def editar_categoria_proveedor(id):
     """
     Edita el nombre de una categoría de proveedor existente.
@@ -772,6 +823,7 @@ def editar_categoria_proveedor(id):
 
 
 @app.route('/categorias-proveedor/eliminar/<int:id>', methods=['POST', 'GET'])
+@login_required
 def eliminar_categoria_proveedor(id):
     """
     Elimina una categoría de proveedor, siempre que ningún proveedor la esté usando.
@@ -808,6 +860,7 @@ def eliminar_categoria_proveedor(id):
 # ==============================================================================
 
 @app.route('/facturacion/nueva', methods=['GET', 'POST'])
+@login_required
 def nueva_factura():
     """
     Emite un nuevo documento comercial (Factura o Cotización).
@@ -925,6 +978,7 @@ def nueva_factura():
 
 
 @app.route('/facturacion/editar/<numero>', methods=['GET', 'POST'])
+@login_required
 def editar_factura(numero):
     """
     Edita un documento comercial existente, identificado por su número (clave primaria).
@@ -1025,6 +1079,7 @@ def editar_factura(numero):
 
 
 @app.route('/facturacion/eliminar/<numero>', methods=['POST', 'GET'])
+@login_required
 def eliminar_factura(numero):
     """
     Elimina un documento comercial identificado por su número. El detalle asociado
@@ -1149,6 +1204,102 @@ def estadisticas():
         servicio_top=servicio_top,
         max_unidades=max_unidades
     )
+
+
+# ==============================================================================
+# MÓDULO DE AUTENTICACIÓN (Semana 14): registro, login y logout
+# ==============================================================================
+
+@app.route('/registro', methods=['GET', 'POST'])
+def registro():
+    """
+    Registra un nuevo usuario en el sistema.
+    La contraseña se protege con generate_password_hash() ANTES de guardarla,
+    de modo que en la base de datos nunca queda en texto plano.
+    """
+    form = UsuarioForm()
+
+    if form.validate_on_submit():
+        nombre_usuario = form.usuario.data.strip()
+        # Se genera el hash de la contraseña (versión cifrada e irreversible).
+        password_hash = generate_password_hash(form.password.data)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Verificar que el nombre de usuario no exista ya (además del UNIQUE de la BD).
+        cursor.execute('SELECT id FROM usuarios WHERE usuario = %s', (nombre_usuario,))
+        existente = cursor.fetchone()
+
+        if existente:
+            cursor.close()
+            conn.close()
+            flash('Ese nombre de usuario ya está registrado. Elige otro.', 'danger')
+            return render_template('registro.html', form=form)
+
+        # Insertar el nuevo usuario con la contraseña ya protegida (consulta parametrizada).
+        cursor.execute(
+            'INSERT INTO usuarios (usuario, password) VALUES (%s, %s)',
+            (nombre_usuario, password_hash)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        flash('Usuario registrado correctamente. Ya puedes iniciar sesión.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('registro.html', form=form)
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """
+    Inicia la sesión de un usuario.
+    Comprueba la contraseña con check_password_hash(): compara la contraseña
+    escrita contra el hash guardado, SIN comparar textos directamente.
+    """
+    # Si ya hay una sesión activa, no tiene sentido volver a iniciar sesión.
+    if current_user.is_authenticated:
+        return redirect(url_for('inicio'))
+
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        nombre_usuario = form.usuario.data.strip()
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, usuario, password FROM usuarios WHERE usuario = %s', (nombre_usuario,))
+        fila = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        # Se valida que el usuario exista Y que la contraseña coincida con el hash.
+        if fila and check_password_hash(fila['password'], form.password.data):
+            usuario_obj = Usuario(id=fila['id'], usuario=fila['usuario'], password=fila['password'])
+            login_user(usuario_obj)  # Flask-Login crea y mantiene la sesión.
+            flash(f'Bienvenido, {fila["usuario"]}.', 'success')
+            # Si el usuario venía de una página protegida, se le devuelve allí.
+            siguiente = request.args.get('next')
+            return redirect(siguiente) if siguiente else redirect(url_for('inicio'))
+        else:
+            # Mensaje claro sin revelar si falló el usuario o la contraseña.
+            flash('Usuario o contraseña incorrectos.', 'danger')
+
+    return render_template('login.html', form=form)
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    """
+    Cierra la sesión del usuario autenticado con logout_user() y lo redirige
+    a la página de login.
+    """
+    logout_user()
+    flash('Has cerrado sesión correctamente.', 'info')
+    return redirect(url_for('login'))
 
 
 # ==============================================================================

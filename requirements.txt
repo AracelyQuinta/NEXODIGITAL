@@ -38,3 +38,6 @@ psycopg2-binary==2.9.9
 
 # Carga variables de entorno desde el archivo .env (para la contraseña)
 python-dotenv==1.0.1
+
+# Gestión de sesiones y autenticación de usuarios (Semana 14)
+Flask-Login==0.6.3
