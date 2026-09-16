@@ -14,9 +14,11 @@
             Negocios, comercios locales y emprendedores que impulsan sus ventas con nuestras soluciones digitales.
         </p>
         <div>
+            {% if current_user.is_authenticated %}
             <a href="{{ url_for('nuevo_cliente') }}" class="btn btn-verde btn-lg shadow-sm">
                 <i class="bi bi-person-plus me-2"></i>Registrar nuevo cliente
             </a>
+            {% endif %}
         </div>
     </div>
 </section>
@@ -36,9 +38,11 @@
                     <span class="badge bg-navy text-white px-3 py-2 rounded-pill">
                         <i class="bi bi-people me-1"></i>{{ clientes|length }} Registrados
                     </span>
+                    {% if current_user.is_authenticated %}
                     <a href="{{ url_for('nuevo_cliente') }}" class="btn btn-outline-brand btn-sm">
                         <i class="bi bi-plus-lg me-1"></i>Nuevo Cliente
                     </a>
+                    {% endif %}
                 </div>
             </div>
 
@@ -89,14 +93,18 @@
                                 </td>
                                 <td class="py-3 text-center pe-4">
                                     <div class="d-inline-flex gap-1">
+                                        {% if current_user.is_authenticated %}
                                         <a href="{{ url_for('editar_cliente', cedula=cliente.cedula) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar cliente">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
+                                        {% endif %}
+                                        {% if current_user.is_authenticated %}
                                         <form method="POST" action="{{ url_for('eliminar_cliente', cedula=cliente.cedula) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar a «{{ cliente.nombre }}»?');" class="d-inline">
                                             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar cliente">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>
                                         </form>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -111,9 +119,11 @@
                     </div>
                     <h4 class="text-navy fw-bold">No existen clientes registrados</h4>
                     <p class="text-muted">Registra los primeros negocios asociados para comenzar.</p>
+                    {% if current_user.is_authenticated %}
                     <a href="{{ url_for('nuevo_cliente') }}" class="btn btn-verde mt-2">
                         <i class="bi bi-person-plus me-1"></i>Registrar Primer Cliente
                     </a>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>

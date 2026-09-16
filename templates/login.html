@@ -1,73 +1,49 @@
-{% extends "base.html" %}
+{% extends "base_auth.html" %}
 
 {% block titulo %}Iniciar Sesión - Nexo Digital{% endblock %}
 
 {% block content %}
 <!-- ==============================================================================
-     PÁGINA DE INICIO DE SESIÓN (Semana 14)
+     TARJETA DE INICIO DE SESIÓN (pantalla completa, sin menú)
      ============================================================================== -->
-<section class="page-header py-4 text-white">
-    <div class="container text-center">
-        <h1 class="h3 fw-bold mb-1">Iniciar Sesión</h1>
-        <p class="text-light-emerald small mb-0">Ingresa tus credenciales para acceder al sistema</p>
-    </div>
-</section>
+<div class="card shadow border-0 rounded-4">
+    <div class="card-body p-4 p-md-5">
+        <div class="text-center mb-4">
+            <h2 class="h4 fw-bold text-navy mb-1">Iniciar sesión</h2>
+            <p class="text-muted small mb-0">Acceso al panel de administración</p>
+        </div>
 
-<section class="py-5">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-5 col-md-7">
-                <div class="card form-card shadow-sm border-0 rounded-4">
-                    <div class="card-header bg-white p-4 border-bottom">
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="form-icon-box">
-                                <i class="bi bi-box-arrow-in-right"></i>
-                            </div>
-                            <div>
-                                <h2 class="h5 fw-bold text-navy mb-0">Acceso al sistema</h2>
-                                <small class="text-muted">Área privada de administración</small>
-                            </div>
-                        </div>
-                    </div>
+        <form method="POST" novalidate>
+            {{ form.hidden_tag() }}
 
-                    <div class="card-body p-4">
-                        <form method="POST" novalidate>
-                            <!-- Token de seguridad CSRF (Flask-WTF) -->
-                            {{ form.hidden_tag() }}
-
-                            <!-- Campo: Usuario -->
-                            <div class="mb-3">
-                                {{ form.usuario.label(class="form-label fw-semibold text-navy small") }}
-                                {{ form.usuario(class="form-control" + (" is-invalid" if form.usuario.errors else ""), placeholder="Tu nombre de usuario") }}
-                                {% for error in form.usuario.errors %}
-                                    <div class="invalid-feedback">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-
-                            <!-- Campo: Contraseña -->
-                            <div class="mb-4">
-                                {{ form.password.label(class="form-label fw-semibold text-navy small") }}
-                                {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Tu contraseña") }}
-                                {% for error in form.password.errors %}
-                                    <div class="invalid-feedback">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-
-                            <!-- Botón de envío -->
-                            <div class="d-grid">
-                                {{ form.submit(class="btn btn-verde fw-semibold") }}
-                            </div>
-                        </form>
-
-                        <!-- Enlace al registro -->
-                        <p class="text-center text-muted small mt-4 mb-0">
-                            ¿No tienes cuenta?
-                            <a href="{{ url_for('registro') }}" class="text-decoration-none fw-semibold">Regístrate aquí</a>
-                        </p>
-                    </div>
+            <!-- Usuario -->
+            <div class="mb-3">
+                {{ form.usuario.label(class="form-label fw-semibold text-navy small") }}
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                    {{ form.usuario(class="form-control" + (" is-invalid" if form.usuario.errors else ""), placeholder="Tu usuario") }}
+                    {% for error in form.usuario.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
                 </div>
             </div>
-        </div>
+
+            <!-- Contraseña -->
+            <div class="mb-4">
+                {{ form.password.label(class="form-label fw-semibold text-navy small") }}
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-lock"></i></span>
+                    {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Tu contraseña") }}
+                    {% for error in form.password.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="d-grid">
+                {{ form.submit(class="btn btn-verde fw-semibold") }}
+            </div>
+        </form>
     </div>
-</section>
+</div>
 {% endblock %}

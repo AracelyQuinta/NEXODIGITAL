@@ -1,8 +1,9 @@
 ﻿<!-- ==============================================================================
      COMPONENTE MODULAR: BARRA DE NAVEGACIÓN PRINCIPAL
      ==============================================================================
-     Incluye logotipo de marca, detección automática del enlace activo mediante
-     'request.endpoint' y diseño adaptable para dispositivos móviles.
+     Enlaces públicos siempre visibles (Inicio, Servicios, Proveedores).
+     Cuando hay sesión, las áreas internas se agrupan en un menú desplegable
+     "Gestión" para no saturar la barra. Detecta el enlace activo automáticamente.
      ============================================================================== -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-navy sticky-top shadow-sm py-2">
     <div class="container">
@@ -17,72 +18,65 @@
             <span class="navbar-toggler-icon"></span>
         </button>
 
-        <!-- Lista de Enlaces de Navegación del Sistema (alineada a la derecha con ms-auto) -->
         <div class="collapse navbar-collapse" id="menuNav">
             <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
-                <!-- 1. Inicio -->
+
+                <!-- ENLACES PÚBLICOS (siempre visibles) -->
                 <li class="nav-item">
                     <a class="nav-link px-2 {{ 'active' if request.endpoint == 'inicio' else '' }}" href="{{ url_for('inicio') }}">
                         <i class="bi bi-house-door me-1"></i>Inicio
                     </a>
                 </li>
-
-                <!-- 2. Catálogo de Servicios -->
                 <li class="nav-item">
                     <a class="nav-link px-2 {{ 'active' if request.endpoint in ['servicios', 'nuevo_servicio', 'editar_servicio'] else '' }}" href="{{ url_for('servicios') }}">
                         <i class="bi bi-grid me-1"></i>Servicios
                     </a>
                 </li>
-
-                <!-- 3. Directorio de Proveedores -->
                 <li class="nav-item">
                     <a class="nav-link px-2 {{ 'active' if request.endpoint in ['proveedores', 'nuevo_proveedor', 'editar_proveedor'] else '' }}" href="{{ url_for('proveedores') }}">
                         <i class="bi bi-truck me-1"></i>Proveedores
                     </a>
                 </li>
 
-                <!-- 4. Directorio de Clientes -->
-                <li class="nav-item">
-                    <a class="nav-link px-2 {{ 'active' if request.endpoint in ['clientes', 'nuevo_cliente', 'editar_cliente'] else '' }}" href="{{ url_for('clientes') }}">
-                        <i class="bi bi-people me-1"></i>Clientes
-                    </a>
-                </li>
-
-                <!-- 5. Panel Comercial de Facturación & Cotizaciones -->
-                <li class="nav-item">
-                    <a class="nav-link px-2 {{ 'active' if request.endpoint in ['facturacion', 'nueva_factura', 'editar_factura', 'ver_comprobante'] else '' }}" href="{{ url_for('facturacion') }}">
-                        <i class="bi bi-receipt me-1"></i>Facturación
-                    </a>
-                </li>
-
-                <!-- 6. Panel de Resultados (estadísticas) -->
-                <li class="nav-item">
-                    <a class="nav-link px-2 {{ 'active' if request.endpoint == 'estadisticas' else '' }}" href="{{ url_for('estadisticas') }}">
-                        <i class="bi bi-bar-chart-line me-1"></i>Panel
-                    </a>
-                </li>
-
-                <!-- 7. Autenticación (Semana 14): saludo al usuario + cerrar sesión -->
                 {% if current_user.is_authenticated %}
-                    <!-- Muestra el nombre del usuario que tiene la sesión activa -->
-                    <li class="nav-item ms-lg-2 d-flex align-items-center">
-                        <span class="navbar-text text-light me-2">
-                            <i class="bi bi-person-circle me-1"></i>{{ current_user.usuario }}
-                        </span>
-                    </li>
-                    <li class="nav-item">
-                        <a class="btn btn-outline-light btn-sm px-3 rounded-pill" href="{{ url_for('logout') }}">
-                            <i class="bi bi-box-arrow-right me-1"></i>Cerrar sesión
+                    <!-- MENÚ DESPLEGABLE "GESTIÓN" (solo con sesión): agrupa lo interno -->
+                    {% set en_gestion = request.endpoint in ['clientes','nuevo_cliente','editar_cliente','facturacion','nueva_factura','editar_factura','ver_comprobante','estadisticas','solicitudes','registro','tipos_negocio','tipos_servicio','categorias_proveedor'] %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle px-2 {{ 'active' if en_gestion else '' }}" href="#" id="menuGestion" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-sliders me-1"></i>Gestión
                         </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="menuGestion">
+                            <li><a class="dropdown-item" href="{{ url_for('clientes') }}"><i class="bi bi-people me-2"></i>Clientes</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('facturacion') }}"><i class="bi bi-receipt me-2"></i>Facturación</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('estadisticas') }}"><i class="bi bi-bar-chart-line me-2"></i>Panel de Resultados</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('solicitudes') }}"><i class="bi bi-inbox me-2"></i>Solicitudes</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('registro') }}"><i class="bi bi-person-plus me-2"></i>Registrar usuario</a></li>
+                        </ul>
+                    </li>
+
+                    <!-- Usuario con sesión: nombre + cerrar sesión -->
+                    <li class="nav-item dropdown ms-lg-2">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="menuUsuario" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle me-1"></i>{{ current_user.usuario }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="menuUsuario">
+                            <li>
+                                <a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                                    <i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                 {% else %}
-                    <!-- Si no hay sesión, se ofrece iniciar sesión -->
+                    <!-- Sin sesión: botón de iniciar sesión -->
                     <li class="nav-item ms-lg-2">
                         <a class="btn btn-verde btn-sm px-3 rounded-pill" href="{{ url_for('login') }}">
                             <i class="bi bi-box-arrow-in-right me-1"></i>Iniciar sesión
                         </a>
                     </li>
                 {% endif %}
+
             </ul>
         </div>
     </div>

@@ -6,8 +6,9 @@ from wtforms.validators import DataRequired, Length, EqualTo
 class UsuarioForm(FlaskForm):
     """
     Formulario para registrar un nuevo usuario del sistema (Semana 14).
+    Solo un usuario con sesión (administrador) puede usarlo, desde el panel interno.
     Pide el nombre de usuario y la contraseña (dos veces, para confirmar que
-    coinciden). La contraseña se protegerá con hash ANTES de guardarla.
+    coinciden). La contraseña se protege con hash ANTES de guardarla.
     """
     usuario = StringField(
         'Usuario',
@@ -25,7 +26,6 @@ class UsuarioForm(FlaskForm):
         ]
     )
 
-    # Segundo campo de contraseña: debe ser igual al anterior (EqualTo lo valida).
     confirmar = PasswordField(
         'Confirmar contraseña',
         validators=[

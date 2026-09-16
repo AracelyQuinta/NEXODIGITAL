@@ -14,9 +14,11 @@
             Clasifica a tus clientes según el tipo de negocio que representan.
         </p>
         <div>
+            {% if current_user.is_authenticated %}
             <a href="{{ url_for('nuevo_tipo_negocio') }}" class="btn btn-verde btn-lg shadow-sm">
                 <i class="bi bi-tag me-2"></i>Registrar nuevo tipo de negocio
             </a>
+            {% endif %}
         </div>
     </div>
 </section>
@@ -36,9 +38,11 @@
                     <span class="badge bg-navy text-white px-3 py-2 rounded-pill">
                         <i class="bi bi-tag me-1"></i>{{ tipos|length }} Tipos de Negocio
                     </span>
+                    {% if current_user.is_authenticated %}
                     <a href="{{ url_for('nuevo_tipo_negocio') }}" class="btn btn-outline-brand btn-sm">
                         <i class="bi bi-plus-lg me-1"></i>Nuevo Tipo de Negocio
                     </a>
+                    {% endif %}
                     <a href="{{ url_for('clientes') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-arrow-left me-1"></i>Volver a Clientes
                     </a>
@@ -68,14 +72,18 @@
                                 </td>
                                 <td class="py-3 text-center pe-4">
                                     <div class="d-inline-flex gap-1">
+                                        {% if current_user.is_authenticated %}
                                         <a href="{{ url_for('editar_tipo_negocio', id=tipo.id) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar tipo de negocio">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
+                                        {% endif %}
+                                        {% if current_user.is_authenticated %}
                                         <form method="POST" action="{{ url_for('eliminar_tipo_negocio', id=tipo.id) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar el tipo de negocio «{{ tipo.nombre }}»?');" class="d-inline">
                                             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar tipo de negocio">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>
                                         </form>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -90,9 +98,11 @@
                     </div>
                     <h4 class="text-navy fw-bold">No existen tipos de negocio registrados</h4>
                     <p class="text-muted">Crea uno antes de registrar clientes.</p>
+                    {% if current_user.is_authenticated %}
                     <a href="{{ url_for('nuevo_tipo_negocio') }}" class="btn btn-verde mt-2">
                         <i class="bi bi-plus-lg me-1"></i>Registrar Primer Tipo de Negocio
                     </a>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>

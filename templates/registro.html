@@ -4,12 +4,12 @@
 
 {% block content %}
 <!-- ==============================================================================
-     PÁGINA DE REGISTRO DE USUARIOS (Semana 14)
+     PÁGINA DE REGISTRO DE USUARIOS (Semana 14) - solo accesible por un admin
      ============================================================================== -->
 <section class="page-header py-4 text-white">
     <div class="container text-center">
-        <h1 class="h3 fw-bold mb-1">Crear Cuenta</h1>
-        <p class="text-light-emerald small mb-0">Registra un nuevo usuario para acceder al sistema</p>
+        <h1 class="h3 fw-bold mb-1">Registrar Usuario del Equipo</h1>
+        <p class="text-light-emerald small mb-0">Crea una cuenta para un miembro del equipo</p>
     </div>
 </section>
 
@@ -25,36 +25,35 @@
                             </div>
                             <div>
                                 <h2 class="h5 fw-bold text-navy mb-0">Nuevo usuario</h2>
-                                <small class="text-muted">La contraseña se guardará protegida</small>
+                                <small class="text-muted">La contraseña se guardará de forma segura</small>
                             </div>
                         </div>
                     </div>
 
                     <div class="card-body p-4">
                         <form method="POST" novalidate>
-                            <!-- Token de seguridad CSRF (Flask-WTF) -->
                             {{ form.hidden_tag() }}
 
-                            <!-- Campo: Usuario -->
+                            <!-- Usuario -->
                             <div class="mb-3">
                                 {{ form.usuario.label(class="form-label fw-semibold text-navy small") }}
-                                {{ form.usuario(class="form-control" + (" is-invalid" if form.usuario.errors else ""), placeholder="Elige un nombre de usuario") }}
+                                {{ form.usuario(class="form-control" + (" is-invalid" if form.usuario.errors else ""), placeholder="Nombre de usuario") }}
                                 {% for error in form.usuario.errors %}
                                     <div class="invalid-feedback">{{ error }}</div>
                                 {% endfor %}
                             </div>
 
-                            <!-- Campo: Contraseña -->
+                            <!-- Contraseña -->
                             <div class="mb-3">
                                 {{ form.password.label(class="form-label fw-semibold text-navy small") }}
-                                {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Crea una contraseña") }}
+                                {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="Contraseña") }}
                                 {% for error in form.password.errors %}
                                     <div class="invalid-feedback">{{ error }}</div>
                                 {% endfor %}
                             </div>
 
-                            <!-- Campo: Confirmar contraseña -->
-                            <div class="mb-4">
+                            <!-- Confirmar contraseña -->
+                            <div class="mb-3">
                                 {{ form.confirmar.label(class="form-label fw-semibold text-navy small") }}
                                 {{ form.confirmar(class="form-control" + (" is-invalid" if form.confirmar.errors else ""), placeholder="Repite la contraseña") }}
                                 {% for error in form.confirmar.errors %}
@@ -62,17 +61,10 @@
                                 {% endfor %}
                             </div>
 
-                            <!-- Botón de envío -->
                             <div class="d-grid">
                                 {{ form.submit(class="btn btn-verde fw-semibold") }}
                             </div>
                         </form>
-
-                        <!-- Enlace al login -->
-                        <p class="text-center text-muted small mt-4 mb-0">
-                            ¿Ya tienes cuenta?
-                            <a href="{{ url_for('login') }}" class="text-decoration-none fw-semibold">Inicia sesión</a>
-                        </p>
                     </div>
                 </div>
             </div>

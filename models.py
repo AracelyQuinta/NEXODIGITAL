@@ -1,12 +1,13 @@
 # ==============================================================================
-# PROYECTO: NEXODIGITAL - MODELO DE USUARIO
+# PROYECTO: NEXODIGITAL - MODELO DE USUARIO (Semana 14: autenticación)
 # ==============================================================================
-# Este archivo define la clase 'Usuario', que representa a una persona con
-# sesión en el sistema. Flask-Login necesita una clase de usuario que herede de
-# 'UserMixin' para poder gestionar el inicio y cierre de sesión.
+# Define la clase 'Usuario' que Flask-Login utiliza para gestionar la sesión.
+# Hereda de UserMixin, que aporta automáticamente los métodos que Flask-Login
+# necesita (is_authenticated, get_id(), etc.).
 #
-# UserMixin le entrega a la clase, de forma automática, los métodos que
-# Flask-Login espera (is_authenticated, is_active, get_id(), etc.), 
+# En este sistema, todos los usuarios registrados son administradores del panel
+# interno (control total). El público general no tiene cuenta: solo ve la parte
+# pública del sitio.
 # ==============================================================================
 
 from flask_login import UserMixin
@@ -14,10 +15,10 @@ from flask_login import UserMixin
 
 class Usuario(UserMixin):
     """
-    Representa a un usuario autenticado del sistema.
+    Representa a un usuario autenticado (administrador) del sistema.
 
     Atributos:
-        id       -> identificador único del usuario (clave primaria en la BD).
+        id       -> identificador único (clave primaria en la BD).
         usuario  -> nombre de usuario con el que inicia sesión.
         password -> contraseña ya protegida (hash), tal como se guarda en la BD.
     """
@@ -28,8 +29,5 @@ class Usuario(UserMixin):
         self.password = password
 
     def get_id(self):
-        """
-        Flask-Login usa este método para saber qué identificador guardar en la
-        sesión. Debe devolverse como texto (string).
-        """
+        """Flask-Login guarda este id (como texto) en la sesión."""
         return str(self.id)

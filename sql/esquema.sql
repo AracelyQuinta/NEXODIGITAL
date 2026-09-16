@@ -146,3 +146,19 @@ CREATE TABLE usuarios (
     usuario VARCHAR(50) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL
 );
+
+-- ==============================================================================
+-- TABLA DE SOLICITUDES (Semana 14: mensajes de contacto de los clientes)
+-- ==============================================================================
+-- Guarda las solicitudes/mensajes que dejan los visitantes desde la página
+-- pública (sección Contáctanos). El personal interno (admin) las revisa desde
+-- el panel. El campo 'estado' permite darles seguimiento.
+CREATE TABLE solicitudes (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(150) NOT NULL,
+    correo VARCHAR(150) NOT NULL,
+    asunto VARCHAR(150),
+    mensaje TEXT NOT NULL,
+    estado VARCHAR(30) NOT NULL DEFAULT 'Nueva',
+    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

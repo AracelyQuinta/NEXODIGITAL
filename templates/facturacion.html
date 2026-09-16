@@ -14,12 +14,16 @@
             Emite facturas de venta, prepara cotizaciones comerciales para clientes y gestiona anticipos y saldos pendientes en tiempo real.
         </p>
         <div class="d-flex justify-content-center gap-2 flex-wrap">
+            {% if current_user.is_authenticated %}
             <a href="{{ url_for('nueva_factura', tipo='Factura') }}" class="btn btn-verde btn-lg shadow-sm">
                 <i class="bi bi-receipt me-2"></i>Nueva Factura
             </a>
+            {% endif %}
+            {% if current_user.is_authenticated %}
             <a href="{{ url_for('nueva_factura', tipo='Cotizacion') }}" class="btn btn-outline-light btn-lg">
                 <i class="bi bi-file-earmark-text me-2"></i>Nueva Cotización
             </a>
+            {% endif %}
         </div>
     </div>
 </section>
@@ -39,9 +43,11 @@
                     <span class="badge bg-navy text-white px-3 py-2 rounded-pill">
                         <i class="bi bi-archive me-1"></i>{{ facturas|length }} Documentos
                     </span>
+                    {% if current_user.is_authenticated %}
                     <a href="{{ url_for('nueva_factura') }}" class="btn btn-outline-brand btn-sm">
                         <i class="bi bi-plus-lg me-1"></i>Nuevo Documento
                     </a>
+                    {% endif %}
                 </div>
             </div>
 
@@ -125,14 +131,18 @@
                                         <a href="{{ url_for('ver_comprobante', numero=doc.numero) }}" class="btn btn-outline-success btn-sm rounded-pill" title="Ver e imprimir {{ 'cotización' if doc.tipo == 'Cotizacion' else 'factura' }}">
                                             <i class="bi bi-file-earmark-text-fill me-1"></i>{{ 'Cotización' if doc.tipo == 'Cotizacion' else 'Factura' }}
                                         </a>
+                                        {% if current_user.is_authenticated %}
                                         <a href="{{ url_for('editar_factura', numero=doc.numero) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
+                                        {% endif %}
+                                        {% if current_user.is_authenticated %}
                                         <form method="POST" action="{{ url_for('eliminar_factura', numero=doc.numero) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este registro?');" class="d-inline">
                                             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>
                                         </form>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -148,12 +158,16 @@
                     <h4 class="text-navy fw-bold">No hay documentos registrados</h4>
                     <p class="text-muted">Crea una factura o cotización para iniciar el registro comercial.</p>
                     <div class="d-flex justify-content-center gap-2 mt-3">
+                        {% if current_user.is_authenticated %}
                         <a href="{{ url_for('nueva_factura', tipo='Factura') }}" class="btn btn-verde">
                             <i class="bi bi-receipt me-1"></i>Nueva Factura
                         </a>
+                        {% endif %}
+                        {% if current_user.is_authenticated %}
                         <a href="{{ url_for('nueva_factura', tipo='Cotizacion') }}" class="btn btn-outline-secondary">
                             <i class="bi bi-file-earmark-text me-1"></i>Nueva Cotización
                         </a>
+                        {% endif %}
                     </div>
                 </div>
                 {% endif %}

@@ -122,16 +122,15 @@ document.addEventListener("DOMContentLoaded", () => {
     // PROCESAMIENTO DEL EVENTO 'submit'
     // --------------------------------------------------------------------------
     formularioContacto.addEventListener("submit", function (e) {
-        // Prevenir el envío HTTP tradicional para manejar la respuesta con JavaScript
-        e.preventDefault();
-
         const nombreOk = validarNombreContacto();
         const correoOk = validarCorreoContacto();
         const asuntoOk = validarAsuntoContacto();
         const mensajeOk = validarMensajeContacto();
 
-        // Si algún campo no pasa la validación, mostrar modal de error
+        // Si algún campo no pasa la validación del navegador, se detiene el envío
+        // y se muestra el modal de error (validación del lado del cliente).
         if (!nombreOk || !correoOk || !asuntoOk || !mensajeOk) {
+            e.preventDefault();
             const modalEl = document.getElementById("statusErrorsModal");
             if (modalEl && typeof bootstrap !== "undefined") {
                 const modalError = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -140,17 +139,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Si todos los campos son válidos, mostrar modal de confirmación de éxito
-        const modalExitoEl = document.getElementById("statusSuccessModal");
-        if (modalExitoEl && typeof bootstrap !== "undefined") {
-            const modalExito = bootstrap.Modal.getOrCreateInstance(modalExitoEl);
-            modalExito.show();
-        }
-
-        // Limpiar el formulario y remover clases visuales de validación
-        formularioContacto.reset();
-        [nombreContacto, correoContacto, asuntoContacto, mensajeContacto].forEach(campo => {
-            if (campo) campo.classList.remove("is-valid", "is-invalid");
-        });
+        // Si todo es válido, NO se previene el envío: el formulario se envía al
+        // servidor (ruta /contacto), que guarda la solicitud en la base de datos
+        // y muestra un mensaje de confirmación. El servidor es la fuente real.
     });
 });

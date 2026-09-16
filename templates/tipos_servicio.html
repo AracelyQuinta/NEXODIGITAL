@@ -14,9 +14,11 @@
             Organiza el catálogo de servicios agrupándolos por tipo de solución que ofrece la empresa.
         </p>
         <div>
+            {% if current_user.is_authenticated %}
             <a href="{{ url_for('nuevo_tipo_servicio') }}" class="btn btn-verde btn-lg shadow-sm">
                 <i class="bi bi-collection me-2"></i>Registrar nueva categoría
             </a>
+            {% endif %}
         </div>
     </div>
 </section>
@@ -36,9 +38,11 @@
                     <span class="badge bg-navy text-white px-3 py-2 rounded-pill">
                         <i class="bi bi-collection me-1"></i>{{ tipos|length }} Categorías
                     </span>
+                    {% if current_user.is_authenticated %}
                     <a href="{{ url_for('nuevo_tipo_servicio') }}" class="btn btn-outline-brand btn-sm">
                         <i class="bi bi-plus-lg me-1"></i>Nueva Categoría
                     </a>
+                    {% endif %}
                     <a href="{{ url_for('servicios') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-arrow-left me-1"></i>Volver al catálogo
                     </a>
@@ -68,14 +72,18 @@
                                 </td>
                                 <td class="py-3 text-center pe-4">
                                     <div class="d-inline-flex gap-1">
+                                        {% if current_user.is_authenticated %}
                                         <a href="{{ url_for('editar_tipo_servicio', id=tipo.id) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar categoría">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
+                                        {% endif %}
+                                        {% if current_user.is_authenticated %}
                                         <form method="POST" action="{{ url_for('eliminar_tipo_servicio', id=tipo.id) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar la categoría «{{ tipo.nombre }}»?');" class="d-inline">
                                             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar categoría">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>
                                         </form>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -90,9 +98,11 @@
                     </div>
                     <h4 class="text-navy fw-bold">No existen categorías registradas</h4>
                     <p class="text-muted">Crea una categoría antes de registrar servicios.</p>
+                    {% if current_user.is_authenticated %}
                     <a href="{{ url_for('nuevo_tipo_servicio') }}" class="btn btn-verde mt-2">
                         <i class="bi bi-plus-lg me-1"></i>Registrar Primera Categoría
                     </a>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>

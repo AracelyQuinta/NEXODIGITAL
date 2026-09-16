@@ -71,7 +71,7 @@ def load_user(user_id):
     """
     Flask-Login llama a esta función en cada petición para recuperar al usuario
     que tiene la sesión activa, a partir del id guardado en la sesión.
-    Devuelve un objeto Usuario, o None si no existe.
+    Devuelve un objeto Usuario (con su rol), o None si no existe.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -82,6 +82,7 @@ def load_user(user_id):
     if fila:
         return Usuario(id=fila['id'], usuario=fila['usuario'], password=fila['password'])
     return None
+
 
 # ==============================================================================
 # RUTAS PÚBLICAS Y VISTAS GENERALES
@@ -152,6 +153,7 @@ def proveedores():
 
 
 @app.route('/clientes')
+@login_required
 def clientes():
     """
     Ruta del directorio de clientes comerciales.
@@ -171,6 +173,7 @@ def clientes():
 
 
 @app.route('/facturacion')
+@login_required
 def facturacion():
     """
     Ruta principal del panel comercial de Facturación y Cotizaciones.
@@ -332,6 +335,7 @@ def eliminar_cliente(cedula):
 # ==============================================================================
 
 @app.route('/tipos-negocio')
+@login_required
 def tipos_negocio():
     """
     Lista las categorías de tipo de negocio disponibles para clasificar clientes.
@@ -434,6 +438,7 @@ def eliminar_tipo_negocio(id):
 # ==============================================================================
 
 @app.route('/tipos-servicio')
+@login_required
 def tipos_servicio():
     """
     Lista las categorías de servicio disponibles en el catálogo.
@@ -758,6 +763,7 @@ def eliminar_proveedor(id):
 # ==============================================================================
 
 @app.route('/categorias-proveedor')
+@login_required
 def categorias_proveedor():
     """
     Lista las categorías de infraestructura disponibles para clasificar proveedores.
@@ -1154,6 +1160,7 @@ def ver_comprobante(numero):
 # Cumple el requisito de "consulta relacionada entre dos tablas con JOIN".
 
 @app.route('/estadisticas')
+@login_required
 def estadisticas():
     """
     Panel de resultados del negocio. Calcula, a partir de las facturas reales:
@@ -1207,13 +1214,69 @@ def estadisticas():
 
 
 # ==============================================================================
+# MÓDULO DE SOLICITUDES DE CONTACTO (Semana 14)
+# ==============================================================================
+# Los clientes dejan sus solicitudes desde la página pública (Contáctanos).
+# El personal administrativo las revisa desde una página protegida.
+
+@app.route('/contacto', methods=['POST'])
+def enviar_contacto():
+    """
+    Recibe el mensaje del formulario público de contacto y lo GUARDA en la
+    tabla 'solicitudes' de la base de datos. Es público: cualquier visitante
+    puede enviar una solicitud (no requiere sesión).
+    """
+    nombre = request.form.get('nombre', '').strip()
+    correo = request.form.get('correo', '').strip()
+    asunto = request.form.get('asunto', '').strip()
+    mensaje = request.form.get('mensaje', '').strip()
+
+    # Validación mínima en el servidor.
+    if not nombre or not correo or not mensaje:
+        flash('Por favor completa nombre, correo y mensaje.', 'danger')
+        return redirect(url_for('inicio') + '#contacto')
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        'INSERT INTO solicitudes (nombre, correo, asunto, mensaje) VALUES (%s, %s, %s, %s)',
+        (nombre, correo, asunto, mensaje)
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    flash('¡Gracias! Tu solicitud fue enviada. Nos pondremos en contacto contigo pronto.', 'success')
+    return redirect(url_for('inicio') + '#contacto')
+
+
+@app.route('/solicitudes')
+@login_required
+def solicitudes():
+    """
+    Muestra al administrador todas las solicitudes de contacto recibidas de los
+    clientes, ordenadas de la más reciente a la más antigua.
+    Protegida con @login_required: solo el personal administrativo la ve.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM solicitudes ORDER BY fecha DESC')
+    lista_solicitudes = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return render_template('solicitudes.html', solicitudes=lista_solicitudes)
+
+
+# ==============================================================================
 # MÓDULO DE AUTENTICACIÓN (Semana 14): registro, login y logout
 # ==============================================================================
 
 @app.route('/registro', methods=['GET', 'POST'])
+@login_required
 def registro():
     """
-    Registra un nuevo usuario en el sistema.
+    Registra un nuevo usuario del equipo interno (Semana 14).
+    SOLO un administrador puede crear usuarios (protegido con @login_required).
     La contraseña se protege con generate_password_hash() ANTES de guardarla,
     de modo que en la base de datos nunca queda en texto plano.
     """
@@ -1237,7 +1300,7 @@ def registro():
             flash('Ese nombre de usuario ya está registrado. Elige otro.', 'danger')
             return render_template('registro.html', form=form)
 
-        # Insertar el nuevo usuario con la contraseña ya protegida (consulta parametrizada).
+        # Insertar el nuevo usuario con la contraseña protegida (consulta parametrizada).
         cursor.execute(
             'INSERT INTO usuarios (usuario, password) VALUES (%s, %s)',
             (nombre_usuario, password_hash)
@@ -1246,8 +1309,8 @@ def registro():
         cursor.close()
         conn.close()
 
-        flash('Usuario registrado correctamente. Ya puedes iniciar sesión.', 'success')
-        return redirect(url_for('login'))
+        flash(f'Usuario "{nombre_usuario}" registrado correctamente. Ya puede iniciar sesión.', 'success')
+        return redirect(url_for('inicio'))
 
     return render_template('registro.html', form=form)
 
@@ -1277,7 +1340,8 @@ def login():
 
         # Se valida que el usuario exista Y que la contraseña coincida con el hash.
         if fila and check_password_hash(fila['password'], form.password.data):
-            usuario_obj = Usuario(id=fila['id'], usuario=fila['usuario'], password=fila['password'])
+            usuario_obj = Usuario(id=fila['id'], usuario=fila['usuario'],
+                                  password=fila['password'])
             login_user(usuario_obj)  # Flask-Login crea y mantiene la sesión.
             flash(f'Bienvenido, {fila["usuario"]}.', 'success')
             # Si el usuario venía de una página protegida, se le devuelve allí.

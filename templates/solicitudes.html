@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block titulo %}Solicitudes de Contacto - Nexo Digital{% endblock %}
+
+{% block content %}
+<!-- ==============================================================================
+     SOLICITUDES DE CONTACTO (Semana 14) - solo visible para administradores
+     ============================================================================== -->
+<section class="page-header py-4 text-white">
+    <div class="container text-center">
+        <h1 class="h3 fw-bold mb-1">Solicitudes de Contacto</h1>
+        <p class="text-light-emerald small mb-0">Mensajes enviados por los clientes desde la página pública</p>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom py-3">
+                <h5 class="mb-0 fw-bold">
+                    <i class="bi bi-inbox-fill me-2 text-success"></i>
+                    Bandeja de solicitudes
+                    <span class="badge bg-success ms-2">{{ solicitudes|length }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+
+                {% if solicitudes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Nombre</th>
+                                    <th>Correo</th>
+                                    <th>Asunto</th>
+                                    <th>Mensaje</th>
+                                    <th class="text-center">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in solicitudes %}
+                                <tr>
+                                    <td class="small text-muted">{{ s.fecha.strftime('%d/%m/%Y %H:%M') if s.fecha and s.fecha.strftime is defined else s.fecha }}</td>
+                                    <td class="fw-semibold">{{ s.nombre }}</td>
+                                    <td class="small">{{ s.correo }}</td>
+                                    <td class="small">{{ s.asunto or '-' }}</td>
+                                    <td class="small">{{ s.mensaje }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info text-dark">{{ s.estado }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox fs-1 text-muted d-block mb-3"></i>
+                        <p class="text-muted mb-0">Todavía no hay solicitudes de contacto.</p>
+                        <p class="text-muted small">Cuando un cliente escriba desde la página de inicio, aparecerá aquí.</p>
+                    </div>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
