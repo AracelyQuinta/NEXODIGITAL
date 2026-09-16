@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # PROYECTO: NEXODIGITAL - SOLUCIONES WEB Y COMERCIALES
 # Control Principal de la Aplicación Flask (Backend)
 # ==============================================================================
@@ -70,6 +70,7 @@ def inicio():
 
 
 @app.route('/servicio')
+@app.route('/servicios')
 def servicios():
     """
     Ruta del catálogo completo de servicios.
