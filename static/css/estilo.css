@@ -289,7 +289,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .service-card {
-    overflow: hidden;
+    overflow: visible;
     border: 1px solid var(--border-color);
 }
 
@@ -315,6 +315,37 @@ h1, h2, h3, h4, h5, h6 {
 
 .service-card:hover .card-img-wrapper img {
     transform: scale(1.04);
+}
+
+.titulo-servicio,
+.descripcion-servicio {
+    overflow-wrap: anywhere;
+    word-break: normal;
+    white-space: normal;
+    hyphens: auto;
+}
+
+.titulo-servicio {
+    min-height: 0;
+}
+
+.descripcion-servicio {
+    min-height: 0;
+}
+
+textarea.form-control {
+    min-height: 110px;
+    resize: vertical;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+td,
+th,
+.card-body,
+.alert,
+.form-label {
+    overflow-wrap: anywhere;
 }
 
 .price-tag {

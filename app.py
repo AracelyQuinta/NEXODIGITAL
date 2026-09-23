@@ -2050,11 +2050,13 @@ def nueva_factura():
             cursor.close()
             conn.close()
             flash('Agrega al menos un servicio antes de guardar el documento.', 'danger')
-            servicios_catalogo = []
-            cursor_reintento = get_db_connection().cursor()
-            cursor_reintento.execute('SELECT * FROM servicios ORDER BY nombre')
-            servicios_catalogo = cursor_reintento.fetchall()
-            cursor_reintento.connection.close()
+            cursor_reintento = get_db_connection()
+            try:
+                with cursor_reintento.cursor() as cursor_catalogo:
+                    cursor_catalogo.execute('SELECT * FROM servicios ORDER BY nombre')
+                    servicios_catalogo = cursor_catalogo.fetchall()
+            finally:
+                cursor_reintento.close()
             return render_template(
                 'formulario_facturacion.html', form=form, editando=False,
                 servicios_catalogo=servicios_catalogo, clientes_registrados=clientes_registrados,
