@@ -474,7 +474,10 @@ def registro():
 
         rol_obj = Role.get_by_id(form.rol_id.data)
         rol_nombre = rol_obj['nombre'] if rol_obj else 'Cliente'
-        aprobado = (rol_nombre == 'Cliente')
+        # Los roles operativos pueden iniciar sesión inmediatamente.
+        # Solo una cuenta que solicita privilegios de Administrador requiere
+        # aprobación explícita desde el panel administrativo.
+        aprobado = (rol_nombre != 'Administrador')
         password_hashed = User.hash_password(form.password.data)
 
         conn = None

@@ -11,6 +11,15 @@ UPDATE usuarios
 SET dos_factores_activo = TRUE,
     dos_factores_codigo = NULL;
 
+-- Las cuentas operativas no necesitan aprobación manual. Se mantiene la
+-- aprobación para las cuentas con privilegios de Administrador.
+UPDATE usuarios u
+SET aprobado = TRUE
+FROM roles r
+WHERE u.rol_id = r.id
+  AND r.nombre <> 'Administrador'
+  AND u.activo = TRUE;
+
 -- Estructura agregada después de la primera versión del esquema.
 ALTER TABLE solicitudes
     ADD COLUMN IF NOT EXISTS estado VARCHAR(30) NOT NULL DEFAULT 'Pendiente',
