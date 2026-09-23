@@ -459,18 +459,18 @@
 
                     <div class="mb-3">
                         <label for="nombreCliente" class="form-label fw-semibold text-navy small">Nombre del cliente</label>
-                        <input type="text" id="nombreCliente" class="form-control" placeholder="Ej: Carlos Mendoza" minlength="3" required>
+                        <input type="text" id="nombreCliente" class="form-control" placeholder="Ej: Carlos Mendoza" minlength="3" maxlength="150" autocomplete="name" required>
                         <div class="invalid-feedback">Ingresa al menos 3 caracteres.</div>
                     </div>
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label for="correoSolicitud" class="form-label fw-semibold text-navy small">Correo electrónico</label>
-                            <input type="email" id="correoSolicitud" class="form-control" placeholder="tu@correo.com" required>
+                            <input type="email" id="correoSolicitud" class="form-control" placeholder="tu@correo.com" maxlength="150" autocomplete="email" required>
                         </div>
                         <div class="col-md-6">
                             <label for="telefonoSolicitud" class="form-label fw-semibold text-navy small">Teléfono (opcional)</label>
-                            <input type="tel" id="telefonoSolicitud" class="form-control" placeholder="0991234567" maxlength="10">
+                            <input type="tel" id="telefonoSolicitud" class="form-control" placeholder="0991234567" maxlength="30" autocomplete="tel">
                         </div>
                     </div>
 
@@ -489,7 +489,7 @@
 
                     <div class="mb-3">
                         <label for="descripcionSolicitud" class="form-label fw-semibold text-navy small">Descripción del requerimiento</label>
-                        <textarea id="descripcionSolicitud" class="form-control" rows="3" placeholder="Describe lo que necesitas..." minlength="10" required></textarea>
+                        <textarea id="descripcionSolicitud" class="form-control" rows="3" maxlength="5000" placeholder="Describe lo que necesitas..." minlength="10" required></textarea>
                         <div class="invalid-feedback">Mínimo 10 caracteres.</div>
                     </div>
 

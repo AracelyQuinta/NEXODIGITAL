@@ -416,7 +416,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Validación uniforme para login, 2FA y formularios CRUD.
-    document.querySelectorAll(".form-card form:not(#registroForm):not(#form2fa)").forEach((formulario) => {
+    document.querySelectorAll(".form-card form:not(#registroForm):not(#form2fa):not(#formSolicitud)").forEach((formulario) => {
         const campos = Array.from(formulario.querySelectorAll("input, select, textarea"))
             .filter((campo) => campo.type !== "hidden" && !campo.disabled);
         const boton = formulario.querySelector('button[type="submit"], input[type="submit"]');
@@ -491,7 +491,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function validarNombre() {
         if (!nombreCliente) return false;
         const valor = nombreCliente.value.trim();
-        const patron = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{3,}$/;
+        const patron = /^[\p{L}\s.'-]{3,}$/u;
 
         if (!patron.test(valor)) {
             nombreCliente.classList.add("is-invalid");
