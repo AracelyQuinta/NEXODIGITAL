@@ -124,11 +124,28 @@
                                             <i class="bi bi-eye-slash"></i>
                                         </button>
                                     </div>
-                                    <div id="passwordHelp" class="form-text">Usa 8 caracteres, mayúscula, minúscula, número y símbolo.</div>
+                                    <div id="passwordHelp" class="form-text">Usa una contraseña segura para proteger tu cuenta.</div>
+                                    <div id="passwordStrength" class="password-strength mt-2" aria-live="polite">
+                                        <div class="d-flex justify-content-between small mb-1">
+                                            <span class="text-muted">Seguridad de la contraseña</span>
+                                            <strong id="passwordStrengthText" class="text-muted">Pendiente</strong>
+                                        </div>
+                                        <div class="progress" style="height: 5px;">
+                                            <div id="passwordStrengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+                                        </div>
+                                        <div class="password-rules mt-2">
+                                            <span id="ruleLength"><i class="bi bi-circle"></i> 8 caracteres</span>
+                                            <span id="ruleUpper"><i class="bi bi-circle"></i> Mayúscula</span>
+                                            <span id="ruleLower"><i class="bi bi-circle"></i> Minúscula</span>
+                                            <span id="ruleNumber"><i class="bi bi-circle"></i> Número</span>
+                                            <span id="ruleSymbol"><i class="bi bi-circle"></i> Símbolo</span>
+                                        </div>
+                                    </div>
                                     {% for error in form.password.errors %}
                                         <div class="text-danger small mt-1">{{ error }}</div>
                                     {% endfor %}
                                 </div>
+                                <div id="confirmPasswordFeedback" class="invalid-feedback d-block"></div>
                                 <div class="col-md-6">
                                     {{ form.confirm_password.label(class="form-label fw-semibold text-navy small") }}
                                     <div class="input-group">
@@ -149,7 +166,7 @@
                             </div>
 
                             <div class="mb-3">
-                                <div class="form-check mb-2">
+                                <div class="form-check mb-2 consent-row">
                                     {{ form.mayor_edad(class="form-check-input" + (" is-invalid" if form.mayor_edad.errors else "")) }}
                                     {{ form.mayor_edad.label(class="form-check-label") }}
                                 </div>
@@ -157,7 +174,7 @@
                                     <div class="text-danger small mt-1">{{ error }}</div>
                                 {% endfor %}
 
-                                <div class="form-check">
+                                <div class="form-check consent-row">
                                     {{ form.acepta_terminos(class="form-check-input" + (" is-invalid" if form.acepta_terminos.errors else "")) }}
                                     {{ form.acepta_terminos.label(class="form-check-label") }}
                                 </div>

@@ -144,8 +144,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const listaAdvertencias = document.getElementById("registroAdvertenciaLista");
         const password = document.getElementById("password");
         const confirmPassword = document.getElementById("confirm_password");
+        const confirmPasswordFeedback = document.getElementById("confirmPasswordFeedback");
+        const submitButton = document.getElementById("registroSubmit");
         const mayorEdad = document.getElementById("mayor_edad");
         const aceptaTerminos = document.getElementById("acepta_terminos");
+        const passwordStrengthBar = document.getElementById("passwordStrengthBar");
+        const passwordStrengthText = document.getElementById("passwordStrengthText");
+        const passwordRules = {
+            length: document.getElementById("ruleLength"),
+            upper: document.getElementById("ruleUpper"),
+            lower: document.getElementById("ruleLower"),
+            number: document.getElementById("ruleNumber"),
+            symbol: document.getElementById("ruleSymbol")
+        };
         const camposUnicos = [
             {
                 campo: "usuario",
@@ -185,12 +196,62 @@ document.addEventListener("DOMContentLoaded", () => {
             campo.classList.toggle("is-invalid", !campo.checkValidity());
         };
 
+        const actualizarReglasPassword = () => {
+            if (!password) return false;
+            const valor = password.value;
+            const reglas = {
+                length: valor.length >= 8,
+                upper: /[A-Z]/.test(valor),
+                lower: /[a-z]/.test(valor),
+                number: /\d/.test(valor),
+                symbol: /[^A-Za-z0-9]/.test(valor)
+            };
+            Object.entries(reglas).forEach(([nombre, cumple]) => {
+                const regla = passwordRules[nombre];
+                if (!regla) return;
+                regla.classList.toggle("text-success", cumple);
+                regla.classList.toggle("text-muted", !cumple);
+                const icono = regla.querySelector("i");
+                if (icono) {
+                    icono.classList.toggle("bi-check-circle-fill", cumple);
+                    icono.classList.toggle("bi-circle", !cumple);
+                }
+            });
+            const puntos = Object.values(reglas).filter(Boolean).length;
+            const porcentaje = puntos * 20;
+            passwordStrengthBar.style.width = `${porcentaje}%`;
+            passwordStrengthBar.setAttribute("aria-valuenow", porcentaje);
+            passwordStrengthBar.className = `progress-bar ${puntos < 3 ? "bg-danger" : puntos < 5 ? "bg-warning" : "bg-success"}`;
+            passwordStrengthText.textContent = puntos < 3 ? "Débil" : puntos < 5 ? "Media" : "Fuerte";
+            passwordStrengthText.className = puntos < 3 ? "text-danger" : puntos < 5 ? "text-warning" : "text-success";
+            return puntos === 5;
+        };
+
+        const revisarConfirmacion = () => {
+            if (!confirmPassword) return false;
+            const coincide = confirmPassword.value.length > 0 && confirmPassword.value === password.value;
+            confirmPassword.classList.toggle("is-valid", coincide);
+            confirmPassword.classList.toggle("is-invalid", !coincide);
+            confirmPasswordFeedback.textContent = coincide ? "" : "Las contraseñas no coinciden.";
+            return coincide;
+        };
+
         [password, confirmPassword, mayorEdad, aceptaTerminos].forEach((campo) => {
             if (campo) {
-                campo.addEventListener("input", () => revisarCampo(campo));
-                campo.addEventListener("change", () => revisarCampo(campo));
+                campo.addEventListener("input", () => {
+                    revisarCampo(campo);
+                    if (campo === password) actualizarReglasPassword();
+                    if (campo === confirmPassword || campo === password) revisarConfirmacion();
+                });
+                campo.addEventListener("change", () => {
+                    revisarCampo(campo);
+                    if (campo === password) actualizarReglasPassword();
+                    if (campo === confirmPassword || campo === password) revisarConfirmacion();
+                });
             }
         });
+        actualizarReglasPassword();
+        if (confirmPassword && confirmPassword.value) revisarConfirmacion();
 
         const comprobarDisponibilidad = async (item) => {
             const valor = item.input.value.trim();
@@ -274,6 +335,10 @@ document.addEventListener("DOMContentLoaded", () => {
             mostrarAdvertencias([]);
             if (!window.confirm("Tus datos cumplen las validaciones del formulario. ¿Deseas continuar con el registro?")) {
                 return;
+            }
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Guardando información...';
             }
             registroForm.submit();
         });
