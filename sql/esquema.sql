@@ -310,10 +310,9 @@ FROM (VALUES
     -- Soporte técnico: Infraestructura y proveedores (sin ver datos sensibles ni facturación de clientes)
     ('Soporte técnico', 'servicios.ver'), ('Soporte técnico', 'servicios.editar'), ('Soporte técnico', 'servicios.futuros'),
     ('Soporte técnico', 'proveedores.ver'), ('Soporte técnico', 'proveedores.crear'), ('Soporte técnico', 'proveedores.editar'),
-    -- Usuario interno: Tareas asignadas, catálogo y emisión comercial
+    -- Usuario interno: Tareas asignadas y catálogo
     ('Usuario interno', 'servicios.ver'), ('Usuario interno', 'servicios.futuros'),
     ('Usuario interno', 'clientes.ver'),
-    ('Usuario interno', 'facturas.ver'), ('Usuario interno', 'facturas.crear'),
     -- Cliente: Servicios, servicios futuros, ranking y facturas propias (sin crear facturas ni ver proveedores)
     ('Cliente', 'servicios.ver'), ('Cliente', 'servicios.futuros'),
     ('Cliente', 'clientes.propio'),

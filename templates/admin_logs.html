@@ -41,7 +41,45 @@
 
             <!-- Buscador de Logs -->
             <div class="row g-2 align-items-center mb-3">
-                <div class="col-md-7 col-lg-6">
+                <form method="get" class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Fecha desde</label>
+                    <input type="date" name="fecha_desde" class="form-control form-control-sm" value="{{ filtros.fecha_desde }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Fecha hasta</label>
+                    <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="{{ filtros.fecha_hasta }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Hora desde</label>
+                    <input type="time" name="hora_desde" class="form-control form-control-sm" value="{{ filtros.hora_desde }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Hora hasta</label>
+                    <input type="time" name="hora_hasta" class="form-control form-control-sm" value="{{ filtros.hora_hasta }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Persona</label>
+                    <input type="search" name="persona" class="form-control form-control-sm" value="{{ filtros.persona }}" placeholder="Usuario">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Acción</label>
+                    <input type="search" name="accion" class="form-control form-control-sm" value="{{ filtros.accion }}" placeholder="LOGIN, CREAR...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">IP</label>
+                    <input type="search" name="ip" class="form-control form-control-sm" value="{{ filtros.ip }}" placeholder="Dirección IP">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small mb-1">Detalles</label>
+                    <input type="search" name="detalles" class="form-control form-control-sm" value="{{ filtros.detalles }}" placeholder="Texto del evento">
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button class="btn btn-verde btn-sm flex-grow-1" type="submit">Filtrar</button>
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin_logs') }}">Limpiar</a>
+                </div>
+                </form>
+                <div class="col-md-7 col-lg-6 d-none">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-light border-end-0 text-muted rounded-start-pill ps-3">
                             <i class="bi bi-search text-emerald"></i>

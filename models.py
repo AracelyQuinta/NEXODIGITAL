@@ -122,6 +122,54 @@ class ActivityLog(db.Model):
         conn.close()
         return logs
 
+    @staticmethod
+    def buscar(fecha_desde=None, fecha_hasta=None, hora_desde=None,
+               hora_hasta=None, persona=None, accion=None, ip=None,
+               detalles=None, limit=500):
+        """Busca auditoría con filtros aplicados en PostgreSQL."""
+        from conexion.conexion import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        condiciones = []
+        parametros = []
+        if fecha_desde:
+            condiciones.append('l.fecha >= %s::date')
+            parametros.append(fecha_desde)
+        if fecha_hasta:
+            condiciones.append("l.fecha < (%s::date + INTERVAL '1 day')")
+            parametros.append(fecha_hasta)
+        if hora_desde:
+            condiciones.append('l.fecha::time >= %s::time')
+            parametros.append(hora_desde)
+        if hora_hasta:
+            condiciones.append('l.fecha::time <= %s::time')
+            parametros.append(hora_hasta)
+        for columna, valor in (
+            ('l.usuario_nombre', persona),
+            ('l.accion', accion),
+            ('l.ip', ip),
+            ('l.detalles', detalles),
+        ):
+            if valor:
+                condiciones.append(f'COALESCE({columna}, \'\') ILIKE %s')
+                parametros.append(f'%{valor}%')
+
+        where = f"WHERE {' AND '.join(condiciones)}" if condiciones else ''
+        parametros.append(limit)
+        cursor.execute(f'''
+            SELECT l.*, r.nombre AS rol_nombre
+            FROM logs_actividad l
+            LEFT JOIN usuarios u ON l.usuario_id = u.id
+            LEFT JOIN roles r ON u.rol_id = r.id
+            {where}
+            ORDER BY l.fecha DESC, l.id DESC
+            LIMIT %s
+        ''', parametros)
+        logs = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return logs
+
 
 # ==============================================================================
 # MODELO Y CLASE DE USUARIO (UserMixin para Flask-Login)

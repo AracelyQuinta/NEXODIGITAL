@@ -829,17 +829,32 @@ def dashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute('SELECT COUNT(*) AS total FROM clientes')
-    total_clientes = cursor.fetchone()['total']
+    if current_user.rol_nombre == 'Cliente':
+        total_clientes = 0
+    else:
+        cursor.execute('SELECT COUNT(*) AS total FROM clientes')
+        total_clientes = cursor.fetchone()['total']
 
     cursor.execute('SELECT COUNT(*) AS total FROM servicios')
     total_servicios = cursor.fetchone()['total']
 
-    cursor.execute('SELECT COUNT(*) AS total FROM facturacion')
+    if current_user.rol_nombre == 'Cliente':
+        cursor.execute('''
+            SELECT COUNT(*) AS total
+            FROM facturacion f
+            JOIN clientes c ON f.cliente_cedula = c.cedula
+            WHERE LOWER(TRIM(c.correo)) = LOWER(TRIM(%s))
+               OR c.cedula = %s
+        ''', (current_user.correo, current_user.usuario))
+    else:
+        cursor.execute('SELECT COUNT(*) AS total FROM facturacion')
     total_facturas = cursor.fetchone()['total']
 
-    cursor.execute('SELECT COUNT(*) AS total FROM proveedores')
-    total_proveedores = cursor.fetchone()['total']
+    if current_user.rol_nombre == 'Cliente':
+        total_proveedores = 0
+    else:
+        cursor.execute('SELECT COUNT(*) AS total FROM proveedores')
+        total_proveedores = cursor.fetchone()['total']
 
     # Si es Cliente, muestra únicamente sus propios documentos comerciales
     if current_user.rol_nombre == 'Cliente':
@@ -848,10 +863,11 @@ def dashboard():
             FROM facturacion f
             JOIN clientes c ON f.cliente_cedula = c.cedula
             JOIN estados_documento e ON f.estado_id = e.id
-            WHERE c.correo = %s OR f.cliente_cedula = %s OR c.nombre ILIKE %s
+            WHERE LOWER(TRIM(c.correo)) = LOWER(TRIM(%s))
+               OR c.cedula = %s
             ORDER BY f.fecha DESC, f.numero DESC
             LIMIT 5
-        ''', (current_user.correo, current_user.usuario, f'%{current_user.usuario}%'))
+        ''', (current_user.correo, current_user.usuario))
     else:
         # Consulta JOIN general para Administrador, Gestor y Soporte
         cursor.execute('''
@@ -1026,8 +1042,31 @@ def admin_logs():
     """
     Visualiza el registro histórico de auditoría de actividad del sistema.
     """
-    logs = ActivityLog.get_recientes(100)
-    return render_template('admin_logs.html', logs=logs)
+    filtros = {
+        'fecha_desde': request.args.get('fecha_desde', '').strip(),
+        'fecha_hasta': request.args.get('fecha_hasta', '').strip(),
+        'hora_desde': request.args.get('hora_desde', '').strip(),
+        'hora_hasta': request.args.get('hora_hasta', '').strip(),
+        'persona': request.args.get('persona', '').strip(),
+        'accion': request.args.get('accion', '').strip(),
+        'ip': request.args.get('ip', '').strip(),
+        'detalles': request.args.get('detalles', '').strip(),
+    }
+    for nombre_filtro, formato in (
+        ('fecha_desde', '%Y-%m-%d'),
+        ('fecha_hasta', '%Y-%m-%d'),
+        ('hora_desde', '%H:%M'),
+        ('hora_hasta', '%H:%M'),
+    ):
+        valor = filtros[nombre_filtro]
+        if valor:
+            try:
+                datetime.strptime(valor, formato)
+            except ValueError:
+                filtros[nombre_filtro] = ''
+                flash(f'El filtro {nombre_filtro.replace("_", " ")} no es válido.', 'warning')
+    logs = ActivityLog.buscar(**filtros)
+    return render_template('admin_logs.html', logs=logs, filtros=filtros)
 
 
 @app.route('/solicitudes', methods=['GET'])
@@ -1292,7 +1331,7 @@ def clientes():
 
 
 @app.route('/facturacion')
-@role_required('Administrador', 'Gestor de proyectos', 'Usuario interno', 'Cliente')
+@role_required('Administrador', 'Gestor de proyectos', 'Cliente')
 def facturacion():
     """
     Ruta principal del panel comercial de Facturación y Cotizaciones.
@@ -1309,9 +1348,10 @@ def facturacion():
             FROM facturacion f
             JOIN clientes c ON f.cliente_cedula = c.cedula
             JOIN estados_documento e ON f.estado_id = e.id
-            WHERE c.correo = %s OR f.cliente_cedula = %s OR c.nombre ILIKE %s
+            WHERE LOWER(TRIM(c.correo)) = LOWER(TRIM(%s))
+               OR c.cedula = %s
             ORDER BY f.numero DESC
-        ''', (current_user.correo, current_user.usuario, f'%{current_user.usuario}%'))
+        ''', (current_user.correo, current_user.usuario))
     else:
         cursor.execute('''
             SELECT f.*, c.nombre AS cliente_nombre, e.nombre AS estado_nombre
@@ -2048,7 +2088,7 @@ def eliminar_categoria_proveedor(id):
 # ==============================================================================
 
 @app.route('/facturacion/nueva', methods=['GET', 'POST'])
-@role_required('Administrador', 'Gestor de proyectos', 'Usuario interno')
+@role_required('Administrador', 'Gestor de proyectos')
 @permission_required('facturas.crear')
 def nueva_factura():
     """

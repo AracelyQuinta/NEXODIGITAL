@@ -40,13 +40,13 @@ JOIN permisos p ON p.codigo = 'servicios.editar'
 WHERE r.nombre = 'Soporte técnico'
 ON CONFLICT DO NOTHING;
 
--- Permisos de facturación del Usuario interno.
-INSERT INTO rol_permisos (rol_id, permiso_id)
-SELECT r.id, p.id
-FROM roles r
-JOIN permisos p ON p.codigo IN ('facturas.ver', 'facturas.crear')
-WHERE r.nombre = 'Usuario interno'
-ON CONFLICT DO NOTHING;
+-- El Usuario interno no tiene acceso a la facturación completa.
+DELETE FROM rol_permisos rp
+USING roles r, permisos p
+WHERE rp.rol_id = r.id
+  AND rp.permiso_id = p.id
+  AND r.nombre = 'Usuario interno'
+  AND p.codigo IN ('facturas.ver', 'facturas.crear', 'facturas.editar', 'facturas.eliminar');
 
 -- Catálogo igual al catálogo local. Solo actualiza los seis servicios base;
 -- no elimina servicios personalizados agregados en Render.
