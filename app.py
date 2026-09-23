@@ -110,10 +110,18 @@ def resolver_url_imagen(valor):
 app = Flask(__name__)
 
 # Clave secreta para la protección de sesiones y seguridad contra ataques CSRF en formularios
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'nexodigital_clave_secreta_2026')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+if not app.config['SECRET_KEY']:
+    if os.getenv('FLASK_ENV', 'development').lower() != 'production':
+        app.config['SECRET_KEY'] = 'clave-local-nexodigital-2026'
+    else:
+        raise RuntimeError('SECRET_KEY es obligatoria fuera del modo de desarrollo.')
 
 # Expiración automática de sesión tras 30 minutos de inactividad
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_ENV', 'development').lower() == 'production'
 
 # ------------------------------------------------------------------------------
 # CONFIGURACIÓN DE AUTENTICACIÓN (Flask-Login)
@@ -665,6 +673,7 @@ def dashboard():
 # ==============================================================================
 
 @app.route('/admin/usuarios')
+@login_required
 @role_required('Administrador')
 def admin_usuarios():
     """
@@ -704,6 +713,7 @@ def admin_usuarios():
 
 
 @app.route('/admin/aprobar-usuario/<int:id>', methods=['POST'])
+@login_required
 @role_required('Administrador')
 def admin_aprobar_usuario(id):
     """
@@ -728,6 +738,7 @@ def admin_aprobar_usuario(id):
 
 
 @app.route('/admin/cambiar-rol/<int:id>', methods=['POST'])
+@login_required
 @role_required('Administrador')
 def admin_cambiar_rol(id):
     """
@@ -762,6 +773,7 @@ def admin_cambiar_rol(id):
 
 
 @app.route('/admin/logs')
+@login_required
 @role_required('Administrador')
 def admin_logs():
     """

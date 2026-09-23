@@ -50,7 +50,8 @@
                             <span class="input-group-text bg-light border-end-0 text-muted rounded-start-pill ps-3">
                                 <i class="bi bi-search text-emerald"></i>
                             </span>
-                            <input type="text" id="buscadorProveedores" class="form-control bg-light border-start-0 border-end-0 py-2"
+                            <input type="text" id="buscadorProveedores" class="form-control table-filter-control bg-light border-start-0 border-end-0 py-2"
+                                   data-filter-target=".fila-proveedor" data-filter-count="#contadorProveedoresVisibles" data-filter-clear="#btnLimpiarProveedores"
                                    placeholder="Buscar por proveedor, tipo de servicio, sitio web o estado..."
                                    autocomplete="off">
                             <button class="btn btn-light border-start-0 rounded-end-pill pe-3 text-muted" type="button" id="btnLimpiarProveedores" title="Borrar búsqueda">
@@ -131,7 +132,7 @@
                                         <a href="{{ url_for('editar_proveedor', id=proveedor.id) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar proveedor">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
-                                        <form method="POST" action="{{ url_for('eliminar_proveedor', id=proveedor.id) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar a «{{ proveedor.nombre }}»?');" class="d-inline">
+                                        <form method="POST" action="{{ url_for('eliminar_proveedor', id=proveedor.id) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar a &quot;{{ proveedor.nombre }}&quot;?');" class="d-inline">
                                             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar proveedor">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>

@@ -47,10 +47,25 @@
 
             <div class="card-body p-0">
                 {% if tipos %}
+                <div class="p-4 border-bottom">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-end-0 rounded-start-pill ps-3">
+                            <i class="bi bi-search text-emerald"></i>
+                        </span>
+                        <input type="text" class="form-control table-filter-control border-start-0 border-end-0 py-2"
+                               placeholder="Buscar categoría de servicio..." autocomplete="off"
+                               data-filter-target=".fila-tipo-servicio" data-filter-count="#contadorTiposServicio"
+                               data-filter-clear="#btnLimpiarTiposServicio">
+                        <button type="button" id="btnLimpiarTiposServicio" class="btn btn-light border-start-0 rounded-end-pill pe-3 text-muted" title="Limpiar búsqueda">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-2">Mostrando <strong id="contadorTiposServicio">{{ tipos|length }}</strong> de {{ tipos|length }} categorías.</small>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0 custom-table">
                         <thead class="table-navy text-white">
-                            <tr>
+                            <tr class="fila-tipo-servicio">
                                 <th class="ps-4 py-3">Categoría</th>
                                 <th class="py-3 text-center pe-4">Acciones</th>
                             </tr>
@@ -71,7 +86,7 @@
                                         <a href="{{ url_for('editar_tipo_servicio', id=tipo.id) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar categoría">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
-                                        <form method="POST" action="{{ url_for('eliminar_tipo_servicio', id=tipo.id) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar la categoría «{{ tipo.nombre }}»?');" class="d-inline">
+                                        <form method="POST" action="{{ url_for('eliminar_tipo_servicio', id=tipo.id) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar la categoría &quot;{{ tipo.nombre }}&quot;?');" class="d-inline">
                                             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar categoría">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>

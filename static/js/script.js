@@ -11,6 +11,73 @@
 // ==============================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
+    function normalizarTexto(valor) {
+        return (valor || "")
+            .toString()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim();
+    }
+
+    // Mantiene la misma respuesta visual en todos los formularios.
+    document.querySelectorAll(".form-card form").forEach((formulario) => {
+        formulario.querySelectorAll("input, select, textarea").forEach((campo) => {
+            if (campo.type === "hidden") return;
+
+            const actualizarEstado = () => {
+                if (campo.classList.contains("is-invalid") && campo.value.trim()) {
+                    campo.classList.remove("is-invalid");
+                }
+                if (campo.value.trim() && campo.checkValidity()) {
+                    campo.classList.add("is-valid");
+                } else {
+                    campo.classList.remove("is-valid");
+                }
+            };
+
+            campo.addEventListener("input", actualizarEstado);
+            campo.addEventListener("change", actualizarEstado);
+            campo.addEventListener("blur", actualizarEstado);
+        });
+    });
+
+    // Filtro común para cualquier tabla que declare data-filter-target.
+    document.querySelectorAll("[data-filter-target]").forEach((input) => {
+        const selector = input.dataset.filterTarget;
+        const filas = Array.from(document.querySelectorAll(selector));
+        const contador = input.dataset.filterCount
+            ? document.querySelector(input.dataset.filterCount)
+            : null;
+        if (!filas.length) return;
+
+        const aplicarFiltro = () => {
+            const consulta = normalizarTexto(input.value);
+            let visibles = 0;
+
+            filas.forEach((fila) => {
+                const contenido = normalizarTexto(fila.textContent);
+                const visible = !consulta || contenido.includes(consulta);
+                fila.classList.toggle("d-none", !visible);
+                if (visible) visibles += 1;
+            });
+
+            if (contador) contador.textContent = visibles;
+        };
+
+        input.addEventListener("input", aplicarFiltro);
+        const limpiar = input.dataset.filterClear
+            ? document.querySelector(input.dataset.filterClear)
+            : null;
+        if (limpiar) {
+            limpiar.addEventListener("click", () => {
+                input.value = "";
+                aplicarFiltro();
+                input.focus();
+            });
+        }
+    });
+
     document.querySelectorAll('.password-toggle-btn').forEach((button) => {
         button.addEventListener('click', () => {
             const input = button.closest('.input-group')?.querySelector('.password-toggle');

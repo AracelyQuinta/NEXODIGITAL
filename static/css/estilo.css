@@ -61,6 +61,59 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* Controles uniformes para todos los formularios de la aplicación. */
+.form-card .form-control,
+.form-card .form-select,
+.form-card .input-group-text,
+.form-card .btn {
+    min-height: 44px;
+}
+
+.form-card .form-control,
+.form-card .form-select {
+    border-color: var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-body);
+    background-color: #ffffff;
+}
+
+.form-card .form-control:focus,
+.form-card .form-select:focus {
+    border-color: var(--emerald);
+    box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.16);
+}
+
+.form-card .input-group > .form-control,
+.form-card .input-group > .form-select {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.form-card .input-group > .input-group-text {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.form-card .form-control.is-valid,
+.form-card .form-select.is-valid {
+    border-color: var(--emerald);
+    background-image: none;
+}
+
+.form-card .form-control.is-invalid,
+.form-card .form-select.is-invalid {
+    background-image: none;
+}
+
+.table-filter-control {
+    min-height: 42px;
+    border: 1px solid var(--border-color);
+    background-color: #f8fafc;
+}
+
+.table-filter-control:focus {
+    border-color: var(--emerald);
+    box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.16);
+}
+
 /* Títulos con Contraste y Peso Óptimo */
 h1, h2, h3, h4, h5, h6 {
     color: var(--text-heading);

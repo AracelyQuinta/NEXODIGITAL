@@ -55,7 +55,7 @@
                                 {{ form.password.label(class="form-label fw-semibold text-navy small") }}
                                 <div class="input-group">
                                     <span class="input-group-text bg-light"><i class="bi bi-key-fill"></i></span>
-                                    {{ form.password(class="form-control password-toggle" + (" is-invalid" if form.password.errors else ""), placeholder="••••••••", autocomplete="current-password") }}
+                                    {{ form.password(class="form-control password-toggle" + (" is-invalid" if form.password.errors else ""), placeholder="********", autocomplete="current-password") }}
                                     <button type="button" class="btn btn-outline-secondary password-toggle-btn" aria-label="Mostrar contraseña" title="Mostrar contraseña">
                                         <i class="bi bi-eye-slash"></i>
                                     </button>

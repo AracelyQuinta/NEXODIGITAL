@@ -331,7 +331,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (disponibilidad === "0") filtrosActivos.push("Próximamente");
 
         if (filtrosActivos.length > 0) {
-            filtroActivoBadge.textContent = "Filtro: " + filtrosActivos.join(" • ");
+            filtroActivoBadge.textContent = "Filtro: " + filtrosActivos.join(" | ");
             filtroActivoBadge.classList.remove("d-none");
             btnRestablecerContenedor.classList.remove("d-none");
         } else {
@@ -442,4 +442,3 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 {% endblock %}
-

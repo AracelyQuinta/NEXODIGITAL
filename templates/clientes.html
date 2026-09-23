@@ -50,7 +50,8 @@
                             <span class="input-group-text bg-light border-end-0 text-muted rounded-start-pill ps-3">
                                 <i class="bi bi-search text-emerald"></i>
                             </span>
-                            <input type="text" id="buscadorClientes" class="form-control bg-light border-start-0 border-end-0 py-2"
+                            <input type="text" id="buscadorClientes" class="form-control table-filter-control bg-light border-start-0 border-end-0 py-2"
+                                   data-filter-target=".fila-cliente" data-filter-count="#contadorClientesVisibles" data-filter-clear="#btnLimpiarClientes"
                                    placeholder="Buscar por cédula, nombre, tipo de negocio o ciudad..."
                                    autocomplete="off">
                             <button class="btn btn-light border-start-0 rounded-end-pill pe-3 text-muted" type="button" id="btnLimpiarClientes" title="Borrar búsqueda">
@@ -122,7 +123,7 @@
                                         <a href="{{ url_for('editar_cliente', cedula=cliente.cedula) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar cliente">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
-                                        <form method="POST" action="{{ url_for('eliminar_cliente', cedula=cliente.cedula) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar a «{{ cliente.nombre }}»?');" class="d-inline">
+                                        <form method="POST" action="{{ url_for('eliminar_cliente', cedula=cliente.cedula) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar a &quot;{{ cliente.nombre }}&quot;?');" class="d-inline">
                                             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar cliente">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>

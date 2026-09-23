@@ -93,7 +93,7 @@
                                         <select name="{{ form.cliente_cedula.name }}" id="{{ form.cliente_cedula.id }}" class="form-select{{ ' is-invalid' if form.cliente_cedula.errors else '' }}">
                                             <option value="">-- Selecciona un cliente registrado --</option>
                                             {% for c in clientes_registrados %}
-                                            <option value="{{ c.cedula }}" {% if form.cliente_cedula.data == c.cedula %}selected{% endif %}>{{ c.nombre }} ({{ c.negocio }} — {{ c.ciudad }})</option>
+                                            <option value="{{ c.cedula }}" {% if form.cliente_cedula.data == c.cedula %}selected{% endif %}>{{ c.nombre }} ({{ c.negocio }} - {{ c.ciudad }})</option>
                                             {% endfor %}
                                         </select>
                                     </div>
@@ -156,7 +156,7 @@
                                                         data-nombre="{{ s.nombre }}"
                                                         data-precio="{{ s.precio_base or 0.0 }}"
                                                         {% if servicio_seleccionado_id is defined and servicio_seleccionado_id == s.id %}selected{% endif %}>
-                                                    {{ s.nombre }} — ${{ "%.2f"|format(s.precio_base or 0.0) }}
+                                                    {{ s.nombre }} - ${{ "%.2f"|format(s.precio_base or 0.0) }}
                                                 </option>
                                             {% endfor %}
                                         </select>
