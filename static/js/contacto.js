@@ -147,10 +147,22 @@ document.addEventListener("DOMContentLoaded", () => {
             modalExito.show();
         }
 
+        const botonEnvio = formularioContacto.querySelector('button[type="submit"]');
+        if (botonEnvio) {
+            botonEnvio.disabled = true;
+            botonEnvio.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Procesando solicitud...';
+        }
+
         // Limpiar el formulario y remover clases visuales de validación
         formularioContacto.reset();
         [nombreContacto, correoContacto, asuntoContacto, mensajeContacto].forEach(campo => {
             if (campo) campo.classList.remove("is-valid", "is-invalid");
         });
+        window.setTimeout(() => {
+            if (botonEnvio) {
+                botonEnvio.disabled = false;
+                botonEnvio.innerHTML = '<i class="bi bi-send me-2"></i>Enviar mensaje';
+            }
+        }, 1200);
     });
 });

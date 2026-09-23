@@ -130,13 +130,34 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
+        codigo2fa.addEventListener("blur", () => {
+            if (!codigo2fa.value.trim()) {
+                mostrarError2fa("Ingresa el código de 6 dígitos para continuar.");
+            }
+        });
+
         form2fa.addEventListener("submit", (evento) => {
             if (!/^\d{6}$/.test(codigo2fa.value.trim())) {
                 evento.preventDefault();
                 mostrarError2fa("El código debe contener exactamente 6 dígitos.");
+                return;
+            }
+
+            const boton = document.getElementById("boton2fa");
+            if (boton) {
+                boton.disabled = true;
+                boton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Verificando...';
             }
         });
     }
+
+    document.querySelectorAll("#formPinRecuperacion input[name='pin']").forEach((campo) => {
+        campo.addEventListener("input", () => {
+            campo.value = campo.value.replace(/\D/g, "").slice(0, 6);
+            campo.classList.toggle("is-valid", /^\d{6}$/.test(campo.value));
+            campo.classList.toggle("is-invalid", campo.value.length > 0 && !/^\d{6}$/.test(campo.value));
+        });
+    });
 
     const registroForm = document.getElementById("registroForm");
     if (registroForm) {
@@ -393,6 +414,52 @@ document.addEventListener("DOMContentLoaded", () => {
             registroForm.submit();
         });
     }
+
+    // Validación uniforme para login, 2FA y formularios CRUD.
+    document.querySelectorAll(".form-card form:not(#registroForm):not(#form2fa)").forEach((formulario) => {
+        const campos = Array.from(formulario.querySelectorAll("input, select, textarea"))
+            .filter((campo) => campo.type !== "hidden" && !campo.disabled);
+        const boton = formulario.querySelector('button[type="submit"], input[type="submit"]');
+
+        const actualizarCampo = (campo, mostrarVacio = false) => {
+            const tieneValor = campo.type === "checkbox" ? campo.checked : campo.value.trim() !== "";
+            const valido = campo.checkValidity() && (tieneValor || !campo.required);
+            if (valido && (tieneValor || !campo.required)) {
+                campo.classList.add("is-valid");
+                campo.classList.remove("is-invalid");
+            } else if (mostrarVacio || tieneValor) {
+                campo.classList.add("is-invalid");
+                campo.classList.remove("is-valid");
+            }
+        };
+
+        campos.forEach((campo) => {
+            campo.addEventListener("input", () => actualizarCampo(campo));
+            campo.addEventListener("change", () => actualizarCampo(campo, true));
+            campo.addEventListener("blur", () => actualizarCampo(campo, true));
+        });
+
+        formulario.addEventListener("submit", (evento) => {
+            campos.forEach((campo) => actualizarCampo(campo, true));
+            if (!formulario.checkValidity()) {
+                evento.preventDefault();
+                const primerCampoInvalido = campos.find((campo) => !campo.checkValidity());
+                if (primerCampoInvalido) primerCampoInvalido.focus();
+                return;
+            }
+
+            if (boton) {
+                boton.disabled = true;
+                if (boton.tagName === "BUTTON") {
+                    boton.dataset.textoOriginal = boton.innerHTML;
+                    boton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Guardando información...';
+                } else {
+                    boton.dataset.textoOriginal = boton.value;
+                    boton.value = "Guardando información...";
+                }
+            }
+        });
+    });
 
     // Referencia al formulario de solicitudes
     const formulario = document.getElementById("formSolicitud");

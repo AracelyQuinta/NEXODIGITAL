@@ -32,7 +32,12 @@ def get_db_connection():
         # Algunos proveedores como Render usan 'postgres://' en vez de 'postgresql://'
         if db_url.startswith('postgres://'):
             db_url = db_url.replace('postgres://', 'postgresql://', 1)
-        conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
+        conn = psycopg2.connect(
+            db_url,
+            cursor_factory=RealDictCursor,
+            connect_timeout=10,
+            application_name='nexodigital-web'
+        )
         return conn
 
     conn = psycopg2.connect(
@@ -41,6 +46,8 @@ def get_db_connection():
         dbname=os.getenv('DB_NAME', 'nexodigital'),
         user=os.getenv('DB_USER', 'postgres'),
         password=os.getenv('DB_PASSWORD', ''),
-        cursor_factory=RealDictCursor
+        cursor_factory=RealDictCursor,
+        connect_timeout=10,
+        application_name='nexodigital-local'
     )
     return conn

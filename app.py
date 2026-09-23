@@ -20,6 +20,11 @@ import os
 import json
 import random
 import re
+import hashlib
+import secrets
+import smtplib
+from email.message import EmailMessage
+import psycopg2
 from html.parser import HTMLParser
 from functools import wraps
 from datetime import date, datetime, timedelta
@@ -45,6 +50,11 @@ from forms.login_form import LoginForm
 from forms.usuario_form import UsuarioForm
 from forms.producto_form import ProductoForm
 from forms.dos_factores_form import DosFactoresForm
+from forms.recuperacion_form import (
+    SolicitarRecuperacionForm,
+    VerificarPinForm,
+    NuevaPasswordForm,
+)
 
 # Módulo propio de conexión centralizada a PostgreSQL (carpeta conexion/)
 from conexion.conexion import get_db_connection
@@ -122,6 +132,15 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_ENV', 'development').lower() == 'production'
+
+
+@app.after_request
+def asegurar_codificacion_utf8(response):
+    """Declara UTF-8 explícitamente para que los textos en español no se deformen."""
+    if response.mimetype == 'text/html':
+        response.headers['Content-Type'] = 'text/html; charset=utf-8'
+    return response
+
 
 # ------------------------------------------------------------------------------
 # CONFIGURACIÓN DE AUTENTICACIÓN (Flask-Login)
@@ -203,6 +222,38 @@ def verificar_recaptcha(token):
         return bool(data.get('success'))
     except Exception:
         return False
+
+
+def enviar_pin_recuperacion(correo, usuario, pin):
+        """Envía el PIN de recuperación usando SMTP configurado en Render."""
+        smtp_host = os.getenv('SMTP_HOST')
+        smtp_port = int(os.getenv('SMTP_PORT', '587'))
+        smtp_user = os.getenv('SMTP_USER')
+        smtp_password = os.getenv('SMTP_PASSWORD')
+        smtp_from = os.getenv('SMTP_FROM', smtp_user or '')
+        if not smtp_host or not smtp_user or not smtp_password or not smtp_from:
+            raise RuntimeError('SMTP no está configurado. Define SMTP_HOST, SMTP_USER, SMTP_PASSWORD y SMTP_FROM.')
+
+        mensaje = EmailMessage()
+        mensaje['Subject'] = 'PIN para recuperar tu contraseña - NexoDigital'
+        mensaje['From'] = smtp_from
+        mensaje['To'] = correo
+        mensaje.set_content(
+            f'Hola {usuario},\n\n'
+            f'Tu PIN para recuperar la contraseña es: {pin}\n\n'
+            'Este PIN vence en 10 minutos y solo puede utilizarse una vez. '
+            'Si no solicitaste este cambio, ignora este mensaje.\n\n'
+            'NexoDigital'
+        )
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as servidor:
+            servidor.starttls()
+            servidor.login(smtp_user, smtp_password)
+            servidor.send_message(mensaje)
+
+
+def hash_pin(pin):
+        """Almacena únicamente una huella del PIN, nunca el PIN real."""
+        return hashlib.sha256(pin.encode('utf-8')).hexdigest()
 
 
 def registrar_log(accion, detalles=None):
@@ -466,35 +517,57 @@ def registro():
         aprobado = (rol_nombre == 'Cliente')
         password_hashed = User.hash_password(form.password.data)
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'usuarios' AND column_name IN ('nombres', 'apellidos', 'telefono', 'fecha_nacimiento', 'es_mayor_edad', 'acepta_terminos')")
-        columnas_extra = {row['column_name'] for row in cursor.fetchall()}
+        conn = None
+        cursor = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'usuarios' AND column_name IN ('nombres', 'apellidos', 'telefono', 'fecha_nacimiento', 'es_mayor_edad', 'acepta_terminos')")
+            columnas_extra = {row['column_name'] for row in cursor.fetchall()}
 
-        campos = ['usuario', 'correo', 'password', 'rol_id', 'activo', 'email_confirmado', 'aprobado', 'dos_factores_activo']
-        valores = [usuario_limpio, correo_limpio, password_hashed, form.rol_id.data, True, True, aprobado, True]
+            campos = ['usuario', 'correo', 'password', 'rol_id', 'activo', 'email_confirmado', 'aprobado', 'dos_factores_activo']
+            valores = [usuario_limpio, correo_limpio, password_hashed, form.rol_id.data, True, True, aprobado, True]
 
-        if 'nombres' in columnas_extra:
-            campos.append('nombres'); valores.append(nombres_limpios)
-        if 'apellidos' in columnas_extra:
-            campos.append('apellidos'); valores.append(apellidos_limpios)
-        if 'telefono' in columnas_extra:
-            campos.append('telefono'); valores.append(telefono_limpio)
-        if 'fecha_nacimiento' in columnas_extra:
-            campos.append('fecha_nacimiento'); valores.append(form.fecha_nacimiento.data)
-        if 'es_mayor_edad' in columnas_extra:
-            campos.append('es_mayor_edad'); valores.append(True)
-        if 'acepta_terminos' in columnas_extra:
-            campos.append('acepta_terminos'); valores.append(True)
+            if 'nombres' in columnas_extra:
+                campos.append('nombres'); valores.append(nombres_limpios)
+            if 'apellidos' in columnas_extra:
+                campos.append('apellidos'); valores.append(apellidos_limpios)
+            if 'telefono' in columnas_extra:
+                campos.append('telefono'); valores.append(telefono_limpio)
+            if 'fecha_nacimiento' in columnas_extra:
+                campos.append('fecha_nacimiento'); valores.append(form.fecha_nacimiento.data)
+            if 'es_mayor_edad' in columnas_extra:
+                campos.append('es_mayor_edad'); valores.append(True)
+            if 'acepta_terminos' in columnas_extra:
+                campos.append('acepta_terminos'); valores.append(True)
 
-        placeholders = ', '.join(['%s'] * len(campos))
-        columnas_sql = ', '.join(campos)
-        sql = f'''INSERT INTO usuarios ({columnas_sql}) VALUES ({placeholders}) RETURNING id'''
-        cursor.execute(sql, tuple(valores))
-        nuevo_id = cursor.fetchone()['id']
-        conn.commit()
-        cursor.close()
-        conn.close()
+            placeholders = ', '.join(['%s'] * len(campos))
+            columnas_sql = ', '.join(campos)
+            sql = f'''INSERT INTO usuarios ({columnas_sql}) VALUES ({placeholders}) RETURNING id'''
+            cursor.execute(sql, tuple(valores))
+            nuevo_id = cursor.fetchone()['id']
+            conn.commit()
+        except psycopg2.IntegrityError:
+            if conn:
+                conn.rollback()
+            app.logger.exception('Registro rechazado por una restricción de PostgreSQL.')
+            flash('No se pudo guardar: el usuario, correo o teléfono ya existe. Verifica los datos e inténtalo nuevamente.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta), 409
+        except psycopg2.Error:
+            if conn:
+                conn.rollback()
+            app.logger.exception('PostgreSQL falló al guardar un nuevo usuario.')
+            flash('No se pudo guardar la información porque la base de datos no respondió. Inténtalo nuevamente en unos segundos.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta), 503
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
 
         ActivityLog.registrar(
             nuevo_id, usuario_limpio, 'REGISTRO_USUARIO',
@@ -532,7 +605,24 @@ def health():
         cursor = conn.cursor()
         cursor.execute('SELECT 1')
         cursor.fetchone()
-        return {'status': 'ok', 'database': 'connected'}, 200
+        cursor.execute(
+            '''SELECT table_name
+               FROM information_schema.tables
+               WHERE table_schema = 'public'
+                 AND table_name IN ('roles', 'usuarios', 'clientes', 'servicios')'''
+        )
+        tablas = {fila['table_name'] for fila in cursor.fetchall()}
+        tablas_requeridas = {'roles', 'usuarios', 'clientes', 'servicios'}
+        faltantes = sorted(tablas_requeridas - tablas)
+        if faltantes:
+            app.logger.error('Esquema incompleto. Faltan tablas: %s', ', '.join(faltantes))
+            return {
+                'status': 'error',
+                'database': 'connected',
+                'schema': 'incomplete',
+                'missing_tables': faltantes
+            }, 503
+        return {'status': 'ok', 'database': 'connected', 'schema': 'ready'}, 200
     except Exception:
         app.logger.exception('Healthcheck de PostgreSQL fallido.')
         return {'status': 'error', 'database': 'unavailable'}, 503
@@ -657,6 +747,169 @@ def login():
             flash('Credenciales incorrectas. Verifica tu usuario/correo y contraseña.', 'danger')
 
     return render_template('login.html', form=form)
+
+
+@app.route('/recuperar-clave', methods=['GET', 'POST'])
+def recuperar_clave():
+    """Solicita un PIN de recuperación sin revelar si una cuenta existe."""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
+    form = SolicitarRecuperacionForm()
+    if form.validate_on_submit():
+        identificador = form.identificador.data.strip().lower()
+        user = Usuario.get_by_usuario_o_correo(identificador)
+        if user:
+            conn = None
+            cursor = None
+            pin = f'{secrets.randbelow(1_000_000):06d}'
+            token_hash = hash_pin(pin)
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM password_reset_tokens WHERE usuario_id = %s OR expires_at < CURRENT_TIMESTAMP', (user.id,))
+                cursor.execute(
+                    '''INSERT INTO password_reset_tokens
+                       (usuario_id, token_hash, expires_at)
+                       VALUES (%s, %s, CURRENT_TIMESTAMP + INTERVAL '10 minutes')''',
+                    (user.id, token_hash)
+                )
+                conn.commit()
+                enviar_pin_recuperacion(user.correo, user.usuario, pin)
+            except (psycopg2.Error, RuntimeError, OSError, smtplib.SMTPException):
+                if conn:
+                    conn.rollback()
+                app.logger.exception('No se pudo crear o enviar el PIN de recuperación.')
+                flash('No se pudo enviar el PIN. Inicia sesión o inténtalo nuevamente más tarde.', 'danger')
+                return redirect(url_for('login'))
+            finally:
+                if cursor:
+                    cursor.close()
+                if conn:
+                    conn.close()
+
+        session['recuperacion_identificador'] = identificador
+        flash('Si los datos pertenecen a una cuenta, recibirás un PIN de 6 dígitos en el correo registrado.', 'success')
+        return redirect(url_for('verificar_pin_recuperacion'))
+
+    return render_template('recuperar_clave.html', form=form)
+
+
+@app.route('/recuperar-clave/verificar', methods=['GET', 'POST'])
+def verificar_pin_recuperacion():
+    """Valida el PIN, con vencimiento de 10 minutos y máximo de 5 intentos."""
+    identificador = session.get('recuperacion_identificador')
+    if not identificador:
+        return redirect(url_for('recuperar_clave'))
+
+    form = VerificarPinForm()
+    if form.validate_on_submit():
+        pin_hash = hash_pin(form.pin.data.strip())
+        conn = None
+        cursor = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                '''SELECT t.id, t.usuario_id, t.token_hash
+                   FROM password_reset_tokens t
+                   JOIN usuarios u ON u.id = t.usuario_id
+                   WHERE (u.usuario = %s OR u.correo = %s)
+                     AND t.used_at IS NULL
+                     AND t.expires_at > CURRENT_TIMESTAMP
+                     AND t.attempts < 5
+                   ORDER BY t.created_at DESC
+                   LIMIT 1''',
+                (identificador, identificador)
+            )
+            token = cursor.fetchone()
+            if not token or not secrets.compare_digest(token['token_hash'], pin_hash):
+                cursor.execute(
+                    '''UPDATE password_reset_tokens
+                       SET attempts = attempts + 1
+                       WHERE usuario_id = (
+                           SELECT id FROM usuarios WHERE usuario = %s OR correo = %s LIMIT 1
+                       )
+                         AND used_at IS NULL
+                         AND expires_at > CURRENT_TIMESTAMP''',
+                    (identificador, identificador)
+                )
+                conn.commit()
+                flash('El PIN es incorrecto, venció o superó el límite de intentos.', 'danger')
+                return render_template('verificar_pin_recuperacion.html', form=form), 422
+
+            cursor.execute('UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = %s', (token['id'],))
+            conn.commit()
+            session['recuperacion_token_hash'] = pin_hash
+            session['recuperacion_user_id'] = token['usuario_id']
+            session.pop('recuperacion_identificador', None)
+            return redirect(url_for('cambiar_clave'))
+        except psycopg2.Error:
+            if conn:
+                conn.rollback()
+            app.logger.exception('No se pudo verificar el PIN de recuperación.')
+            flash('No se pudo verificar el PIN. Inicia sesión e inténtalo nuevamente más tarde.', 'danger')
+            return redirect(url_for('login'))
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
+    return render_template('verificar_pin_recuperacion.html', form=form)
+
+
+@app.route('/recuperar-clave/cambiar', methods=['GET', 'POST'])
+def cambiar_clave():
+    """Cambia la contraseña después de verificar correctamente el PIN."""
+    user_id = session.get('recuperacion_user_id')
+    token_hash = session.get('recuperacion_token_hash')
+    if not user_id or not token_hash:
+        flash('La sesión de recuperación no es válida. Solicita un nuevo PIN.', 'warning')
+        return redirect(url_for('recuperar_clave'))
+
+    form = NuevaPasswordForm()
+    if form.validate_on_submit():
+        conn = None
+        cursor = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                '''UPDATE usuarios
+                   SET password = %s
+                   WHERE id = %s
+                     AND EXISTS (
+                         SELECT 1 FROM password_reset_tokens
+                         WHERE token_hash = %s AND usuario_id = %s AND used_at IS NOT NULL
+                     )
+                   RETURNING usuario''',
+                (User.hash_password(form.password.data), user_id, token_hash, user_id)
+            )
+            actualizado = cursor.fetchone()
+            if not actualizado:
+                conn.rollback()
+                flash('La sesión de recuperación venció. Solicita un nuevo PIN.', 'warning')
+                return redirect(url_for('recuperar_clave'))
+            conn.commit()
+        except psycopg2.Error:
+            if conn:
+                conn.rollback()
+            app.logger.exception('No se pudo cambiar la contraseña.')
+            flash('No se pudo cambiar la contraseña. Inicia sesión e inténtalo nuevamente más tarde.', 'danger')
+            return redirect(url_for('login'))
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
+        session.pop('recuperacion_user_id', None)
+        session.pop('recuperacion_token_hash', None)
+        flash(f'La contraseña de {actualizado["usuario"]} fue actualizada correctamente. Ya puedes iniciar sesión.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('cambiar_clave.html', form=form)
 
 
 @app.route('/verificar-2fa', methods=['GET', 'POST'])
@@ -2166,10 +2419,28 @@ def error_403(e):
     return render_template('403.html'), 403
 
 
+@app.errorhandler(psycopg2.Error)
+def error_postgresql(e):
+    """Evita mostrar un 500 genérico cuando PostgreSQL está temporalmente ocupado."""
+    app.logger.exception('Error de PostgreSQL en %s.', request.path)
+    if request.path.startswith('/recuperar-clave'):
+        flash('La recuperación no está disponible temporalmente. Inicia sesión e inténtalo más tarde.', 'danger')
+        return redirect(url_for('login'))
+    return render_template(
+        '500.html',
+        codigo_http=503,
+        titulo_error='Base de datos temporalmente no disponible',
+        mensaje_error='La operación no se completó. Tus datos no se guardaron a medias; inténtalo nuevamente en unos segundos.'
+    ), 503
+
+
 @app.errorhandler(500)
 def error_500(e):
     """Manejo de errores internos del servidor o desconexión de base de datos."""
     registrar_log('ERROR_500_SERVIDOR', f"Excepción interna en {request.path}: {str(e)}")
+    if request.path.startswith('/recuperar-clave'):
+        flash('La recuperación no está disponible temporalmente. Inicia sesión e inténtalo más tarde.', 'danger')
+        return redirect(url_for('login'))
     return render_template('500.html'), 500
 
 
@@ -2183,6 +2454,9 @@ def error_general(e):
     if app.debug:
         raise e
     registrar_log('EXCEPCION_NO_CONTROLADA', f"Error en {request.path}: {str(e)}")
+    if request.path.startswith('/recuperar-clave'):
+        flash('La recuperación no está disponible temporalmente. Inicia sesión e inténtalo más tarde.', 'danger')
+        return redirect(url_for('login'))
     return render_template('500.html'), 500
 
 
