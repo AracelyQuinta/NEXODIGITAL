@@ -273,11 +273,19 @@ class User(UserMixin, db.Model):
         para garantizar retrocompatibilidad total.
         """
         try:
-            if self.password.startswith('$2b$') or self.password.startswith('$2a$'):
-                return bcrypt.checkpw(plain_password.encode('utf-8'), self.password.encode('utf-8'))
-            else:
-                return werkzeug_check_hash(self.password, plain_password)
-        except Exception:
+            stored_hash = (self.password or '').strip()
+            if stored_hash.startswith(('$2a$', '$2b$', '$2y$')):
+                # bcrypt usa el mismo formato para $2a$, $2b$ y $2y$.
+                # La librería Python acepta $2a$/$2b$, por eso se normaliza
+                # solo el prefijo compatible sin cambiar la contraseña.
+                if stored_hash.startswith('$2y$'):
+                    stored_hash = '$2b$' + stored_hash[4:]
+                return bcrypt.checkpw(
+                    plain_password.encode('utf-8'),
+                    stored_hash.encode('utf-8')
+                )
+            return werkzeug_check_hash(stored_hash, plain_password)
+        except (TypeError, ValueError):
             return False
 
     @staticmethod

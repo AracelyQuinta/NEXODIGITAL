@@ -27,6 +27,17 @@ ALTER TABLE solicitudes
     ADD COLUMN IF NOT EXISTS respuesta_cliente TEXT,
     ADD COLUMN IF NOT EXISTS trabajo_realizado TEXT,
     ADD COLUMN IF NOT EXISTS evidencia_url TEXT;
+ALTER TABLE solicitudes
+    ADD COLUMN IF NOT EXISTS resuelto_por_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS fecha_resolucion TIMESTAMP;
+
+-- Conserva el significado de estados usados por versiones anteriores.
+UPDATE solicitudes
+SET estado = 'Resuelta'
+WHERE estado = 'Finalizada';
+UPDATE solicitudes
+SET estado = 'Descartada'
+WHERE estado = 'Cancelada';
 
 CREATE INDEX IF NOT EXISTS idx_solicitudes_estado
     ON solicitudes (estado);
@@ -34,6 +45,8 @@ CREATE INDEX IF NOT EXISTS idx_solicitudes_responsable
     ON solicitudes (responsable_id);
 CREATE INDEX IF NOT EXISTS idx_solicitudes_finalizadas
     ON solicitudes (estado, responsable_id);
+CREATE INDEX IF NOT EXISTS idx_solicitudes_resuelto_por
+    ON solicitudes (resuelto_por_id);
 
 -- Permiso que permite a Soporte técnico editar el catálogo, sin permitirle
 -- borrar servicios ni acceder a la administración de usuarios.

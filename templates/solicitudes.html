@@ -40,7 +40,7 @@
                             <div class="col-md-4">
                                 <label class="form-label small fw-semibold">Estado</label>
                                 <select name="estado" class="form-select form-select-sm" required>
-                                    {% for estado in ['Pendiente', 'En revisión', 'Asignada', 'En proceso', 'Finalizada', 'Cancelada'] %}
+                                    {% for estado in ['Pendiente', 'En revisión', 'Asignada', 'En proceso', 'Resuelta', 'Descartada'] %}
                                     <option value="{{ estado }}" {% if solicitud['estado'] == estado %}selected{% endif %}>{{ estado }}</option>
                                     {% endfor %}
                                 </select>
@@ -73,7 +73,7 @@
                             <div class="col-md-3">
                                 <label class="form-label small fw-semibold">Estado</label>
                                 <select name="estado" class="form-select form-select-sm" required>
-                                    {% for estado in ['Pendiente', 'En revisión', 'Asignada', 'En proceso', 'Finalizada', 'Cancelada'] %}
+                                    {% for estado in ['Pendiente', 'En revisión', 'Asignada', 'En proceso', 'Resuelta', 'Descartada'] %}
                                     <option value="{{ estado }}" {% if solicitud['estado'] == estado %}selected{% endif %}>{{ estado }}</option>
                                     {% endfor %}
                                 </select>
@@ -108,6 +108,16 @@
                         <div class="mt-3 pt-3 border-top small">
                             {% if solicitud['trabajo_realizado'] %}<p class="mb-1"><strong>Trabajo realizado:</strong> {{ solicitud['trabajo_realizado'] }}</p>{% endif %}
                             {% if solicitud['evidencia_url'] %}<a href="{{ solicitud['evidencia_url'] }}" target="_blank" rel="noopener noreferrer">Ver evidencia</a>{% endif %}
+                        </div>
+                        {% endif %}
+                        {% if solicitud['resuelto_por_nombre'] %}
+                        <div class="mt-3 pt-3 border-top small text-muted">
+                            <i class="bi bi-person-check me-1"></i>
+                            <strong>{{ 'Resuelta por' if solicitud['estado'] == 'Resuelta' else 'Descartada por' }}:</strong>
+                            {{ solicitud['resuelto_por_nombre'] }}
+                            {% if solicitud['fecha_resolucion'] %}
+                            · {{ solicitud['fecha_resolucion'].strftime('%d/%m/%Y %H:%M') }}
+                            {% endif %}
                         </div>
                         {% endif %}
                     </div>

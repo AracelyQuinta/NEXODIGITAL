@@ -706,7 +706,12 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         identificador = form.usuario.data.strip()
-        user = Usuario.get_by_usuario_o_correo(identificador)
+        try:
+            user = Usuario.get_by_usuario_o_correo(identificador)
+        except psycopg2.Error:
+            app.logger.exception('No se pudo consultar el usuario durante el login.')
+            flash('La base de datos de Render no está disponible en este momento. Espera unos segundos y vuelve a intentarlo.', 'warning')
+            return render_template('login.html', form=form), 503
 
         if user and user.check_password(form.password.data):
             # Validar si el usuario está activo
@@ -729,12 +734,21 @@ def login():
                 session['2fa_remember'] = form.recordarme.data
                 session['temp_user_nombre'] = user.usuario
 
-                conn = get_db_connection()
-                cur = conn.cursor()
-                cur.execute('UPDATE usuarios SET dos_factores_codigo = %s WHERE id = %s', (codigo_otp, user.id))
-                conn.commit()
-                cur.close()
-                conn.close()
+                try:
+                    conn = get_db_connection()
+                    cur = conn.cursor()
+                    cur.execute('UPDATE usuarios SET dos_factores_codigo = %s WHERE id = %s', (codigo_otp, user.id))
+                    conn.commit()
+                    cur.close()
+                    conn.close()
+                except psycopg2.Error:
+                    if 'cur' in locals() and cur:
+                        cur.close()
+                    if 'conn' in locals() and conn:
+                        conn.close()
+                    app.logger.exception('No se pudo guardar el código 2FA durante el login.')
+                    flash('La base de datos no pudo preparar la verificación 2FA. Inténtalo nuevamente.', 'warning')
+                    return render_template('login.html', form=form), 503
 
                 registrar_log('SOLICITUD_2FA', f"Código 2FA generado para {user.usuario}")
                 flash('Ingresa el código de verificación en dos pasos (2FA) para completar el acceso.', 'info')
@@ -1081,17 +1095,21 @@ def solicitudes():
     cursor = conn.cursor()
     if current_user.rol_nombre == 'Soporte técnico':
         cursor.execute('''
-            SELECT s.*, u.usuario AS responsable_nombre
+            SELECT s.*, u.usuario AS responsable_nombre,
+                   r.usuario AS resuelto_por_nombre
             FROM solicitudes s
             LEFT JOIN usuarios u ON u.id = s.responsable_id
+            LEFT JOIN usuarios r ON r.id = s.resuelto_por_id
             WHERE s.responsable_id = %s
             ORDER BY s.fecha DESC, s.id DESC
         ''', (current_user.id,))
     else:
         cursor.execute('''
-            SELECT s.*, u.usuario AS responsable_nombre
+            SELECT s.*, u.usuario AS responsable_nombre,
+                   r.usuario AS resuelto_por_nombre
             FROM solicitudes s
             LEFT JOIN usuarios u ON u.id = s.responsable_id
+            LEFT JOIN usuarios r ON r.id = s.resuelto_por_id
             ORDER BY s.fecha DESC, s.id DESC
         ''')
     solicitudes_registradas = cursor.fetchall()
@@ -1179,7 +1197,7 @@ def actualizar_solicitud(id):
     respuesta_cliente = (request.form.get('respuesta_cliente') or '').strip()
     trabajo_realizado = (request.form.get('trabajo_realizado') or '').strip()
     evidencia_url = (request.form.get('evidencia_url') or '').strip()
-    estados_validos = {'Pendiente', 'En revisión', 'Asignada', 'En proceso', 'Finalizada', 'Cancelada'}
+    estados_validos = {'Pendiente', 'En revisión', 'Asignada', 'En proceso', 'Resuelta', 'Descartada'}
     if estado not in estados_validos:
         flash('El estado seleccionado no es válido.', 'danger')
         return redirect(url_for('solicitudes'))
@@ -1188,8 +1206,8 @@ def actualizar_solicitud(id):
         if evidencia_partes.scheme not in ('http', 'https') or not evidencia_partes.netloc:
             flash('La evidencia debe ser un enlace http(s) válido.', 'danger')
             return redirect(url_for('solicitudes'))
-    if estado == 'Finalizada' and not (trabajo_realizado or evidencia_url):
-        flash('Para finalizar una tarea agrega el trabajo realizado o un enlace de evidencia.', 'warning')
+    if estado == 'Resuelta' and not (trabajo_realizado or evidencia_url):
+        flash('Para marcar una petición como resuelta agrega el trabajo realizado o un enlace de evidencia.', 'warning')
         return redirect(url_for('solicitudes'))
 
     conn = get_db_connection()
@@ -1211,11 +1229,20 @@ def actualizar_solicitud(id):
     cursor.execute('''
         UPDATE solicitudes
         SET estado = %s, responsable_id = %s,
-            respuesta_cliente = %s, trabajo_realizado = %s, evidencia_url = %s
+            respuesta_cliente = %s, trabajo_realizado = %s, evidencia_url = %s,
+            resuelto_por_id = CASE
+                WHEN %s IN ('Resuelta', 'Descartada') THEN %s
+                ELSE NULL
+            END,
+            fecha_resolucion = CASE
+                WHEN %s IN ('Resuelta', 'Descartada') THEN CURRENT_TIMESTAMP
+                ELSE NULL
+            END
         WHERE id = %s
     ''', (
         estado, responsable_id or None, respuesta_cliente or None,
-        trabajo_realizado or None, evidencia_url or None, id
+        trabajo_realizado or None, evidencia_url or None,
+        estado, current_user.id, estado, id
     ))
     if cursor.rowcount == 0:
         conn.rollback()

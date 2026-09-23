@@ -156,7 +156,9 @@ CREATE TABLE solicitudes (
     responsable_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
     respuesta_cliente TEXT,
     trabajo_realizado TEXT,
-    evidencia_url TEXT
+    evidencia_url TEXT,
+    resuelto_por_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
+    fecha_resolucion TIMESTAMP
 );
 
 -- ==============================================================================
