@@ -19,6 +19,11 @@
                 <p class="text-muted lead mb-4">
                     Ha ocurrido una interrupción inesperada o la base de datos se encuentra momentáneamente ocupada. Tus datos están seguros y el sistema se recupera de forma automática.
                 </p>
+                {% if diagnostico %}
+                    <div class="alert alert-warning text-start small" role="alert">
+                        <i class="bi bi-info-circle me-1"></i>{{ diagnostico }}
+                    </div>
+                {% endif %}
 
                 <!-- Botones de Acción -->
                 <div class="d-flex flex-column flex-sm-row gap-2 justify-content-center">

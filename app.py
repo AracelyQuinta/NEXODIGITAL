@@ -333,7 +333,15 @@ def registro():
         return redirect(url_for('dashboard'))
 
     form = UsuarioForm()
-    roles_bd = Role.get_all()
+    try:
+        roles_bd = Role.get_all()
+    except Exception:
+        app.logger.exception('No se pudieron cargar los roles durante el registro.')
+        flash('No se pudo conectar con la base de datos. Revisa DATABASE_URL y los logs de Render.', 'danger')
+        return render_template(
+            '500.html',
+            diagnostico='La base de datos no respondió al cargar los roles.'
+        ), 503
     form.rol_id.choices = [(r['id'], r['nombre']) for r in roles_bd]
 
     if request.method == 'GET':
@@ -423,6 +431,34 @@ def registro():
             form.captcha_pregunta.data = pregunta
             return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
 
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            '''SELECT 1
+               FROM information_schema.columns
+               WHERE table_name = 'usuarios' AND column_name = 'telefono' '''
+        )
+        telefono_configurado = cursor.fetchone() is not None
+        if not telefono_configurado:
+            cursor.close()
+            conn.close()
+            flash('La base de datos aun no tiene configurado el campo de celular. Ejecuta la migracion indicada.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+        cursor.execute(
+            'SELECT 1 FROM usuarios WHERE telefono = %s LIMIT 1',
+            (telefono_limpio,)
+        )
+        telefono_repetido = cursor.fetchone() is not None
+        cursor.close()
+        conn.close()
+        if telefono_repetido:
+            flash('Ya existe una cuenta con este número de celular. Usa otro.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
         rol_obj = Role.get_by_id(form.rol_id.data)
         rol_nombre = rol_obj['nombre'] if rol_obj else 'Cliente'
         aprobado = (rol_nombre == 'Cliente')
@@ -434,7 +470,7 @@ def registro():
         columnas_extra = {row['column_name'] for row in cursor.fetchall()}
 
         campos = ['usuario', 'correo', 'password', 'rol_id', 'activo', 'email_confirmado', 'aprobado', 'dos_factores_activo']
-        valores = [usuario_limpio, correo_limpio, password_hashed, form.rol_id.data, True, True, aprobado, False]
+        valores = [usuario_limpio, correo_limpio, password_hashed, form.rol_id.data, True, True, aprobado, True]
 
         if 'nombres' in columnas_extra:
             campos.append('nombres'); valores.append(nombres_limpios)
@@ -465,18 +501,94 @@ def registro():
 
         if not aprobado:
             flash(
-                f'¡Cuenta registrada exitosamente! Como solicitaste el rol de {rol_nombre}, '
-                'un Administrador activo deberá aprobar tu acceso antes de poder iniciar sesión.',
+                f'La información se ha guardado correctamente. Es un gusto tenerte en NexoDigital, '
+                f'{usuario_limpio}. Como solicitaste el rol de {rol_nombre}, un Administrador activo '
+                'deberá aprobar tu acceso antes de poder iniciar sesión.',
                 'warning'
             )
         else:
-            flash(f'¡Cuenta creada correctamente con rol {rol_nombre}! Ya puedes iniciar sesión.', 'success')
+            flash(
+                f'La información se ha guardado correctamente. Es un gusto tenerte en NexoDigital, '
+                f'{usuario_limpio}. Tu cuenta con rol {rol_nombre} ya está lista; puedes iniciar sesión.',
+                'success'
+            )
 
         return redirect(url_for('login'))
 
     pregunta = session.get('captcha_pregunta') or generar_captcha()
     form.captcha_pregunta.data = pregunta
     return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+
+@app.route('/health')
+def health():
+    """Comprobación simple para Render: proceso web y PostgreSQL."""
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT 1')
+        cursor.fetchone()
+        return {'status': 'ok', 'database': 'connected'}, 200
+    except Exception:
+        app.logger.exception('Healthcheck de PostgreSQL fallido.')
+        return {'status': 'error', 'database': 'unavailable'}, 503
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+@app.route('/registro/disponibilidad')
+def disponibilidad_registro():
+    """Comprueba en PostgreSQL si un usuario, correo o teléfono ya existe."""
+    campo = (request.args.get('campo') or '').strip().lower()
+    valor = (request.args.get('valor') or '').strip()
+    columnas_permitidas = {
+        'usuario': 'usuario',
+        'correo': 'correo',
+        'telefono': 'telefono',
+    }
+    columna = columnas_permitidas.get(campo)
+    if not columna or not valor:
+        return {'disponible': False, 'mensaje': 'Dato no válido.'}, 400
+
+    if campo == 'correo':
+        valor = valor.lower()
+    elif campo == 'telefono':
+        valor = re.sub(r'\D', '', valor)
+
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''SELECT 1
+               FROM information_schema.columns
+               WHERE table_name = 'usuarios' AND column_name = %s''',
+            (columna,)
+        )
+        if cursor.fetchone() is None:
+            return {
+                'disponible': False,
+                'mensaje': 'Este campo aun no esta configurado en la base de datos.'
+            }, 503
+        cursor.execute(
+            f'SELECT 1 FROM usuarios WHERE {columna} = %s LIMIT 1',
+            (valor,)
+        )
+        existe = cursor.fetchone() is not None
+        cursor.close()
+        return {
+            'disponible': not existe,
+            'mensaje': (
+                'Este dato ya está registrado.'
+                if existe else 'Disponible.'
+            ),
+        }
+    finally:
+        conn.close()
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -885,11 +997,11 @@ def clientes():
 
 
 @app.route('/facturacion')
-@role_required('Administrador', 'Gestor de proyectos', 'Cliente')
+@role_required('Administrador', 'Gestor de proyectos', 'Usuario interno', 'Cliente')
 def facturacion():
     """
     Ruta principal del panel comercial de Facturación y Cotizaciones.
-    - Administrador y Gestor de proyectos: ven todos los documentos del negocio.
+    - Administrador, Gestor de proyectos y Usuario interno: ven los documentos del negocio.
     - Cliente: ve únicamente sus propios proyectos y cotizaciones contratadas.
     Usa JOIN con clientes y estados_documento.
     """
@@ -1640,14 +1752,14 @@ def eliminar_categoria_proveedor(id):
 # ==============================================================================
 
 @app.route('/facturacion/nueva', methods=['GET', 'POST'])
-@role_required('Administrador', 'Gestor de proyectos')
+@role_required('Administrador', 'Gestor de proyectos', 'Usuario interno')
 @permission_required('facturas.crear')
 def nueva_factura():
     """
     Emite un nuevo documento comercial (Factura o Cotización).
     El cliente se selecciona de una lista real (cliente_cedula), y cada servicio
     incluido se guarda como una fila propia en detalle_factura.
-    Acceso exclusivo para Administrador y Gestor de proyectos.
+    Acceso para Administrador, Gestor de proyectos y Usuario interno.
     Genera automáticamente el número correlativo si no se especifica.
     """
     form = FacturacionForm()

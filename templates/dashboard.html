@@ -19,7 +19,7 @@
                 </p>
             </div>
             <div class="d-flex gap-2">
-                {% if current_user.has_role('Administrador', 'Gestor de proyectos', 'Cliente') %}
+                {% if current_user.has_role('Administrador', 'Gestor de proyectos', 'Usuario interno', 'Cliente') %}
                 <a href="{{ url_for('nueva_factura') }}" class="btn btn-verde btn-sm px-3 rounded-pill fw-semibold shadow-sm">
                     <i class="bi bi-plus-circle me-1"></i>Emitir Documento
                 </a>

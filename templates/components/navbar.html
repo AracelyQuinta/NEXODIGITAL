@@ -41,8 +41,8 @@
                         </li>
                     {% endif %}
 
-                    <!-- 4. Facturación & Cotizaciones: Administrador, Gestor de proyectos, Cliente -->
-                    {% if current_user.has_role('Administrador', 'Gestor de proyectos', 'Cliente') %}
+                    <!-- 4. Facturación & Cotizaciones: Administrador, Gestor de proyectos, Usuario interno, Cliente -->
+                    {% if current_user.has_role('Administrador', 'Gestor de proyectos', 'Usuario interno', 'Cliente') %}
                         <li class="nav-item">
                             <a class="nav-link px-2 {{ 'active' if request.endpoint in ['facturacion', 'nueva_factura', 'editar_factura', 'ver_comprobante'] else '' }}" href="{{ url_for('facturacion') }}">
                                 <i class="bi bi-receipt me-1"></i>Facturación

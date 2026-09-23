@@ -26,8 +26,15 @@
                     </div>
 
                     <div class="card-body p-4">
-                        <form method="POST" novalidate>
+                        <form method="POST" id="registroForm" class="needs-validation" novalidate>
                             {{ form.hidden_tag() }}
+                            <div id="registroAdvertencia" class="alert alert-warning d-none align-items-start gap-2" role="alert" aria-live="polite">
+                                <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                                <div>
+                                    <strong>Revisa el formulario antes de continuar.</strong>
+                                    <ul id="registroAdvertenciaLista" class="mb-0 mt-1"></ul>
+                                </div>
+                            </div>
 
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
@@ -53,6 +60,7 @@
                                         <span class="input-group-text bg-light"><i class="bi bi-person-badge"></i></span>
                                         {{ form.usuario(class="form-control" + (" is-invalid" if form.usuario.errors else ""), placeholder="Usuario único", autocomplete="username") }}
                                     </div>
+                                    <div id="usuarioFeedback" class="invalid-feedback d-block"></div>
                                     {% for error in form.usuario.errors %}
                                         <div class="text-danger small mt-1">{{ error }}</div>
                                     {% endfor %}
@@ -63,6 +71,7 @@
                                         <span class="input-group-text bg-light"><i class="bi bi-envelope-at"></i></span>
                                         {{ form.correo(class="form-control" + (" is-invalid" if form.correo.errors else ""), placeholder="ejemplo@correo.com", autocomplete="email") }}
                                     </div>
+                                    <div id="correoFeedback" class="invalid-feedback d-block"></div>
                                     {% for error in form.correo.errors %}
                                         <div class="text-danger small mt-1">{{ error }}</div>
                                     {% endfor %}
@@ -76,6 +85,7 @@
                                         <span class="input-group-text bg-light"><i class="bi bi-telephone"></i></span>
                                         {{ form.telefono(class="form-control" + (" is-invalid" if form.telefono.errors else ""), placeholder="0999999999", autocomplete="tel", pattern="[0-9]{10}", maxlength="10", title="Debe tener exactamente 10 dígitos numéricos") }}
                                     </div>
+                                    <div id="telefonoFeedback" class="invalid-feedback d-block"></div>
                                     {% for error in form.telefono.errors %}
                                         <div class="text-danger small mt-1">{{ error }}</div>
                                     {% endfor %}
@@ -114,6 +124,7 @@
                                             <i class="bi bi-eye-slash"></i>
                                         </button>
                                     </div>
+                                    <div id="passwordHelp" class="form-text">Usa 8 caracteres, mayúscula, minúscula, número y símbolo.</div>
                                     {% for error in form.password.errors %}
                                         <div class="text-danger small mt-1">{{ error }}</div>
                                     {% endfor %}
@@ -172,7 +183,7 @@
                             </div>
 
                             <div class="d-grid mb-3">
-                                <button type="submit" class="btn btn-verde btn-lg rounded-3 fw-semibold">
+                                <button type="submit" id="registroSubmit" class="btn btn-verde btn-lg rounded-3 fw-semibold">
                                     <i class="bi bi-check2-circle me-2"></i>Registrar Cuenta
                                 </button>
                             </div>

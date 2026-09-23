@@ -97,6 +97,147 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    const registroForm = document.getElementById("registroForm");
+    if (registroForm) {
+        const advertencia = document.getElementById("registroAdvertencia");
+        const listaAdvertencias = document.getElementById("registroAdvertenciaLista");
+        const password = document.getElementById("password");
+        const confirmPassword = document.getElementById("confirm_password");
+        const mayorEdad = document.getElementById("mayor_edad");
+        const aceptaTerminos = document.getElementById("acepta_terminos");
+        const camposUnicos = [
+            {
+                campo: "usuario",
+                input: document.getElementById("usuario"),
+                feedback: document.getElementById("usuarioFeedback"),
+                mensaje: "Este nombre de usuario ya está registrado."
+            },
+            {
+                campo: "correo",
+                input: document.getElementById("correo"),
+                feedback: document.getElementById("correoFeedback"),
+                mensaje: "Este correo electrónico ya está registrado."
+            },
+            {
+                campo: "telefono",
+                input: document.getElementById("telefono"),
+                feedback: document.getElementById("telefonoFeedback"),
+                mensaje: "Este número de celular ya está registrado."
+            }
+        ];
+        const datosDuplicados = new Set();
+
+        const mostrarAdvertencias = (mensajes) => {
+            listaAdvertencias.innerHTML = "";
+            mensajes.forEach((mensaje) => {
+                const item = document.createElement("li");
+                item.textContent = mensaje;
+                listaAdvertencias.appendChild(item);
+            });
+            advertencia.classList.toggle("d-none", mensajes.length === 0);
+            advertencia.classList.toggle("d-flex", mensajes.length > 0);
+        };
+
+        const revisarCampo = (campo) => {
+            if (!campo) return;
+            campo.classList.toggle("is-valid", campo.value.trim() && campo.checkValidity());
+            campo.classList.toggle("is-invalid", !campo.checkValidity());
+        };
+
+        [password, confirmPassword, mayorEdad, aceptaTerminos].forEach((campo) => {
+            if (campo) {
+                campo.addEventListener("input", () => revisarCampo(campo));
+                campo.addEventListener("change", () => revisarCampo(campo));
+            }
+        });
+
+        const comprobarDisponibilidad = async (item) => {
+            const valor = item.input.value.trim();
+            if (!valor || !item.input.checkValidity()) return true;
+
+            const parametros = new URLSearchParams({
+                campo: item.campo,
+                valor: valor
+            });
+            try {
+                const respuesta = await fetch(`/registro/disponibilidad?${parametros.toString()}`, {
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+                const resultado = await respuesta.json();
+                item.input.classList.toggle("is-invalid", !resultado.disponible);
+                item.input.classList.toggle("is-valid", resultado.disponible);
+                item.feedback.textContent = resultado.disponible ? "" : (resultado.mensaje || item.mensaje);
+                if (resultado.disponible) {
+                    datosDuplicados.delete(item.campo);
+                } else {
+                    datosDuplicados.add(item.campo);
+                }
+                return resultado.disponible;
+            } catch (error) {
+                item.feedback.textContent = "No se pudo comprobar este dato. Inténtalo nuevamente.";
+                item.input.classList.add("is-invalid");
+                datosDuplicados.add(item.campo);
+                return false;
+            }
+        };
+
+        camposUnicos.forEach((item) => {
+            if (!item.input) return;
+            item.input.addEventListener("blur", () => {
+                comprobarDisponibilidad(item);
+            });
+            item.input.addEventListener("input", () => {
+                datosDuplicados.delete(item.campo);
+                item.feedback.textContent = "";
+            });
+        });
+
+        registroForm.addEventListener("submit", async (evento) => {
+            evento.preventDefault();
+            const mensajes = [];
+            const campos = Array.from(registroForm.querySelectorAll("input, select"));
+
+            campos.forEach((campo) => {
+                if (campo.type !== "hidden") revisarCampo(campo);
+            });
+
+            if (!registroForm.checkValidity()) {
+                mensajes.push("Completa correctamente todos los campos obligatorios.");
+            }
+            const disponibilidad = await Promise.all(
+                camposUnicos.map((item) => comprobarDisponibilidad(item))
+            );
+            if (disponibilidad.includes(false)) {
+                mensajes.push("Corrige los datos repetidos o no disponibles antes de continuar.");
+            }
+            if (password && !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(password.value)) {
+                mensajes.push("La contraseña debe incluir mayúscula, minúscula, número y símbolo.");
+            }
+            if (password && confirmPassword && password.value !== confirmPassword.value) {
+                mensajes.push("Las contraseñas no coinciden.");
+            }
+            if (mayorEdad && !mayorEdad.checked) {
+                mensajes.push("Debes confirmar que eres mayor de edad.");
+            }
+            if (aceptaTerminos && !aceptaTerminos.checked) {
+                mensajes.push("Debes aceptar los términos y condiciones.");
+            }
+
+            if (mensajes.length) {
+                mostrarAdvertencias(mensajes);
+                const primerCampoInvalido = registroForm.querySelector(":invalid");
+                if (primerCampoInvalido) primerCampoInvalido.focus();
+                return;
+            }
+
+            mostrarAdvertencias([]);
+            if (!window.confirm("Tus datos cumplen las validaciones del formulario. ¿Deseas continuar con el registro?")) {
+                return;
+            }
+            registroForm.submit();
+        });
+    }
+
     // Referencia al formulario de solicitudes
     const formulario = document.getElementById("formSolicitud");
 

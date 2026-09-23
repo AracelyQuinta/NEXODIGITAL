@@ -122,14 +122,14 @@ CREATE TABLE usuarios (
     rol_id INT NOT NULL REFERENCES roles(id),
     nombres VARCHAR(100),
     apellidos VARCHAR(100),
-    telefono VARCHAR(30),
+    telefono VARCHAR(30) UNIQUE,
     fecha_nacimiento DATE,
     es_mayor_edad BOOLEAN NOT NULL DEFAULT FALSE,
     acepta_terminos BOOLEAN NOT NULL DEFAULT FALSE,
     activo BOOLEAN NOT NULL DEFAULT TRUE,
     email_confirmado BOOLEAN NOT NULL DEFAULT FALSE,
     aprobado BOOLEAN NOT NULL DEFAULT TRUE,
-    dos_factores_activo BOOLEAN NOT NULL DEFAULT FALSE,
+    dos_factores_activo BOOLEAN NOT NULL DEFAULT TRUE,
     dos_factores_codigo VARCHAR(10),
     fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -305,9 +305,10 @@ FROM (VALUES
     -- Soporte técnico: Infraestructura y proveedores (sin ver datos sensibles ni facturación de clientes)
     ('Soporte técnico', 'servicios.ver'), ('Soporte técnico', 'servicios.futuros'),
     ('Soporte técnico', 'proveedores.ver'), ('Soporte técnico', 'proveedores.crear'), ('Soporte técnico', 'proveedores.editar'),
-    -- Usuario interno: Tareas asignadas y catálogo operativo
+    -- Usuario interno: Tareas asignadas, catálogo y emisión comercial
     ('Usuario interno', 'servicios.ver'), ('Usuario interno', 'servicios.futuros'),
     ('Usuario interno', 'clientes.ver'),
+    ('Usuario interno', 'facturas.ver'), ('Usuario interno', 'facturas.crear'),
     -- Cliente: Servicios, servicios futuros, ranking y facturas propias (sin crear facturas ni ver proveedores)
     ('Cliente', 'servicios.ver'), ('Cliente', 'servicios.futuros'),
     ('Cliente', 'clientes.propio'),
@@ -345,5 +346,3 @@ BEGIN
         END IF;
     END LOOP;
 END $$;
-
-

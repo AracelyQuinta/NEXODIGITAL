@@ -14,7 +14,7 @@
             Opciones de desarrollo web con precios claros, tiempos de entrega garantizados y soporte continuo para cada cliente.
         </p>
         <div>
-            {% if current_user.is_authenticated and current_user.has_role('Administrador', 'Gestor de proyectos') %}
+            {% if current_user.is_authenticated and current_user.has_role('Administrador', 'Gestor de proyectos', 'Usuario interno') %}
             <a href="{{ url_for('nuevo_servicio') }}" class="btn btn-verde btn-lg shadow-sm">
                 <i class="bi bi-plus-circle me-2"></i>Registrar nuevo servicio
             </a>
