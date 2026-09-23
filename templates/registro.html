@@ -39,14 +39,16 @@
                             <div class="row g-3 mb-3">
                                 <div class="col-md-6">
                                     {{ form.nombres.label(class="form-label fw-semibold text-navy small") }}
-                                    {{ form.nombres(class="form-control" + (" is-invalid" if form.nombres.errors else ""), placeholder="Tus nombres", autocomplete="given-name", pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+", title="Solo letras y espacios") }}
+                                    {{ form.nombres(class="form-control" + (" is-invalid" if form.nombres.errors else ""), placeholder="Ej. Aracely", autocomplete="given-name", minlength="4", maxlength="80", pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{4,}", title="Escribe al menos 4 letras; no uses números ni símbolos.") }}
+                                    <div id="nombresFeedback" class="invalid-feedback d-block"></div>
                                     {% for error in form.nombres.errors %}
                                         <div class="text-danger small mt-1">{{ error }}</div>
                                     {% endfor %}
                                 </div>
                                 <div class="col-md-6">
                                     {{ form.apellidos.label(class="form-label fw-semibold text-navy small") }}
-                                    {{ form.apellidos(class="form-control" + (" is-invalid" if form.apellidos.errors else ""), placeholder="Tus apellidos", autocomplete="family-name", pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+", title="Solo letras y espacios") }}
+                                    {{ form.apellidos(class="form-control" + (" is-invalid" if form.apellidos.errors else ""), placeholder="Ej. Quinta", autocomplete="family-name", minlength="4", maxlength="80", pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{4,}", title="Escribe al menos 4 letras; no uses números ni símbolos.") }}
+                                    <div id="apellidosFeedback" class="invalid-feedback d-block"></div>
                                     {% for error in form.apellidos.errors %}
                                         <div class="text-danger small mt-1">{{ error }}</div>
                                     {% endfor %}
@@ -83,7 +85,7 @@
                                     {{ form.telefono.label(class="form-label fw-semibold text-navy small") }}
                                     <div class="input-group">
                                         <span class="input-group-text bg-light"><i class="bi bi-telephone"></i></span>
-                                        {{ form.telefono(class="form-control" + (" is-invalid" if form.telefono.errors else ""), placeholder="0999999999", autocomplete="tel", pattern="[0-9]{10}", maxlength="10", title="Debe tener exactamente 10 dígitos numéricos") }}
+                                        {{ form.telefono(class="form-control" + (" is-invalid" if form.telefono.errors else ""), placeholder="0999999999", autocomplete="tel", inputmode="numeric", pattern="[0-9]{10}", minlength="10", maxlength="10", title="Escribe exactamente 10 números, sin espacios ni guiones.") }}
                                     </div>
                                     <div id="telefonoFeedback" class="invalid-feedback d-block"></div>
                                     {% for error in form.telefono.errors %}

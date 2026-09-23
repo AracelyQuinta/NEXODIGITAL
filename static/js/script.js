@@ -178,6 +178,21 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         ];
         const datosDuplicados = new Set();
+        const nombres = document.getElementById("nombres");
+        const apellidos = document.getElementById("apellidos");
+        const telefono = document.getElementById("telefono");
+        const validacionesTexto = [
+            {
+                input: nombres,
+                feedback: document.getElementById("nombresFeedback"),
+                mensaje: "Escribe al menos 4 letras. No uses números ni símbolos."
+            },
+            {
+                input: apellidos,
+                feedback: document.getElementById("apellidosFeedback"),
+                mensaje: "Escribe al menos 4 letras. No uses números ni símbolos."
+            }
+        ];
 
         const mostrarAdvertencias = (mensajes) => {
             listaAdvertencias.innerHTML = "";
@@ -195,6 +210,35 @@ document.addEventListener("DOMContentLoaded", () => {
             campo.classList.toggle("is-valid", campo.value.trim() && campo.checkValidity());
             campo.classList.toggle("is-invalid", !campo.checkValidity());
         };
+
+        const revisarTexto = (item) => {
+            if (!item.input) return false;
+            const valor = item.input.value.trim();
+            const valido = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]{4,}$/.test(valor);
+            item.input.classList.toggle("is-valid", valido);
+            item.input.classList.toggle("is-invalid", !valido);
+            item.feedback.textContent = valido ? "" : item.mensaje;
+            return valido;
+        };
+
+        const revisarTelefono = () => {
+            if (!telefono) return false;
+            telefono.value = telefono.value.replace(/\D/g, "").slice(0, 10);
+            const valido = /^\d{10}$/.test(telefono.value);
+            telefono.classList.toggle("is-valid", valido);
+            telefono.classList.toggle("is-invalid", !valido);
+            return valido;
+        };
+
+        validacionesTexto.forEach((item) => {
+            if (!item.input) return;
+            item.input.addEventListener("input", () => revisarTexto(item));
+            item.input.addEventListener("blur", () => revisarTexto(item));
+        });
+        if (telefono) {
+            telefono.addEventListener("input", revisarTelefono);
+            telefono.addEventListener("blur", revisarTelefono);
+        }
 
         const actualizarReglasPassword = () => {
             if (!password) return false;
@@ -305,6 +349,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (!registroForm.checkValidity()) {
                 mensajes.push("Completa correctamente todos los campos obligatorios.");
+            }
+            validacionesTexto.forEach((item) => {
+                if (!revisarTexto(item)) mensajes.push(item.mensaje);
+            });
+            if (!revisarTelefono()) {
+                mensajes.push("El teléfono debe contener exactamente 10 números.");
             }
             const disponibilidad = await Promise.all(
                 camposUnicos.map((item) => comprobarDisponibilidad(item))

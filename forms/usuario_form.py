@@ -19,7 +19,7 @@ class UsuarioForm(FlaskForm):
         'Nombres',
         validators=[
             DataRequired(message='Ingresa tus nombres.'),
-            Length(min=2, max=80, message='Los nombres deben tener entre 2 y 80 caracteres.'),
+            Length(min=4, max=80, message='Los nombres deben tener al menos 4 caracteres.'),
             Regexp(r'^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$', message='Los nombres solo pueden contener letras y espacios.')
         ]
     )
@@ -28,7 +28,7 @@ class UsuarioForm(FlaskForm):
         'Apellidos',
         validators=[
             DataRequired(message='Ingresa tus apellidos.'),
-            Length(min=2, max=80, message='Los apellidos deben tener entre 2 y 80 caracteres.'),
+            Length(min=4, max=80, message='Los apellidos deben tener al menos 4 caracteres.'),
             Regexp(r'^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$', message='Los apellidos solo pueden contener letras y espacios.')
         ]
     )
