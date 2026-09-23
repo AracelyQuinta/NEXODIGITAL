@@ -297,6 +297,7 @@ def inicio():
             FROM servicios s
             JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
             ORDER BY s.disponible DESC, s.id ASC
+            LIMIT 6
         ''')
     else:
         cursor.execute('''
@@ -305,6 +306,7 @@ def inicio():
             JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
             WHERE s.disponible = TRUE
             ORDER BY s.id ASC
+            LIMIT 6
         ''')
     servicios_destacados = cursor.fetchall()
     cursor.close()

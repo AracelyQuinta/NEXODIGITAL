@@ -97,6 +97,47 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    const form2fa = document.getElementById("form2fa");
+    if (form2fa) {
+        const codigo2fa = document.getElementById("codigo");
+        const feedback2fa = document.getElementById("feedback2fa");
+        const advertencia2fa = document.getElementById("advertencia2fa");
+        const mensaje2fa = document.getElementById("mensaje2fa");
+        const modalElemento = document.getElementById("modalAdvertencia2fa");
+        const detalleModal = document.getElementById("detalleAdvertencia2fa");
+        const mostrarError2fa = (mensaje) => {
+            codigo2fa.classList.add("is-invalid");
+            codigo2fa.classList.remove("is-valid");
+            feedback2fa.textContent = mensaje;
+            advertencia2fa.classList.remove("d-none");
+            advertencia2fa.classList.add("d-flex");
+            mensaje2fa.textContent = mensaje;
+            detalleModal.textContent = mensaje;
+            if (window.bootstrap && modalElemento) {
+                bootstrap.Modal.getOrCreateInstance(modalElemento).show();
+            }
+        };
+
+        codigo2fa.addEventListener("input", () => {
+            codigo2fa.value = codigo2fa.value.replace(/\D/g, "").slice(0, 6);
+            const correcto = codigo2fa.value.length === 6;
+            codigo2fa.classList.toggle("is-valid", correcto);
+            codigo2fa.classList.toggle("is-invalid", !correcto && codigo2fa.value.length > 0);
+            feedback2fa.textContent = correcto ? "" : "El código debe contener exactamente 6 dígitos.";
+            if (correcto) {
+                advertencia2fa.classList.add("d-none");
+                advertencia2fa.classList.remove("d-flex");
+            }
+        });
+
+        form2fa.addEventListener("submit", (evento) => {
+            if (!/^\d{6}$/.test(codigo2fa.value.trim())) {
+                evento.preventDefault();
+                mostrarError2fa("El código debe contener exactamente 6 dígitos.");
+            }
+        });
+    }
+
     const registroForm = document.getElementById("registroForm");
     if (registroForm) {
         const advertencia = document.getElementById("registroAdvertencia");

@@ -136,46 +136,6 @@
             </p>
         </div>
 
-        <!-- ==============================================================================
-             BARRA DE BÚSQUEDA INTERACTIVA (LANDING PAGE)
-             ============================================================================== -->
-        <div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white" style="border: 1px solid var(--border-color) !important;">
-            <div class="row g-2 align-items-center">
-                <div class="col-md-7 col-lg-8">
-                    <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0 text-muted rounded-start-pill ps-3">
-                            <i class="bi bi-search text-emerald"></i>
-                        </span>
-                        <input type="text" id="buscadorHome" class="form-control bg-light border-start-0 border-end-0 py-2"
-                               placeholder="Buscar por nombre (ej. Web, Menú QR, Catálogo, WhatsApp)..."
-                               autocomplete="off">
-                        <button class="btn btn-light border-start-0 rounded-end-pill pe-3 text-muted" type="button" id="btnLimpiarHome" title="Borrar búsqueda">
-                            <i class="bi bi-x-circle"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="col-md-5 col-lg-4">
-                    <select id="categoriaHome" class="form-select rounded-pill py-2 bg-light">
-                        <option value="">Todas las categorías</option>
-                        {% for cat in tipos_servicio %}
-                        <option value="{{ (cat.nombre or '')|lower }}">{{ cat.nombre }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-
-            <!-- Chips de acceso directo -->
-            <div class="d-flex flex-wrap align-items-center gap-2 mt-2 pt-2 border-top">
-                <small class="text-muted fw-semibold me-1"><i class="bi bi-funnel text-navy me-1"></i>Filtros:</small>
-                <button type="button" class="btn btn-sm btn-verde rounded-pill px-3 home-chip active" data-cat="">Todos</button>
-                {% for cat in tipos_servicio %}
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 home-chip" data-cat="{{ (cat.nombre or '')|lower }}">
-                    {{ cat.nombre }}
-                </button>
-                {% endfor %}
-            </div>
-        </div>
-
         <div class="row g-4" id="contenedorServiciosHome">
             {% for s in servicios %}
             <div class="col-lg-4 col-md-6 service-home-col"
@@ -228,117 +188,13 @@
             {% endfor %}
         </div>
 
-        <!-- Estado sin resultados en Landing Page -->
-        <div id="sinResultadosHome" class="card p-4 text-center border-0 shadow-sm rounded-4 mt-3 d-none bg-white">
-            <p class="text-muted mb-2">No se encontraron servicios que coincidan con la búsqueda.</p>
-            <div>
-                <button type="button" id="btnResetHome" class="btn btn-sm btn-outline-brand rounded-pill px-3">
-                    <i class="bi bi-arrow-counterclockwise me-1"></i>Ver todos los servicios
-                </button>
-            </div>
-        </div>
-
         <div class="text-center mt-5">
             <a href="{{ url_for('servicios') }}" class="btn btn-outline-brand btn-lg">
-                <i class="bi bi-grid-3x3-gap-fill me-2"></i>Ir al catálogo completo con filtros avanzados
+                <i class="bi bi-grid-3x3-gap-fill me-2"></i>Ver catálogo completo de servicios
             </a>
         </div>
     </div>
 </section>
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    const inputHome = document.getElementById("buscadorHome");
-    const btnLimpiar = document.getElementById("btnLimpiarHome");
-    const selectCat = document.getElementById("categoriaHome");
-    const chips = document.querySelectorAll(".home-chip");
-    const cards = Array.from(document.querySelectorAll(".service-home-col"));
-    const sinRes = document.getElementById("sinResultadosHome");
-    const btnReset = document.getElementById("btnResetHome");
-
-    if (!cards.length || !inputHome) return;
-
-    function normalizar(texto) {
-        return (texto || "")
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .trim();
-    }
-
-    function filtrarHome() {
-        const q = normalizar(inputHome.value);
-        const cat = normalizar(selectCat.value);
-        let visibles = 0;
-
-        cards.forEach(card => {
-            const nom = normalizar(card.dataset.nombre);
-            const desc = normalizar(card.dataset.descripcion);
-            const tipo = normalizar(card.dataset.tipo);
-
-            const matchTexto = !q || nom.includes(q) || desc.includes(q) || tipo.includes(q);
-            const matchCat = !cat || tipo === cat;
-
-            if (matchTexto && matchCat) {
-                card.classList.remove("d-none");
-                visibles++;
-            } else {
-                card.classList.add("d-none");
-            }
-        });
-
-        if (sinRes) {
-            sinRes.classList.toggle("d-none", visibles > 0);
-        }
-    }
-
-    inputHome.addEventListener("input", filtrarHome);
-    btnLimpiar.addEventListener("click", () => {
-        inputHome.value = "";
-        filtrarHome();
-        inputHome.focus();
-    });
-
-    selectCat.addEventListener("change", function () {
-        const val = this.value;
-        chips.forEach(c => {
-            const act = c.dataset.cat === val;
-            c.classList.toggle("btn-verde", act);
-            c.classList.toggle("active", act);
-            c.classList.toggle("btn-outline-secondary", !act);
-        });
-        filtrarHome();
-    });
-
-    chips.forEach(chip => {
-        chip.addEventListener("click", function () {
-            const val = this.dataset.cat;
-            selectCat.value = val;
-            chips.forEach(c => {
-                c.classList.remove("btn-verde", "active");
-                c.classList.add("btn-outline-secondary");
-            });
-            this.classList.add("btn-verde", "active");
-            this.classList.remove("btn-outline-secondary");
-            filtrarHome();
-        });
-    });
-
-    if (btnReset) {
-        btnReset.addEventListener("click", () => {
-            inputHome.value = "";
-            selectCat.value = "";
-            chips.forEach(c => {
-                const act = c.dataset.cat === "";
-                c.classList.toggle("btn-verde", act);
-                c.classList.toggle("active", act);
-                c.classList.toggle("btn-outline-secondary", !act);
-            });
-            filtrarHome();
-        });
-    }
-});
-</script>
 
     </div>
 </section>
