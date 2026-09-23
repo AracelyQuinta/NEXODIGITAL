@@ -25,7 +25,7 @@
         <div class="row g-4 mb-5">
 
             <!-- Servicio más solicitado -->
-            <div class="col-md-4">
+            <div class="{{ 'col-md-6' if es_cliente else 'col-md-4' }}">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-center mb-2">
@@ -38,7 +38,7 @@
             </div>
 
             <!-- Total de servicios vendidos -->
-            <div class="col-md-4">
+            <div class="{{ 'col-md-6' if es_cliente else 'col-md-4' }}">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-center mb-2">
@@ -50,7 +50,8 @@
                 </div>
             </div>
 
-            <!-- Ingreso estimado -->
+            {% if not es_cliente %}
+            <!-- Ingreso estimado (Exclusivo Administrador y Gestor) -->
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-body">
@@ -62,6 +63,7 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
 
         </div>
 
@@ -87,7 +89,9 @@
                                     <th>Servicio</th>
                                     <th>Categoría</th>
                                     <th class="text-center">Unidades</th>
+                                    {% if not es_cliente %}
                                     <th class="text-end">Ingresos</th>
+                                    {% endif %}
                                     <th style="width: 30%;">Demanda</th>
                                 </tr>
                             </thead>
@@ -98,7 +102,9 @@
                                     <td class="fw-semibold">{{ fila.servicio }}</td>
                                     <td><span class="badge bg-light text-dark">{{ fila.categoria }}</span></td>
                                     <td class="text-center">{{ fila.unidades }}</td>
+                                    {% if not es_cliente %}
                                     <td class="text-end">${{ '%.2f'|format(fila.ingresos) }}</td>
+                                    {% endif %}
                                     <td>
                                         <!-- Barra proporcional al servicio más solicitado -->
                                         <div class="progress" style="height: 18px;">

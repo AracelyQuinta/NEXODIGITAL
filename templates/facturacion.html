@@ -13,6 +13,7 @@
         <p class="lead text-light-emerald mx-auto mb-4" style="max-width: 680px;">
             Emite facturas de venta, prepara cotizaciones comerciales para clientes y gestiona anticipos y saldos pendientes en tiempo real.
         </p>
+        {% if current_user.has_role('Administrador', 'Gestor de proyectos') %}
         <div class="d-flex justify-content-center gap-2 flex-wrap">
             <a href="{{ url_for('nueva_factura', tipo='Factura') }}" class="btn btn-verde btn-lg shadow-sm">
                 <i class="bi bi-receipt me-2"></i>Nueva Factura
@@ -21,6 +22,7 @@
                 <i class="bi bi-file-earmark-text me-2"></i>Nueva Cotización
             </a>
         </div>
+        {% endif %}
     </div>
 </section>
 
@@ -30,18 +32,51 @@
 <section class="py-5">
     <div class="container">
         <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
-            <div class="card-header bg-white p-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                    <h2 class="h4 fw-bold text-navy mb-1">Registro de Documentos Comerciales</h2>
-                    <p class="text-muted small mb-0">Control de facturas emitidas, propuestas económicas, anticipos y cobranzas pendientes</p>
+            <div class="card-header bg-white p-4 border-bottom">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <div>
+                        <h2 class="h4 fw-bold text-navy mb-1">Registro de Documentos Comerciales</h2>
+                        <p class="text-muted small mb-0">Control de facturas emitidas, propuestas económicas, anticipos y cobranzas pendientes</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-navy text-white px-3 py-2 rounded-pill">
+                            <i class="bi bi-archive me-1"></i><span id="badgeTotalFacturas">{{ facturas|length }}</span> Documentos
+                        </span>
+                        {% if current_user.has_role('Administrador', 'Gestor de proyectos') %}
+                        <a href="{{ url_for('nueva_factura') }}" class="btn btn-outline-brand btn-sm">
+                            <i class="bi bi-plus-lg me-1"></i>Nuevo Documento
+                        </a>
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-navy text-white px-3 py-2 rounded-pill">
-                        <i class="bi bi-archive me-1"></i>{{ facturas|length }} Documentos
-                    </span>
-                    <a href="{{ url_for('nueva_factura') }}" class="btn btn-outline-brand btn-sm">
-                        <i class="bi bi-plus-lg me-1"></i>Nuevo Documento
-                    </a>
+
+                <!-- Buscador y Filtros de Facturación -->
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-6 col-lg-5">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light border-end-0 text-muted rounded-start-pill ps-3">
+                                <i class="bi bi-search text-emerald"></i>
+                            </span>
+                            <input type="text" id="buscadorFacturas" class="form-control bg-light border-start-0 border-end-0 py-2"
+                                   placeholder="Buscar por N° documento, cliente o fecha..."
+                                   autocomplete="off">
+                            <button class="btn btn-light border-start-0 rounded-end-pill pe-3 text-muted" type="button" id="btnLimpiarFacturas" title="Borrar búsqueda">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-lg-3">
+                        <select id="filtroTipoDoc" class="form-select form-select-sm rounded-pill py-2">
+                            <option value="">Todos los tipos</option>
+                            <option value="factura">Solo Facturas</option>
+                            <option value="cotizacion">Solo Cotizaciones</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-lg-4 text-md-end">
+                        <small class="text-muted">
+                            Mostrando <strong id="contadorFacturasVisibles" class="text-navy">{{ facturas|length }}</strong> de {{ facturas|length }} documentos
+                        </small>
+                    </div>
                 </div>
             </div>
 
@@ -63,7 +98,12 @@
                         </thead>
                         <tbody>
                             {% for doc in facturas %}
-                            <tr>
+                            <tr class="fila-factura"
+                                data-numero="{{ doc.numero }}"
+                                data-cliente="{{ doc.cliente_nombre }}"
+                                data-fecha="{{ doc.fecha }}"
+                                data-tipo="{{ doc.tipo }}"
+                                data-estado="{{ doc.estado_nombre }}">
                                 <td class="ps-4 py-3">
                                     <div class="d-flex align-items-center gap-2">
                                         {% if doc.tipo == 'Cotizacion' %}
@@ -125,14 +165,18 @@
                                         <a href="{{ url_for('ver_comprobante', numero=doc.numero) }}" class="btn btn-outline-success btn-sm rounded-pill" title="Ver e imprimir {{ 'cotización' if doc.tipo == 'Cotizacion' else 'factura' }}">
                                             <i class="bi bi-file-earmark-text-fill me-1"></i>{{ 'Cotización' if doc.tipo == 'Cotizacion' else 'Factura' }}
                                         </a>
+                                        {% if current_user.has_role('Administrador', 'Gestor de proyectos') %}
                                         <a href="{{ url_for('editar_factura', numero=doc.numero) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
+                                        {% endif %}
+                                        {% if current_user.has_role('Administrador') %}
                                         <form method="POST" action="{{ url_for('eliminar_factura', numero=doc.numero) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este registro?');" class="d-inline">
                                             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>
                                         </form>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -140,12 +184,25 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Estado sin resultados de búsqueda -->
+                <div id="sinResultadosFacturas" class="p-5 text-center d-none">
+                    <div class="mb-3">
+                        <i class="bi bi-search text-emerald" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h5 class="fw-bold text-navy mb-1">No se encontraron documentos</h5>
+                    <p class="text-muted small mb-3">No hay facturas o cotizaciones que coincidan con los criterios de búsqueda.</p>
+                    <button type="button" id="btnRestablecerFacturas" class="btn btn-outline-brand btn-sm rounded-pill px-3">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar filtros
+                    </button>
+                </div>
                 {% else %}
                 <div class="p-5 text-center">
                     <div class="mb-3">
                         <i class="bi bi-file-earmark-spreadsheet text-muted" style="font-size: 3rem;"></i>
                     </div>
                     <h4 class="text-navy fw-bold">No hay documentos registrados</h4>
+                    {% if current_user.has_role('Administrador', 'Gestor de proyectos') %}
                     <p class="text-muted">Crea una factura o cotización para iniciar el registro comercial.</p>
                     <div class="d-flex justify-content-center gap-2 mt-3">
                         <a href="{{ url_for('nueva_factura', tipo='Factura') }}" class="btn btn-verde">
@@ -155,10 +212,71 @@
                             <i class="bi bi-file-earmark-text me-1"></i>Nueva Cotización
                         </a>
                     </div>
+                    {% else %}
+                    <p class="text-muted">Aún no tienes facturas ni cotizaciones emitidas a tu nombre.</p>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
         </div>
     </div>
 </section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("buscadorFacturas");
+    const filtroTipo = document.getElementById("filtroTipoDoc");
+    const btnLimpiar = document.getElementById("btnLimpiarFacturas");
+    const btnReset = document.getElementById("btnRestablecerFacturas");
+    const filas = Array.from(document.querySelectorAll(".fila-factura"));
+    const sinRes = document.getElementById("sinResultadosFacturas");
+    const contador = document.getElementById("contadorFacturasVisibles");
+
+    if (!filas.length || !input) return;
+
+    function normalizar(t) {
+        return (t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    }
+
+    function filtrar() {
+        const q = normalizar(input.value);
+        const tipoSel = normalizar(filtroTipo ? filtroTipo.value : "");
+        let visibles = 0;
+
+        filas.forEach(fila => {
+            const numero = normalizar(fila.dataset.numero);
+            const cliente = normalizar(fila.dataset.cliente);
+            const fecha = normalizar(fila.dataset.fecha);
+            const tipo = normalizar(fila.dataset.tipo);
+            const estado = normalizar(fila.dataset.estado);
+
+            const coincideTexto = !q || numero.includes(q) || cliente.includes(q) || fecha.includes(q) || estado.includes(q);
+            const coincideTipo = !tipoSel || tipo.includes(tipoSel);
+
+            if (coincideTexto && coincideTipo) {
+                fila.classList.remove("d-none");
+                visibles++;
+            } else {
+                fila.classList.add("d-none");
+            }
+        });
+
+        if (contador) contador.textContent = visibles;
+        if (sinRes) sinRes.classList.toggle("d-none", visibles > 0);
+    }
+
+    input.addEventListener("input", filtrar);
+    if (filtroTipo) filtroTipo.addEventListener("change", filtrar);
+
+    function limpiar() {
+        input.value = "";
+        if (filtroTipo) filtroTipo.value = "";
+        filtrar();
+        input.focus();
+    }
+
+    if (btnLimpiar) btnLimpiar.addEventListener("click", limpiar);
+    if (btnReset) btnReset.addEventListener("click", limpiar);
+});
+</script>
 {% endblock %}

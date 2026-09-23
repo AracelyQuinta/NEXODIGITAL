@@ -19,11 +19,22 @@ load_dotenv()
 def get_db_connection():
     """
     Crea y retorna una conexión a la base de datos PostgreSQL.
-    Los datos de conexión (incluida la contraseña) se leen del archivo .env.
+    Permite dos modos:
+    1. Si existe la variable DATABASE_URL (Render, Neon, Supabase en la nube),
+       se conecta directamente mediante la URL de conexión.
+    2. En local, lee las variables individuales definidas en el archivo .env.
 
     Se usa RealDictCursor para que las filas se puedan leer por el nombre de la
     columna, por ejemplo: fila['nombre'].
     """
+    db_url = os.getenv('DATABASE_URL')
+    if db_url:
+        # Algunos proveedores como Render usan 'postgres://' en vez de 'postgresql://'
+        if db_url.startswith('postgres://'):
+            db_url = db_url.replace('postgres://', 'postgresql://', 1)
+        conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
+        return conn
+
     conn = psycopg2.connect(
         host=os.getenv('DB_HOST', 'localhost'),
         port=os.getenv('DB_PORT', '5432'),

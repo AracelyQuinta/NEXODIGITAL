@@ -262,6 +262,22 @@ h1, h2, h3, h4, h5, h6 {
     border: 1px solid #e2e8f0;
 }
 
+.filtro-chip, .home-chip, .index-chip {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.filtro-chip:hover, .home-chip:hover, .index-chip:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+}
+
+.service-col, .service-home-col, .service-index-col {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+
 /* ==============================================================================
    7. BADGES DE ESTADO SEMÁNTICOS (ALTO CONTRASTE)
    ============================================================================== */

@@ -38,3 +38,19 @@ psycopg2-binary==2.9.9
 
 # Carga variables de entorno desde el archivo .env (para la contraseña)
 python-dotenv==1.0.1
+
+# Manejo de sesiones y autenticación de usuarios (Semana 14)
+Flask-Login==0.6.3
+
+# Servidor de aplicaciones WSGI para producción en Render (Semana 15)
+gunicorn==23.0.0
+
+# ORM y mapeo relacional de base de datos
+Flask-SQLAlchemy==3.1.1
+
+# Encriptación segura de contraseñas mediante Bcrypt
+Flask-Bcrypt==1.0.1
+bcrypt==4.2.1
+
+# Validación avanzada de formato de correo electrónico
+email-validator==2.2.0

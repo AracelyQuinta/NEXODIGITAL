@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block titulo %}Registro de Usuario - Nexo Digital{% endblock %}
+
+{% block content %}
+<section class="page-header py-4 text-white">
+    <div class="container text-center">
+        <h1 class="h3 fw-bold mb-1">Registro en la Plataforma</h1>
+        <p class="text-light-emerald small mb-0">
+            Crea una cuenta completa y segura para personas mayores de edad.
+        </p>
+    </div>
+</section>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10 col-sm-11">
+                <div class="card form-card shadow-sm border-0 rounded-4 overflow-hidden">
+                    <div class="card-header bg-white p-4 border-bottom text-center">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-navy text-mint rounded-circle mb-3 shadow-sm" style="width: 60px; height: 60px; font-size: 1.6rem;">
+                            <i class="bi bi-shield-lock-fill"></i>
+                        </div>
+                        <h2 class="h5 fw-bold text-navy mb-1">Crear Nueva Cuenta</h2>
+                        <small class="text-muted">Registro seguro, validado y sujeto a mayor de edad.</small>
+                    </div>
+
+                    <div class="card-body p-4">
+                        <form method="POST" novalidate>
+                            {{ form.hidden_tag() }}
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    {{ form.nombres.label(class="form-label fw-semibold text-navy small") }}
+                                    {{ form.nombres(class="form-control" + (" is-invalid" if form.nombres.errors else ""), placeholder="Tus nombres", autocomplete="given-name", pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+", title="Solo letras y espacios") }}
+                                    {% for error in form.nombres.errors %}
+                                        <div class="text-danger small mt-1">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.apellidos.label(class="form-label fw-semibold text-navy small") }}
+                                    {{ form.apellidos(class="form-control" + (" is-invalid" if form.apellidos.errors else ""), placeholder="Tus apellidos", autocomplete="family-name", pattern="[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+", title="Solo letras y espacios") }}
+                                    {% for error in form.apellidos.errors %}
+                                        <div class="text-danger small mt-1">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    {{ form.usuario.label(class="form-label fw-semibold text-navy small") }}
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-person-badge"></i></span>
+                                        {{ form.usuario(class="form-control" + (" is-invalid" if form.usuario.errors else ""), placeholder="Usuario único", autocomplete="username") }}
+                                    </div>
+                                    {% for error in form.usuario.errors %}
+                                        <div class="text-danger small mt-1">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.correo.label(class="form-label fw-semibold text-navy small") }}
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-envelope-at"></i></span>
+                                        {{ form.correo(class="form-control" + (" is-invalid" if form.correo.errors else ""), placeholder="ejemplo@correo.com", autocomplete="email") }}
+                                    </div>
+                                    {% for error in form.correo.errors %}
+                                        <div class="text-danger small mt-1">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    {{ form.telefono.label(class="form-label fw-semibold text-navy small") }}
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-telephone"></i></span>
+                                        {{ form.telefono(class="form-control" + (" is-invalid" if form.telefono.errors else ""), placeholder="0999999999", autocomplete="tel", pattern="[0-9]{10}", maxlength="10", title="Debe tener exactamente 10 dígitos numéricos") }}
+                                    </div>
+                                    {% for error in form.telefono.errors %}
+                                        <div class="text-danger small mt-1">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.fecha_nacimiento.label(class="form-label fw-semibold text-navy small") }}
+                                    {{ form.fecha_nacimiento(class="form-control" + (" is-invalid" if form.fecha_nacimiento.errors else "")) }}
+                                    {% for error in form.fecha_nacimiento.errors %}
+                                        <div class="text-danger small mt-1">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                {{ form.rol_id.label(class="form-label fw-semibold text-navy small") }}
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light"><i class="bi bi-diagram-3"></i></span>
+                                    <select name="{{ form.rol_id.name }}" id="{{ form.rol_id.id }}" class="form-select{{ ' is-invalid' if form.rol_id.errors else '' }}">
+                                        {% for val, label in form.rol_id.choices %}
+                                            <option value="{{ val }}" {% if form.rol_id.data == val %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                {% for error in form.rol_id.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    {{ form.password.label(class="form-label fw-semibold text-navy small") }}
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-lock-fill"></i></span>
+                                        {{ form.password(class="form-control password-toggle" + (" is-invalid" if form.password.errors else ""), placeholder="Mínimo 8 caracteres", autocomplete="new-password") }}
+                                        <button type="button" class="btn btn-outline-secondary password-toggle-btn" aria-label="Mostrar contraseña" title="Mostrar contraseña">
+                                            <i class="bi bi-eye-slash"></i>
+                                        </button>
+                                    </div>
+                                    {% for error in form.password.errors %}
+                                        <div class="text-danger small mt-1">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ form.confirm_password.label(class="form-label fw-semibold text-navy small") }}
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-shield-check"></i></span>
+                                        {{ form.confirm_password(class="form-control password-toggle" + (" is-invalid" if form.confirm_password.errors else ""), placeholder="Repite la contraseña", autocomplete="new-password") }}
+                                        <button type="button" class="btn btn-outline-secondary password-toggle-btn" aria-label="Mostrar contraseña" title="Mostrar contraseña">
+                                            <i class="bi bi-eye-slash"></i>
+                                        </button>
+                                    </div>
+                                    {% for error in form.confirm_password.errors %}
+                                        <div class="text-danger small mt-1">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="alert alert-light border rounded-3 mb-3">
+                                <strong class="text-navy">Requisito de acceso:</strong> este formulario está reservado para personas mayores de edad.
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check mb-2">
+                                    {{ form.mayor_edad(class="form-check-input" + (" is-invalid" if form.mayor_edad.errors else "")) }}
+                                    {{ form.mayor_edad.label(class="form-check-label") }}
+                                </div>
+                                {% for error in form.mayor_edad.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+
+                                <div class="form-check">
+                                    {{ form.acepta_terminos(class="form-check-input" + (" is-invalid" if form.acepta_terminos.errors else "")) }}
+                                    {{ form.acepta_terminos.label(class="form-check-label") }}
+                                </div>
+                                {% for error in form.acepta_terminos.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="p-3 bg-light rounded-3 border mb-4">
+                                <label class="form-label fw-semibold text-navy small mb-1">
+                                    <i class="bi bi-robot me-1 text-primary"></i>Verificación anti-bot
+                                </label>
+                                <p class="small text-muted mb-2">
+                                    Resuelve la operación: <strong>{{ captcha_pregunta_texto or form.captcha_pregunta.data }}</strong>
+                                </p>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white"><i class="bi bi-calculator"></i></span>
+                                    {{ form.captcha_respuesta(class="form-control" + (" is-invalid" if form.captcha_respuesta.errors else ""), placeholder="Escribe el resultado numérico") }}
+                                </div>
+                                {% for error in form.captcha_respuesta.errors %}
+                                    <div class="text-danger small mt-1">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="d-grid mb-3">
+                                <button type="submit" class="btn btn-verde btn-lg rounded-3 fw-semibold">
+                                    <i class="bi bi-check2-circle me-2"></i>Registrar Cuenta
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card-footer bg-light p-3 text-center border-0">
+                        <small class="text-muted">
+                            ¿Ya tienes una cuenta creada?
+                            <a href="{{ url_for('login') }}" class="text-navy fw-semibold text-decoration-none">
+                                Iniciar sesión aquí <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

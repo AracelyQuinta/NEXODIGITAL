@@ -89,7 +89,7 @@
                                     {{ form.imagen(class="form-control" + (" is-invalid" if form.imagen.errors else ""), placeholder="https://images.unsplash.com/...") }}
                                 </div>
                                 <div class="form-text small text-muted">
-                                    Puedes pegar el enlace de una foto en internet (opcional).
+                                    Pega el enlace directo de una imagen o el enlace de una página que contenga la imagen (opcional).
                                 </div>
                                 {% for error in form.imagen.errors %}
                                     <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>

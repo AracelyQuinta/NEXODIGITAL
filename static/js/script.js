@@ -11,6 +11,25 @@
 // ==============================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll('.password-toggle-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+            const input = button.closest('.input-group')?.querySelector('.password-toggle');
+            if (!input) return;
+
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+
+            const icon = button.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('bi-eye', isPassword);
+                icon.classList.toggle('bi-eye-slash', !isPassword);
+            }
+
+            button.setAttribute('aria-label', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
+            button.title = isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña';
+        });
+    });
+
     // Referencia al formulario de solicitudes
     const formulario = document.getElementById("formSolicitud");
 

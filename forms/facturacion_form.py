@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # FORMULARIO: FACTURACIÓN Y COTIZACIONES COMERCIALES
 # ==============================================================================
 # Gestiona la emisión y edición de comprobantes de venta y propuestas económicas.
@@ -24,12 +24,12 @@ class FacturacionForm(FlaskForm):
         validators=[DataRequired(message='Selecciona el tipo de documento.')]
     )
 
-    # Número secuencial o código identificador
+    # Número secuencial o código identificador (se autogenera si se deja vacío)
     numero = StringField(
-        'N° Documento / Código',
+        'N° Documento / Código (Auto-generado)',
         validators=[
-            DataRequired(message='El número de documento es obligatorio.'),
-            Length(min=3, max=40, message='Debe contener entre 3 y 40 caracteres.')
+            Optional(),
+            Length(max=40, message='Debe contener hasta 40 caracteres.')
         ]
     )
 

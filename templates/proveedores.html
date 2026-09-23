@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block titulo %}Proveedores - Nexo Digital{% endblock %}
 
@@ -27,18 +27,42 @@
 <section class="py-5">
     <div class="container">
         <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
-            <div class="card-header bg-white p-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                    <h2 class="h4 fw-bold text-navy mb-1">Directorio de Proveedores</h2>
-                    <p class="text-muted small mb-0">Control y monitoreo de herramientas de terceros</p>
+            <div class="card-header bg-white p-4 border-bottom">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <div>
+                        <h2 class="h4 fw-bold text-navy mb-1">Directorio de Proveedores</h2>
+                        <p class="text-muted small mb-0">Control y monitoreo de infraestructura y herramientas de terceros</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-navy text-white px-3 py-2 rounded-pill">
+                            <i class="bi bi-box-seam me-1"></i><span id="badgeTotalProveedores">{{ proveedores|length }}</span> Proveedores
+                        </span>
+                        <a href="{{ url_for('nuevo_proveedor') }}" class="btn btn-outline-brand btn-sm">
+                            <i class="bi bi-plus-lg me-1"></i>Nuevo Proveedor
+                        </a>
+                    </div>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-navy text-white px-3 py-2 rounded-pill">
-                        <i class="bi bi-box-seam me-1"></i>{{ proveedores|length }} Proveedores
-                    </span>
-                    <a href="{{ url_for('nuevo_proveedor') }}" class="btn btn-outline-brand btn-sm">
-                        <i class="bi bi-plus-lg me-1"></i>Nuevo Proveedor
-                    </a>
+
+                <!-- Buscador de Proveedores -->
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-8 col-lg-6">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light border-end-0 text-muted rounded-start-pill ps-3">
+                                <i class="bi bi-search text-emerald"></i>
+                            </span>
+                            <input type="text" id="buscadorProveedores" class="form-control bg-light border-start-0 border-end-0 py-2"
+                                   placeholder="Buscar por proveedor, tipo de servicio, sitio web o estado..."
+                                   autocomplete="off">
+                            <button class="btn btn-light border-start-0 rounded-end-pill pe-3 text-muted" type="button" id="btnLimpiarProveedores" title="Borrar búsqueda">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-lg-6 text-md-end">
+                        <small class="text-muted">
+                            Mostrando <strong id="contadorProveedoresVisibles" class="text-navy">{{ proveedores|length }}</strong> de {{ proveedores|length }} proveedores
+                        </small>
+                    </div>
                 </div>
             </div>
 
@@ -58,7 +82,11 @@
                         </thead>
                         <tbody>
                             {% for proveedor in proveedores %}
-                            <tr>
+                            <tr class="fila-proveedor"
+                                data-nombre="{{ proveedor.nombre }}"
+                                data-categoria="{{ proveedor.categoria_nombre }}"
+                                data-sitio="{{ proveedor.sitio }}"
+                                data-estado="{{ proveedor.estado_nombre }}">
                                 <td class="ps-4 py-3">
                                     <span class="fw-bold text-navy font-monospace">{{ proveedor.id }}</span>
                                 </td>
@@ -115,6 +143,18 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Estado sin resultados de búsqueda -->
+                <div id="sinResultadosProveedores" class="p-5 text-center d-none">
+                    <div class="mb-3">
+                        <i class="bi bi-search text-emerald" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h5 class="fw-bold text-navy mb-1">No se encontraron proveedores</h5>
+                    <p class="text-muted small mb-3">No hay proveedores que coincidan con el término ingresado.</p>
+                    <button type="button" id="btnRestablecerProveedores" class="btn btn-outline-brand btn-sm rounded-pill px-3">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar búsqueda
+                    </button>
+                </div>
                 {% else %}
                 <div class="p-5 text-center">
                     <div class="mb-3">
@@ -131,4 +171,62 @@
         </div>
     </div>
 </section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("buscadorProveedores");
+    const btnLimpiar = document.getElementById("btnLimpiarProveedores");
+    const btnReset = document.getElementById("btnRestablecerProveedores");
+    const filas = Array.from(document.querySelectorAll(".fila-proveedor"));
+    const sinRes = document.getElementById("sinResultadosProveedores");
+    const contador = document.getElementById("contadorProveedoresVisibles");
+
+    if (!filas.length || !input) return;
+
+    function normalizar(t) {
+        return (t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    }
+
+    function filtrar() {
+        const q = normalizar(input.value);
+        let visibles = 0;
+
+        filas.forEach(fila => {
+            const nombre = normalizar(fila.dataset.nombre);
+            const categoria = normalizar(fila.dataset.categoria);
+            const sitio = normalizar(fila.dataset.sitio);
+            const estado = normalizar(fila.dataset.estado);
+
+            const coincide = !q || nombre.includes(q) || categoria.includes(q) || sitio.includes(q) || estado.includes(q);
+
+            if (coincide) {
+                fila.classList.remove("d-none");
+                visibles++;
+            } else {
+                fila.classList.add("d-none");
+            }
+        });
+
+        if (contador) contador.textContent = visibles;
+        if (sinRes) sinRes.classList.toggle("d-none", visibles > 0);
+    }
+
+    input.addEventListener("input", filtrar);
+    if (btnLimpiar) {
+        btnLimpiar.addEventListener("click", () => {
+            input.value = "";
+            filtrar();
+            input.focus();
+        });
+    }
+
+    if (btnReset) {
+        btnReset.addEventListener("click", () => {
+            input.value = "";
+            filtrar();
+            input.focus();
+        });
+    }
+});
+</script>
 {% endblock %}

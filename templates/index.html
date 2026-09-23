@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block titulo %}Inicio - Nexo Digital{% endblock %}
 
@@ -22,9 +22,15 @@
             <a href="{{ url_for('servicios') }}" class="btn btn-verde btn-lg">
                 <i class="bi bi-grid me-2"></i>Ver Servicios
             </a>
+            {% if current_user.is_authenticated and current_user.has_role('Administrador', 'Gestor de proyectos') %}
             <a href="{{ url_for('nueva_factura', tipo='Cotizacion') }}" class="btn btn-outline-light btn-lg">
                 <i class="bi bi-calculator me-2"></i>Cotizar Proyecto
             </a>
+            {% else %}
+            <a href="#contacto" class="btn btn-outline-light btn-lg">
+                <i class="bi bi-chat-dots me-2"></i>Solicitar Información
+            </a>
+            {% endif %}
             <a href="#contacto" class="btn btn-light btn-lg text-navy fw-semibold">
                 <i class="bi bi-envelope me-2"></i>Contacto
             </a>
@@ -122,19 +128,64 @@
      ============================================================================== -->
 <section id="servicios" class="py-5">
     <div class="container py-lg-4">
-        <div class="text-center mb-5">
-            <h2 class="fw-bold text-navy">Servicios Disponibles</h2>
-            <p class="text-muted">Opciones digitales diseñadas a la medida de tu presupuesto.</p>
+        <div class="text-center mb-4">
+            <span class="badge bg-emerald-subtle text-emerald-text px-3 py-2 rounded-pill text-uppercase fw-semibold mb-2">Soluciones Digitales</span>
+            <h2 class="display-6 fw-bold text-navy">Servicios Disponibles</h2>
+            <p class="text-muted mx-auto" style="max-width: 600px;">
+                Opciones digitales diseñadas a la medida de tu presupuesto. Usa nuestro buscador para encontrar rápidamente la solución que necesitas.
+            </p>
         </div>
 
-        <div class="row g-4">
-            {% for s in servicios[:6] %}
-            <div class="col-lg-4 col-md-6">
+        <!-- ==============================================================================
+             BARRA DE BÚSQUEDA INTERACTIVA (LANDING PAGE)
+             ============================================================================== -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white" style="border: 1px solid var(--border-color) !important;">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-7 col-lg-8">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0 text-muted rounded-start-pill ps-3">
+                            <i class="bi bi-search text-emerald"></i>
+                        </span>
+                        <input type="text" id="buscadorHome" class="form-control bg-light border-start-0 border-end-0 py-2"
+                               placeholder="Buscar por nombre (ej. Web, Menú QR, Catálogo, WhatsApp)..."
+                               autocomplete="off">
+                        <button class="btn btn-light border-start-0 rounded-end-pill pe-3 text-muted" type="button" id="btnLimpiarHome" title="Borrar búsqueda">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-5 col-lg-4">
+                    <select id="categoriaHome" class="form-select rounded-pill py-2 bg-light">
+                        <option value="">Todas las categorías</option>
+                        {% for cat in tipos_servicio %}
+                        <option value="{{ (cat.nombre or '')|lower }}">{{ cat.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Chips de acceso directo -->
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-2 pt-2 border-top">
+                <small class="text-muted fw-semibold me-1"><i class="bi bi-funnel text-navy me-1"></i>Filtros:</small>
+                <button type="button" class="btn btn-sm btn-verde rounded-pill px-3 home-chip active" data-cat="">Todos</button>
+                {% for cat in tipos_servicio %}
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 home-chip" data-cat="{{ (cat.nombre or '')|lower }}">
+                    {{ cat.nombre }}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="row g-4" id="contenedorServiciosHome">
+            {% for s in servicios %}
+            <div class="col-lg-4 col-md-6 service-home-col"
+                 data-nombre="{{ (s.nombre or '')|lower }}"
+                 data-descripcion="{{ (s.descripcion or '')|lower }}"
+                 data-tipo="{{ (s.tipo_nombre or '')|lower }}">
                 <div class="card h-100 service-card shadow-sm border-0 d-flex flex-column">
                     <div class="card-img-wrapper">
                         <img src="{{ s.imagen or 'https://images.unsplash.com/photo-1460925895917-afdab827c52f' }}"
-                             alt="{{ s.nombre }}"
-                             onerror="this.src='https://images.unsplash.com/photo-1460925895917-afdab827c52f';">
+                             alt="{{ s.nombre }}">
                         <div class="price-tag">
                             ${{ "%.2f"|format(s.precio_base or 0.0) }} <span>USD</span>
                         </div>
@@ -147,19 +198,29 @@
                                     <i class="bi bi-check-circle-fill me-1"></i>Disponible
                                 </span>
                             {% else %}
-                                <span class="badge badge-proximamente">
-                                    <i class="bi bi-clock-fill me-1"></i>Próximamente
+                                <span class="badge bg-warning text-dark px-2 py-1 fw-bold shadow-sm">
+                                    <i class="bi bi-stars me-1"></i>Próximamente (Servicio Futuro)
                                 </span>
                             {% endif %}
                         </div>
+
+                        <span class="badge bg-light text-navy border px-2 py-1 mb-2 align-self-start">
+                            <i class="bi bi-collection me-1"></i>{{ s.tipo_nombre }}
+                        </span>
 
                         <h3 class="h5 fw-bold text-navy my-2">{{ s.nombre }}</h3>
                         <p class="text-body small flex-grow-1 mb-3">{{ s.descripcion }}</p>
 
                         <div class="pt-3 border-top mt-auto">
-                            <a href="{{ url_for('nueva_factura', servicio_id=loop.index0, tipo='Cotizacion') }}" class="btn btn-verde btn-sm rounded-pill w-100">
+                            {% if current_user.is_authenticated and current_user.has_role('Administrador', 'Gestor de proyectos') %}
+                            <a href="{{ url_for('nueva_factura', servicio_id=s.id, tipo='Cotizacion') }}" class="btn btn-verde btn-sm rounded-pill w-100">
                                 <i class="bi bi-receipt me-1"></i>Cotizar este servicio
                             </a>
+                            {% else %}
+                            <a href="#contacto" class="btn btn-outline-brand btn-sm rounded-pill w-100">
+                                <i class="bi bi-envelope me-1"></i>Solicitar información
+                            </a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -167,11 +228,118 @@
             {% endfor %}
         </div>
 
+        <!-- Estado sin resultados en Landing Page -->
+        <div id="sinResultadosHome" class="card p-4 text-center border-0 shadow-sm rounded-4 mt-3 d-none bg-white">
+            <p class="text-muted mb-2">No se encontraron servicios que coincidan con la búsqueda.</p>
+            <div>
+                <button type="button" id="btnResetHome" class="btn btn-sm btn-outline-brand rounded-pill px-3">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Ver todos los servicios
+                </button>
+            </div>
+        </div>
+
         <div class="text-center mt-5">
             <a href="{{ url_for('servicios') }}" class="btn btn-outline-brand btn-lg">
-                <i class="bi bi-arrow-right-circle me-2"></i>Ver catálogo completo
+                <i class="bi bi-grid-3x3-gap-fill me-2"></i>Ir al catálogo completo con filtros avanzados
             </a>
         </div>
+    </div>
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const inputHome = document.getElementById("buscadorHome");
+    const btnLimpiar = document.getElementById("btnLimpiarHome");
+    const selectCat = document.getElementById("categoriaHome");
+    const chips = document.querySelectorAll(".home-chip");
+    const cards = Array.from(document.querySelectorAll(".service-home-col"));
+    const sinRes = document.getElementById("sinResultadosHome");
+    const btnReset = document.getElementById("btnResetHome");
+
+    if (!cards.length || !inputHome) return;
+
+    function normalizar(texto) {
+        return (texto || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim();
+    }
+
+    function filtrarHome() {
+        const q = normalizar(inputHome.value);
+        const cat = normalizar(selectCat.value);
+        let visibles = 0;
+
+        cards.forEach(card => {
+            const nom = normalizar(card.dataset.nombre);
+            const desc = normalizar(card.dataset.descripcion);
+            const tipo = normalizar(card.dataset.tipo);
+
+            const matchTexto = !q || nom.includes(q) || desc.includes(q) || tipo.includes(q);
+            const matchCat = !cat || tipo === cat;
+
+            if (matchTexto && matchCat) {
+                card.classList.remove("d-none");
+                visibles++;
+            } else {
+                card.classList.add("d-none");
+            }
+        });
+
+        if (sinRes) {
+            sinRes.classList.toggle("d-none", visibles > 0);
+        }
+    }
+
+    inputHome.addEventListener("input", filtrarHome);
+    btnLimpiar.addEventListener("click", () => {
+        inputHome.value = "";
+        filtrarHome();
+        inputHome.focus();
+    });
+
+    selectCat.addEventListener("change", function () {
+        const val = this.value;
+        chips.forEach(c => {
+            const act = c.dataset.cat === val;
+            c.classList.toggle("btn-verde", act);
+            c.classList.toggle("active", act);
+            c.classList.toggle("btn-outline-secondary", !act);
+        });
+        filtrarHome();
+    });
+
+    chips.forEach(chip => {
+        chip.addEventListener("click", function () {
+            const val = this.dataset.cat;
+            selectCat.value = val;
+            chips.forEach(c => {
+                c.classList.remove("btn-verde", "active");
+                c.classList.add("btn-outline-secondary");
+            });
+            this.classList.add("btn-verde", "active");
+            this.classList.remove("btn-outline-secondary");
+            filtrarHome();
+        });
+    });
+
+    if (btnReset) {
+        btnReset.addEventListener("click", () => {
+            inputHome.value = "";
+            selectCat.value = "";
+            chips.forEach(c => {
+                const act = c.dataset.cat === "";
+                c.classList.toggle("btn-verde", act);
+                c.classList.toggle("active", act);
+                c.classList.toggle("btn-outline-secondary", !act);
+            });
+            filtrarHome();
+        });
+    }
+});
+</script>
+
     </div>
 </section>
 

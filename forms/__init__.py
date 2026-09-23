@@ -1,14 +1,22 @@
-﻿# ==============================================================================
+# ==============================================================================
 # PAQUETE FORMS - NEXODIGITAL
 # ==============================================================================
-# Este archivo convierte el directorio 'forms' en un paquete Python importable.
-# Expone las clases de formularios construidas sobre Flask-WTF / WTForms para
-# facilitar su importación directa en app.py y otros módulos del proyecto.
-# ==============================================================================
-
 from forms.cliente_form import ClienteForm
 from forms.servicio_form import ServicioForm
 from forms.proveedor_form import ProveedorForm
 from forms.facturacion_form import FacturacionForm
+from forms.login_form import LoginForm
+from forms.usuario_form import UsuarioForm
+from forms.producto_form import ProductoForm
+from forms.dos_factores_form import DosFactoresForm
 
-__all__ = ['ClienteForm', 'ServicioForm', 'ProveedorForm', 'FacturacionForm']
+__all__ = [
+    'ClienteForm',
+    'ServicioForm',
+    'ProveedorForm',
+    'FacturacionForm',
+    'LoginForm',
+    'UsuarioForm',
+    'ProductoForm',
+    'DosFactoresForm'
+]

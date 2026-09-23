@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block titulo %}Clientes - Nexo Digital{% endblock %}
 
@@ -27,18 +27,42 @@
 <section class="py-5">
     <div class="container">
         <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
-            <div class="card-header bg-white p-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                    <h2 class="h4 fw-bold text-navy mb-1">Directorio de Clientes</h2>
-                    <p class="text-muted small mb-0">Gestión de emprendimientos y servicios contratados</p>
+            <div class="card-header bg-white p-4 border-bottom">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <div>
+                        <h2 class="h4 fw-bold text-navy mb-1">Directorio de Clientes</h2>
+                        <p class="text-muted small mb-0">Gestión de emprendimientos y servicios contratados</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-navy text-white px-3 py-2 rounded-pill">
+                            <i class="bi bi-people me-1"></i>{{ clientes|length }} Registrados
+                        </span>
+                        <a href="{{ url_for('nuevo_cliente') }}" class="btn btn-outline-brand btn-sm">
+                            <i class="bi bi-plus-lg me-1"></i>Nuevo Cliente
+                        </a>
+                    </div>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-navy text-white px-3 py-2 rounded-pill">
-                        <i class="bi bi-people me-1"></i>{{ clientes|length }} Registrados
-                    </span>
-                    <a href="{{ url_for('nuevo_cliente') }}" class="btn btn-outline-brand btn-sm">
-                        <i class="bi bi-plus-lg me-1"></i>Nuevo Cliente
-                    </a>
+
+                <!-- Buscador de Clientes -->
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-8 col-lg-6">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light border-end-0 text-muted rounded-start-pill ps-3">
+                                <i class="bi bi-search text-emerald"></i>
+                            </span>
+                            <input type="text" id="buscadorClientes" class="form-control bg-light border-start-0 border-end-0 py-2"
+                                   placeholder="Buscar por cédula, nombre, tipo de negocio o ciudad..."
+                                   autocomplete="off">
+                            <button class="btn btn-light border-start-0 rounded-end-pill pe-3 text-muted" type="button" id="btnLimpiarClientes" title="Borrar búsqueda">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-lg-6 text-md-end">
+                        <small class="text-muted">
+                            Mostrando <strong id="contadorClientesVisibles" class="text-navy">{{ clientes|length }}</strong> de {{ clientes|length }} clientes
+                        </small>
+                    </div>
                 </div>
             </div>
 
@@ -56,9 +80,15 @@
                                 <th class="py-3 text-center pe-4">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="cuerpoTablaClientes">
                             {% for cliente in clientes %}
-                            <tr>
+                            <tr class="fila-cliente"
+                                data-cedula="{{ (cliente.cedula or '')|lower }}"
+                                data-nombre="{{ (cliente.nombre or '')|lower }}"
+                                data-negocio="{{ (cliente.negocio_nombre or '')|lower }}"
+                                data-ciudad="{{ (cliente.ciudad or '')|lower }}"
+                                data-correo="{{ (cliente.correo or '')|lower }}"
+                                data-telefono="{{ (cliente.telefono or '')|lower }}">
                                 <td class="ps-4 py-3">
                                     <span class="fw-bold text-navy font-monospace">{{ cliente.cedula }}</span>
                                 </td>
@@ -104,6 +134,18 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Estado sin resultados de búsqueda -->
+                <div id="sinResultadosClientes" class="p-5 text-center d-none">
+                    <div class="mb-3">
+                        <i class="bi bi-search text-emerald" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h5 class="fw-bold text-navy mb-1">No se encontraron clientes</h5>
+                    <p class="text-muted small mb-3">No hay clientes que coincidan con el término ingresado.</p>
+                    <button type="button" id="btnRestablecerClientes" class="btn btn-outline-brand btn-sm rounded-pill px-3">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar búsqueda
+                    </button>
+                </div>
                 {% else %}
                 <div class="p-5 text-center">
                     <div class="mb-3">
@@ -120,4 +162,62 @@
         </div>
     </div>
 </section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const input = document.getElementById("buscadorClientes");
+    const btnLimpiar = document.getElementById("btnLimpiarClientes");
+    const btnReset = document.getElementById("btnRestablecerClientes");
+    const filas = Array.from(document.querySelectorAll(".fila-cliente"));
+    const sinRes = document.getElementById("sinResultadosClientes");
+    const contador = document.getElementById("contadorClientesVisibles");
+
+    if (!filas.length || !input) return;
+
+    function normalizar(t) {
+        return (t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    }
+
+    function filtrar() {
+        const q = normalizar(input.value);
+        let visibles = 0;
+
+        filas.forEach(fila => {
+            const cedula = normalizar(fila.dataset.cedula);
+            const nombre = normalizar(fila.dataset.nombre);
+            const negocio = normalizar(fila.dataset.negocio);
+            const ciudad = normalizar(fila.dataset.ciudad);
+            const correo = normalizar(fila.dataset.correo);
+            const telf = normalizar(fila.dataset.telefono);
+
+            const coincide = !q || cedula.includes(q) || nombre.includes(q) || negocio.includes(q) || ciudad.includes(q) || correo.includes(q) || telf.includes(q);
+
+            if (coincide) {
+                fila.classList.remove("d-none");
+                visibles++;
+            } else {
+                fila.classList.add("d-none");
+            }
+        });
+
+        if (contador) contador.textContent = visibles;
+        if (sinRes) sinRes.classList.toggle("d-none", visibles > 0);
+    }
+
+    input.addEventListener("input", filtrar);
+    btnLimpiar.addEventListener("click", () => {
+        input.value = "";
+        filtrar();
+        input.focus();
+    });
+
+    if (btnReset) {
+        btnReset.addEventListener("click", () => {
+            input.value = "";
+            filtrar();
+            input.focus();
+        });
+    }
+});
+</script>
 {% endblock %}

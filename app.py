@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # PROYECTO: NEXODIGITAL - SOLUCIONES WEB Y COMERCIALES
 # Control Principal de la Aplicación Flask (Backend)
 # ==============================================================================
@@ -16,9 +16,22 @@
 #   tipos_servicio <--(tipo_servicio_id)--  servicios  <--(servicio_id)--  detalle_factura
 # ==============================================================================
 
+import os
 import json
-from datetime import date
-from flask import Flask, render_template, redirect, url_for, flash, request
+import random
+import re
+from html.parser import HTMLParser
+from functools import wraps
+from datetime import date, datetime, timedelta
+from urllib.parse import urljoin, urlencode, urlparse
+from urllib.request import Request, urlopen
+from flask import Flask, render_template, redirect, url_for, flash, request, session
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+import bcrypt
+from werkzeug.security import generate_password_hash, check_password_hash
+
+# Modelos de Usuario, Roles, Permisos y Logs de Auditoría (RBAC)
+from models import Usuario, User, Role, ActivityLog
 
 # Importación de clases de formularios creadas con Flask-WTF
 from forms.cliente_form import ClienteForm
@@ -28,9 +41,68 @@ from forms.tipo_servicio_form import TipoServicioForm
 from forms.proveedor_form import ProveedorForm
 from forms.categoria_proveedor_form import CategoriaProveedorForm
 from forms.facturacion_form import FacturacionForm
+from forms.login_form import LoginForm
+from forms.usuario_form import UsuarioForm
+from forms.producto_form import ProductoForm
+from forms.dos_factores_form import DosFactoresForm
 
 # Módulo propio de conexión centralizada a PostgreSQL (carpeta conexion/)
 from conexion.conexion import get_db_connection
+
+
+class _ImagenMetaParser(HTMLParser):
+    """Obtiene la imagen principal declarada por una página web."""
+
+    def __init__(self):
+        super().__init__()
+        self.imagen_url = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() != 'meta' or self.imagen_url:
+            return
+
+        atributos = {clave.lower(): valor for clave, valor in attrs}
+        referencia = (atributos.get('property') or atributos.get('name') or '').lower()
+        if referencia in ('og:image', 'og:image:url', 'twitter:image', 'twitter:image:src'):
+            self.imagen_url = atributos.get('content')
+
+
+def resolver_url_imagen(valor):
+    """Acepta una imagen directa o extrae la imagen principal de una página."""
+    url = (valor or '').strip()
+    partes = urlparse(url)
+    if partes.scheme not in ('http', 'https') or not partes.netloc:
+        return None
+
+    try:
+        solicitud = Request(url, headers={'User-Agent': 'NexoDigital/1.0'})
+        with urlopen(solicitud, timeout=8) as respuesta:
+            tipo_contenido = respuesta.headers.get_content_type().lower()
+            if tipo_contenido.startswith('image/'):
+                return url
+
+            if tipo_contenido in ('application/octet-stream', 'binary/octet-stream') and \
+                    partes.path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif')):
+                return url
+
+            if not (tipo_contenido.startswith('text/html') or tipo_contenido == 'application/xhtml+xml'):
+                return None
+
+            contenido = respuesta.read(2_000_000).decode(
+                respuesta.headers.get_content_charset() or 'utf-8',
+                errors='replace'
+            )
+            parser = _ImagenMetaParser()
+            parser.feed(contenido)
+            if parser.imagen_url:
+                imagen = urljoin(url, parser.imagen_url.strip())
+                imagen_partes = urlparse(imagen)
+                if imagen_partes.scheme in ('http', 'https') and imagen_partes.netloc:
+                    return imagen
+    except Exception:
+        return None
+
+    return None
 
 # ------------------------------------------------------------------------------
 # INICIALIZACIÓN DE LA APLICACIÓN FLASK
@@ -38,7 +110,154 @@ from conexion.conexion import get_db_connection
 app = Flask(__name__)
 
 # Clave secreta para la protección de sesiones y seguridad contra ataques CSRF en formularios
-app.config['SECRET_KEY'] = 'nexodigital_clave_secreta_2026'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'nexodigital_clave_secreta_2026')
+
+# Expiración automática de sesión tras 30 minutos de inactividad
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+
+# ------------------------------------------------------------------------------
+# CONFIGURACIÓN DE AUTENTICACIÓN (Flask-Login)
+# ------------------------------------------------------------------------------
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Por favor inicia sesión para acceder a esta página.'
+login_manager.login_message_category = 'warning'
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    """
+    Función de callback requerida por Flask-Login para recuperar la instancia del
+    usuario autenticado desde la base de datos a partir de su ID de sesión.
+    """
+    return Usuario.get_by_id(user_id)
+
+
+# ------------------------------------------------------------------------------
+# FUNCIONES AUXILIARES: CAPTCHA, AUDITORÍA Y CONTROL DE ACCESO (RBAC)
+# ------------------------------------------------------------------------------
+
+def generar_captcha():
+    """Genera una operación aritmética aleatoria sencilla para verificación humana."""
+    num1 = random.randint(1, 9)
+    num2 = random.randint(1, 9)
+    session['captcha_respuesta'] = str(num1 + num2)
+    session['captcha_pregunta'] = f"{num1} + {num2} = ?"
+    return session['captcha_pregunta']
+
+
+def validar_password_segura(password):
+    """Valida que la contraseña tenga longitud y complejidad suficientes."""
+    if len(password) < 8:
+        return False
+    if not re.search(r'[A-Z]', password):
+        return False
+    if not re.search(r'[a-z]', password):
+        return False
+    if not re.search(r'\d', password):
+        return False
+    if not re.search(r'[^A-Za-z0-9]', password):
+        return False
+    return True
+
+
+def validar_nombre_persona(valor):
+    """Valida que un nombre o apellido contenga solo letras y espacios."""
+    if not valor:
+        return False
+    return bool(re.fullmatch(r'[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+', valor.strip()))
+
+
+def validar_telefono_10_digitos(valor):
+    """Valida que el teléfono tenga exactamente 10 dígitos numéricos."""
+    if not valor:
+        return False
+    return bool(re.fullmatch(r'\d{10}', valor.strip()))
+
+
+def verificar_recaptcha(token):
+    """Valida reCAPTCHA si está configurado; si no, acepta la verificación local."""
+    if not token:
+        return True
+    secret_key = os.getenv('RECAPTCHA_SECRET_KEY')
+    if not secret_key:
+        return True
+    try:
+        payload = urlencode({'secret': secret_key, 'response': token}).encode('utf-8')
+        req = Request(
+            'https://www.google.com/recaptcha/api/siteverify',
+            data=payload,
+            headers={'Content-Type': 'application/x-www-form-urlencoded'}
+        )
+        with urlopen(req, timeout=8) as response:
+            data = json.loads(response.read().decode('utf-8'))
+        return bool(data.get('success'))
+    except Exception:
+        return False
+
+
+def registrar_log(accion, detalles=None):
+    """Registra un evento en la tabla logs_actividad para auditoría de seguridad."""
+    try:
+        user_id = current_user.id if current_user.is_authenticated else None
+        user_name = current_user.usuario if current_user.is_authenticated else session.get('temp_user_nombre', 'Anónimo')
+        ip = request.remote_addr or '127.0.0.1'
+        ActivityLog.registrar(user_id, user_name, accion, ip, detalles)
+    except Exception as e:
+        app.logger.warning(f"Error registrando log de auditoría: {e}")
+
+
+def role_required(*roles_permitidos):
+    """
+    Decorador para proteger rutas según los roles asignados al usuario actual.
+    Si el usuario no está autenticado, redirige al login.
+    Si no posee los roles permitidos, registra la denegación en la auditoría y redirige.
+    """
+    def decorador(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if not current_user.is_authenticated:
+                flash('Por favor inicia sesión para acceder a esta página.', 'warning')
+                return redirect(url_for('login', next=request.path))
+
+            if current_user.rol_nombre not in roles_permitidos:
+                registrar_log(
+                    'ACCESO_DENEGADO_ROL',
+                    f"Ruta: {request.path} | Rol actual: {current_user.rol_nombre} | Roles permitidos: {list(roles_permitidos)}"
+                )
+                flash(f'Acceso denegado: tu rol actual ({current_user.rol_nombre}) no tiene permisos para esta acción.', 'danger')
+                return redirect(url_for('dashboard'))
+
+            return f(*args, **kwargs)
+        return wrapper
+    return decorador
+
+
+def permission_required(codigo_permiso):
+    """
+    Decorador para proteger rutas según la tabla relacional rol_permisos.
+    Verifica que el rol asignado al usuario cuente con el permiso granular requerido.
+    """
+    def decorador(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if not current_user.is_authenticated:
+                flash('Por favor inicia sesión para acceder a esta página.', 'warning')
+                return redirect(url_for('login', next=request.path))
+
+            if not current_user.has_permission(codigo_permiso):
+                registrar_log(
+                    'ACCESO_DENEGADO_PERMISO',
+                    f"Ruta: {request.path} | Permiso requerido: {codigo_permiso} | Rol: {current_user.rol_nombre}"
+                )
+                flash('Acceso denegado: no dispones de los permisos granulares necesarios para esta operación.', 'danger')
+                return redirect(url_for('dashboard'))
+
+            return f(*args, **kwargs)
+        return wrapper
+    return decorador
+
 
 # ==============================================================================
 # RUTAS PÚBLICAS Y VISTAS GENERALES
@@ -47,8 +266,11 @@ app.config['SECRET_KEY'] = 'nexodigital_clave_secreta_2026'
 @app.route('/')
 def inicio():
     """
-    Ruta raíz del sitio web.
+    Ruta raíz del sitio web (Pública).
     Renderiza la vista principal con información de la empresa y catálogo destacado.
+    Accesible libremente para visitantes no autenticados y usuarios con sesión activa.
+    Los visitantes no autenticados ven solo servicios disponibles.
+    Los usuarios autenticados pueden ver también los servicios que se darán más adelante.
     """
     mensaje = "Soluciones digitales para hacer crecer tu negocio"
     empresa = {
@@ -58,41 +280,560 @@ def inicio():
     }
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('''
-        SELECT s.*, t.nombre AS tipo_nombre
-        FROM servicios s
-        JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
-    ''')
+    cursor.execute('SELECT * FROM tipos_servicio ORDER BY nombre')
+    tipos_servicio = cursor.fetchall()
+
+    if current_user.is_authenticated:
+        cursor.execute('''
+            SELECT s.*, t.nombre AS tipo_nombre
+            FROM servicios s
+            JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
+            ORDER BY s.disponible DESC, s.id ASC
+        ''')
+    else:
+        cursor.execute('''
+            SELECT s.*, t.nombre AS tipo_nombre
+            FROM servicios s
+            JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
+            WHERE s.disponible = TRUE
+            ORDER BY s.id ASC
+        ''')
     servicios_destacados = cursor.fetchall()
     cursor.close()
     conn.close()
-    return render_template('index.html', mensaje=mensaje, empresa=empresa, servicios=servicios_destacados)
+    return render_template(
+        'index.html',
+        mensaje=mensaje,
+        empresa=empresa,
+        servicios=servicios_destacados,
+        tipos_servicio=tipos_servicio
+    )
 
 
+
+# ==============================================================================
+# MÓDULO DE AUTENTICACIÓN, REGISTRO Y SEGURIDAD (Semana 14 & RBAC)
+# ==============================================================================
+
+@app.route('/registro', methods=['GET', 'POST'])
+def registro():
+    """
+    Ruta para el registro de nuevos usuarios con validación de seguridad,
+    mayoría de edad y formulario completo.
+    """
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
+    form = UsuarioForm()
+    roles_bd = Role.get_all()
+    form.rol_id.choices = [(r['id'], r['nombre']) for r in roles_bd]
+
+    if request.method == 'GET':
+        pregunta = generar_captcha()
+        form.captcha_pregunta.data = pregunta
+        return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+    if form.validate_on_submit():
+        token_recaptcha = (form.recaptcha_token.data or request.form.get('g-recaptcha-response') or '').strip()
+        if not verificar_recaptcha(token_recaptcha):
+            flash('La validación anti-bot falló. Inténtalo nuevamente.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+        respuesta_esperada = session.get('captcha_respuesta')
+        respuesta_usuario = (form.captcha_respuesta.data or '').strip()
+        if not respuesta_esperada or respuesta_usuario != respuesta_esperada:
+            flash('La respuesta de verificación anti-bot es incorrecta.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+        usuario_limpio = form.usuario.data.strip()
+        correo_limpio = form.correo.data.strip().lower()
+        nombres_limpios = form.nombres.data.strip()
+        apellidos_limpios = form.apellidos.data.strip()
+        telefono_limpio = (form.telefono.data or '').strip()
+
+        if not validar_nombre_persona(nombres_limpios):
+            flash('Los nombres solo pueden contener letras y espacios.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+        if not validar_nombre_persona(apellidos_limpios):
+            flash('Los apellidos solo pueden contener letras y espacios.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+        if not validar_telefono_10_digitos(telefono_limpio):
+            flash('El teléfono debe contener exactamente 10 dígitos numéricos.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+        if not form.mayor_edad.data:
+            flash('Debes confirmar que eres mayor de edad para registrarte.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+        if not form.acepta_terminos.data:
+            flash('Debes aceptar los términos y condiciones para continuar.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+        try:
+            fecha_nacimiento = form.fecha_nacimiento.data
+            hoy = date.today()
+            edad = hoy.year - fecha_nacimiento.year - ((hoy.month, hoy.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
+            if edad < 18:
+                raise ValueError
+        except Exception:
+            flash('La fecha de nacimiento es obligatoria y debes ser mayor de edad.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+        if not validar_password_segura(form.password.data):
+            flash('La contraseña debe tener al menos 8 caracteres, incluir mayúsculas, minúsculas, números y un símbolo.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+        if Usuario.get_by_usuario(usuario_limpio):
+            flash('El nombre de usuario ya se encuentra registrado. Elige otro.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+        if Usuario.get_by_correo(correo_limpio):
+            flash('Ya existe una cuenta con este correo electrónico. Inicia sesión o usa otro.', 'danger')
+            pregunta = generar_captcha()
+            form.captcha_pregunta.data = pregunta
+            return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+        rol_obj = Role.get_by_id(form.rol_id.data)
+        rol_nombre = rol_obj['nombre'] if rol_obj else 'Cliente'
+        aprobado = (rol_nombre == 'Cliente')
+        password_hashed = User.hash_password(form.password.data)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'usuarios' AND column_name IN ('nombres', 'apellidos', 'telefono', 'fecha_nacimiento', 'es_mayor_edad', 'acepta_terminos')")
+        columnas_extra = {row['column_name'] for row in cursor.fetchall()}
+
+        campos = ['usuario', 'correo', 'password', 'rol_id', 'activo', 'email_confirmado', 'aprobado', 'dos_factores_activo']
+        valores = [usuario_limpio, correo_limpio, password_hashed, form.rol_id.data, True, True, aprobado, False]
+
+        if 'nombres' in columnas_extra:
+            campos.append('nombres'); valores.append(nombres_limpios)
+        if 'apellidos' in columnas_extra:
+            campos.append('apellidos'); valores.append(apellidos_limpios)
+        if 'telefono' in columnas_extra:
+            campos.append('telefono'); valores.append(telefono_limpio)
+        if 'fecha_nacimiento' in columnas_extra:
+            campos.append('fecha_nacimiento'); valores.append(form.fecha_nacimiento.data)
+        if 'es_mayor_edad' in columnas_extra:
+            campos.append('es_mayor_edad'); valores.append(True)
+        if 'acepta_terminos' in columnas_extra:
+            campos.append('acepta_terminos'); valores.append(True)
+
+        placeholders = ', '.join(['%s'] * len(campos))
+        columnas_sql = ', '.join(campos)
+        sql = f'''INSERT INTO usuarios ({columnas_sql}) VALUES ({placeholders}) RETURNING id'''
+        cursor.execute(sql, tuple(valores))
+        nuevo_id = cursor.fetchone()['id']
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        ActivityLog.registrar(
+            nuevo_id, usuario_limpio, 'REGISTRO_USUARIO',
+            request.remote_addr, f"Rol solicitado: {rol_nombre} | Aprobado: {aprobado} | Mayor de edad: true"
+        )
+
+        if not aprobado:
+            flash(
+                f'¡Cuenta registrada exitosamente! Como solicitaste el rol de {rol_nombre}, '
+                'un Administrador activo deberá aprobar tu acceso antes de poder iniciar sesión.',
+                'warning'
+            )
+        else:
+            flash(f'¡Cuenta creada correctamente con rol {rol_nombre}! Ya puedes iniciar sesión.', 'success')
+
+        return redirect(url_for('login'))
+
+    pregunta = session.get('captcha_pregunta') or generar_captcha()
+    form.captcha_pregunta.data = pregunta
+    return render_template('registro.html', form=form, captcha_pregunta_texto=pregunta)
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """
+    Ruta para el inicio de sesión de usuarios.
+    Permite autenticarse por nombre de usuario o por correo electrónico.
+    Verifica contraseñas seguras (Bcrypt con fallback a Werkzeug).
+    Bloquea a usuarios con rol Administrador que aún no han sido aprobados por un Administrador activo.
+    Gestiona flujo de 2FA si está habilitado y caducidad de sesión.
+    """
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+
+    form = LoginForm()
+    if form.validate_on_submit():
+        identificador = form.usuario.data.strip()
+        user = Usuario.get_by_usuario_o_correo(identificador)
+
+        if user and user.check_password(form.password.data):
+            # Validar si el usuario está activo
+            if not user.activo:
+                registrar_log('LOGIN_BLOQUEADO', f"Usuario inactivo: {user.usuario}")
+                flash('Tu cuenta se encuentra temporalmente desactivada. Contacta al Administrador.', 'danger')
+                return render_template('login.html', form=form)
+
+            # Validar si el usuario requiere aprobación y aún no ha sido autorizado
+            if not user.aprobado:
+                registrar_log('LOGIN_PENDIENTE_APROBACION', f"Intento de acceso no aprobado ({user.rol_nombre}): {user.usuario}")
+                flash(f'Tu solicitud de rol {user.rol_nombre} está pendiente de aprobación por un Administrador activo del sistema.', 'warning')
+                return render_template('login.html', form=form)
+
+            # Verificación en dos pasos (2FA) si está activada
+            if user.dos_factores_activo:
+                codigo_otp = f"{random.randint(100000, 999999)}"
+                session['2fa_user_id'] = user.id
+                session['2fa_codigo'] = codigo_otp
+                session['2fa_remember'] = form.recordarme.data
+                session['temp_user_nombre'] = user.usuario
+
+                conn = get_db_connection()
+                cur = conn.cursor()
+                cur.execute('UPDATE usuarios SET dos_factores_codigo = %s WHERE id = %s', (codigo_otp, user.id))
+                conn.commit()
+                cur.close()
+                conn.close()
+
+                registrar_log('SOLICITUD_2FA', f"Código 2FA generado para {user.usuario}")
+                flash('Ingresa el código de verificación en dos pasos (2FA) para completar el acceso.', 'info')
+                return redirect(url_for('verificar_2fa'))
+
+            # Inicio de sesión normal
+            session.permanent = True
+            login_user(user, remember=form.recordarme.data)
+            registrar_log('LOGIN_EXITOSO', f"Inicio de sesión exitoso como {user.rol_nombre}")
+            flash(f'¡Bienvenido/a al sistema, {user.usuario}!', 'success')
+            next_page = request.args.get('next')
+            if not next_page or not next_page.startswith('/'):
+                next_page = url_for('dashboard')
+            return redirect(next_page)
+        else:
+            session['temp_user_nombre'] = identificador
+            registrar_log('LOGIN_FALLIDO', f"Credenciales incorrectas para: {identificador}")
+            flash('Credenciales incorrectas. Verifica tu usuario/correo y contraseña.', 'danger')
+
+    return render_template('login.html', form=form)
+
+
+@app.route('/verificar-2fa', methods=['GET', 'POST'])
+def verificar_2fa():
+    """
+    Ruta para validar el segundo factor de autenticación (OTP numérico de 6 dígitos).
+    """
+    user_id = session.get('2fa_user_id')
+    codigo_esperado = session.get('2fa_codigo')
+    if not user_id or not codigo_esperado:
+        flash('No hay una sesión 2FA activa. Inicia sesión nuevamente.', 'warning')
+        return redirect(url_for('login'))
+
+    form = DosFactoresForm()
+    if form.validate_on_submit():
+        if form.codigo.data.strip() == codigo_esperado:
+            user = Usuario.get_by_id(user_id)
+            if user:
+                session.permanent = True
+                login_user(user, remember=session.get('2fa_remember', False))
+                # Limpiar variables temporales de 2FA
+                session.pop('2fa_user_id', None)
+                session.pop('2fa_codigo', None)
+                session.pop('2fa_remember', None)
+                session.pop('temp_user_nombre', None)
+
+                registrar_log('LOGIN_2FA_EXITOSO', f"2FA validado para {user.usuario}")
+                flash(f'¡Autenticación en dos pasos exitosa! Bienvenido/a, {user.usuario}.', 'success')
+                return redirect(url_for('dashboard'))
+        flash('Código de verificación 2FA incorrecto o expirado.', 'danger')
+
+    return render_template('verificar_2fa.html', form=form, codigo_simulado=codigo_esperado)
+
+
+@app.route('/confirmar-correo/<token>')
+def confirmar_correo(token):
+    """
+    Simulación de confirmación de correo electrónico.
+    """
+    user = Usuario.get_by_usuario_o_correo(token)
+    if user:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('UPDATE usuarios SET email_confirmado = TRUE WHERE id = %s', (user.id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        registrar_log('EMAIL_CONFIRMADO', f"Correo confirmado para {user.usuario}")
+        flash('¡Tu dirección de correo ha sido confirmada con éxito!', 'success')
+    else:
+        flash('Token o enlace de confirmación inválido.', 'danger')
+    return redirect(url_for('login'))
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    """
+    Ruta para el cierre de sesión seguro.
+    Registra el evento en auditoría, destruye la sesión con logout_user y redirige al login.
+    """
+    registrar_log('LOGOUT', f'Sesión cerrada por {current_user.usuario}')
+    logout_user()
+    flash('Has cerrado sesión correctamente. ¡Hasta pronto!', 'info')
+    return redirect(url_for('login'))
+
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    """
+    Panel administrativo principal protegido por autenticación.
+    Muestra métricas globales y accesos rápidos adaptados al rol del usuario.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT COUNT(*) AS total FROM clientes')
+    total_clientes = cursor.fetchone()['total']
+
+    cursor.execute('SELECT COUNT(*) AS total FROM servicios')
+    total_servicios = cursor.fetchone()['total']
+
+    cursor.execute('SELECT COUNT(*) AS total FROM facturacion')
+    total_facturas = cursor.fetchone()['total']
+
+    cursor.execute('SELECT COUNT(*) AS total FROM proveedores')
+    total_proveedores = cursor.fetchone()['total']
+
+    # Si es Cliente, muestra únicamente sus propios documentos comerciales
+    if current_user.rol_nombre == 'Cliente':
+        cursor.execute('''
+            SELECT f.*, c.nombre AS cliente_nombre, e.nombre AS estado_nombre
+            FROM facturacion f
+            JOIN clientes c ON f.cliente_cedula = c.cedula
+            JOIN estados_documento e ON f.estado_id = e.id
+            WHERE c.correo = %s OR f.cliente_cedula = %s OR c.nombre ILIKE %s
+            ORDER BY f.fecha DESC, f.numero DESC
+            LIMIT 5
+        ''', (current_user.correo, current_user.usuario, f'%{current_user.usuario}%'))
+    else:
+        # Consulta JOIN general para Administrador, Gestor y Soporte
+        cursor.execute('''
+            SELECT f.*, c.nombre AS cliente_nombre, e.nombre AS estado_nombre
+            FROM facturacion f
+            JOIN clientes c ON f.cliente_cedula = c.cedula
+            JOIN estados_documento e ON f.estado_id = e.id
+            ORDER BY f.fecha DESC, f.numero DESC
+            LIMIT 5
+        ''')
+    ultimas_facturas = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return render_template(
+        'dashboard.html',
+        total_clientes=total_clientes,
+        total_servicios=total_servicios,
+        total_facturas=total_facturas,
+        total_proveedores=total_proveedores,
+        ultimas_facturas=ultimas_facturas
+    )
+
+
+# ==============================================================================
+# MÓDULO EXCLUSIVO DE ADMINISTRACIÓN (RBAC & AUDITORÍA)
+# ==============================================================================
+
+@app.route('/admin/usuarios')
+@role_required('Administrador')
+def admin_usuarios():
+    """
+    Panel de gestión de cuentas y roles de usuario.
+    Permite autorizar nuevas solicitudes de rol Administrador y reasignar roles.
+    Muestra la matriz de permisos granulares asociada en la tabla rol_permisos.
+    """
+    usuarios = Usuario.get_all()
+    roles = Role.get_all()
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        SELECT r.id AS rol_id, r.nombre AS rol_nombre, p.codigo, p.descripcion
+        FROM roles r
+        JOIN rol_permisos rp ON r.id = rp.rol_id
+        JOIN permisos p ON rp.permiso_id = p.id
+        ORDER BY r.id, p.codigo
+    ''')
+    filas_permisos = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    permisos_por_rol = {}
+    for f in filas_permisos:
+        permisos_por_rol.setdefault(f['rol_nombre'], []).append({
+            'codigo': f['codigo'],
+            'descripcion': f['descripcion']
+        })
+
+    return render_template(
+        'admin_usuarios.html',
+        usuarios=usuarios,
+        roles=roles,
+        permisos_por_rol=permisos_por_rol
+    )
+
+
+@app.route('/admin/aprobar-usuario/<int:id>', methods=['POST'])
+@role_required('Administrador')
+def admin_aprobar_usuario(id):
+    """
+    Aprueba una solicitud de rol Administrador pendiente.
+    Exclusivo para administradores activos del sistema.
+    """
+    user = Usuario.get_by_id(id)
+    if not user:
+        flash('El usuario indicado no existe.', 'danger')
+        return redirect(url_for('admin_usuarios'))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('UPDATE usuarios SET aprobado = TRUE, activo = TRUE WHERE id = %s', (id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    registrar_log('APROBAR_ADMINISTRADOR', f"El administrador {current_user.usuario} aprobó la cuenta de {user.usuario}")
+    flash(f'El usuario {user.usuario} ha sido aprobado exitosamente como Administrador. Ya puede iniciar sesión.', 'success')
+    return redirect(url_for('admin_usuarios'))
+
+
+@app.route('/admin/cambiar-rol/<int:id>', methods=['POST'])
+@role_required('Administrador')
+def admin_cambiar_rol(id):
+    """
+    Modifica el rol asignado a un usuario existente en PostgreSQL.
+    """
+    nuevo_rol_id = request.form.get('nuevo_rol_id', type=int)
+    if not nuevo_rol_id:
+        flash('Rol inválido.', 'danger')
+        return redirect(url_for('admin_usuarios'))
+
+    rol_obj = Role.get_by_id(nuevo_rol_id)
+    if not rol_obj:
+        flash('El rol seleccionado no es válido.', 'danger')
+        return redirect(url_for('admin_usuarios'))
+
+    user = Usuario.get_by_id(id)
+    if not user:
+        flash('El usuario no existe.', 'danger')
+        return redirect(url_for('admin_usuarios'))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    # Si un Administrador activo le asigna el rol Administrador, queda aprobado automáticamente
+    cur.execute('UPDATE usuarios SET rol_id = %s, aprobado = TRUE WHERE id = %s', (nuevo_rol_id, id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    registrar_log('CAMBIO_ROL', f"El administrador {current_user.usuario} cambió el rol de {user.usuario} a {rol_obj['nombre']}")
+    flash(f'Rol de {user.usuario} actualizado exitosamente a {rol_obj["nombre"]}.', 'success')
+    return redirect(url_for('admin_usuarios'))
+
+
+@app.route('/admin/logs')
+@role_required('Administrador')
+def admin_logs():
+    """
+    Visualiza el registro histórico de auditoría de actividad del sistema.
+    """
+    logs = ActivityLog.get_recientes(100)
+    return render_template('admin_logs.html', logs=logs)
+
+
+# ==============================================================================
+# MÓDULOS DE ADMINISTRACIÓN Y GESTIÓN CRUD (Protegidos por Roles y Permisos RBAC)
+# ==============================================================================
+
+@app.route('/productos')
 @app.route('/servicio')
 @app.route('/servicios')
 def servicios():
     """
-    Ruta del catálogo completo de servicios.
+    Ruta del catálogo completo de servicios (Pública para consulta y lectura).
+    Permite que usuarios no autenticados conozcan la oferta y descripción de servicios.
     Usa JOIN para mostrar el nombre de la categoría (tipo_servicio) de cada servicio.
+    Soporta motor de búsqueda multicriterio (por nombre, descripción y categoría)
+    tanto por parámetros URL (?q=...&tipo=...) como en tiempo real vía JavaScript.
     """
+    q = request.args.get('q', '').strip()
+    tipo = request.args.get('tipo', '').strip()
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('''
+
+    cursor.execute('SELECT * FROM tipos_servicio ORDER BY nombre')
+    tipos_servicio = cursor.fetchall()
+
+    params = []
+    where_clauses = []
+    if not current_user.is_authenticated:
+        where_clauses.append("s.disponible = TRUE")
+    if q:
+        where_clauses.append("(s.nombre ILIKE %s OR s.descripcion ILIKE %s OR t.nombre ILIKE %s)")
+        params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
+    if tipo:
+        where_clauses.append("t.nombre = %s")
+        params.append(tipo)
+
+    sql_where = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+    query = f'''
         SELECT s.*, t.nombre AS tipo_nombre
         FROM servicios s
         JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
-    ''')
+        {sql_where}
+        ORDER BY s.disponible DESC, s.id ASC
+    '''
+    cursor.execute(query, tuple(params))
     lista_servicios = cursor.fetchall()
     cursor.close()
     conn.close()
-    return render_template('servicios.html', servicios=lista_servicios)
+    return render_template(
+        'servicios.html',
+        servicios=lista_servicios,
+        tipos_servicio=tipos_servicio,
+        query_busqueda=q,
+        tipo_seleccionado=tipo
+    )
+
 
 
 @app.route('/proveedores')
+@role_required('Administrador', 'Soporte técnico')
 def proveedores():
     """
     Ruta del directorio de proveedores tecnológicos.
+    Acceso para Administrador y Soporte técnico (infraestructura).
     Usa JOIN con estados_proveedor y categorias_proveedor para mostrar los nombres relacionados.
     """
     conn = get_db_connection()
@@ -110,9 +851,12 @@ def proveedores():
 
 
 @app.route('/clientes')
+@role_required('Administrador', 'Gestor de proyectos', 'Usuario interno')
 def clientes():
     """
     Ruta del directorio de clientes comerciales.
+    Acceso restringido a Administrador, Gestor de proyectos y Usuario interno.
+    Soporte técnico y Clientes NO tienen acceso para proteger datos sensibles.
     Usa JOIN con tipos_negocio para mostrar el nombre de la categoría de negocio.
     """
     conn = get_db_connection()
@@ -129,21 +873,34 @@ def clientes():
 
 
 @app.route('/facturacion')
+@role_required('Administrador', 'Gestor de proyectos', 'Cliente')
 def facturacion():
     """
     Ruta principal del panel comercial de Facturación y Cotizaciones.
-    Usa JOIN con clientes y estados_documento para mostrar los nombres relacionados,
-    y agrega el conteo de servicios incluidos en cada documento.
+    - Administrador y Gestor de proyectos: ven todos los documentos del negocio.
+    - Cliente: ve únicamente sus propios proyectos y cotizaciones contratadas.
+    Usa JOIN con clientes y estados_documento.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('''
-        SELECT f.*, c.nombre AS cliente_nombre, e.nombre AS estado_nombre
-        FROM facturacion f
-        JOIN clientes c ON f.cliente_cedula = c.cedula
-        JOIN estados_documento e ON f.estado_id = e.id
-        ORDER BY f.numero DESC
-    ''')
+
+    if current_user.rol_nombre == 'Cliente':
+        cursor.execute('''
+            SELECT f.*, c.nombre AS cliente_nombre, e.nombre AS estado_nombre
+            FROM facturacion f
+            JOIN clientes c ON f.cliente_cedula = c.cedula
+            JOIN estados_documento e ON f.estado_id = e.id
+            WHERE c.correo = %s OR f.cliente_cedula = %s OR c.nombre ILIKE %s
+            ORDER BY f.numero DESC
+        ''', (current_user.correo, current_user.usuario, f'%{current_user.usuario}%'))
+    else:
+        cursor.execute('''
+            SELECT f.*, c.nombre AS cliente_nombre, e.nombre AS estado_nombre
+            FROM facturacion f
+            JOIN clientes c ON f.cliente_cedula = c.cedula
+            JOIN estados_documento e ON f.estado_id = e.id
+            ORDER BY f.numero DESC
+        ''')
     filas = cursor.fetchall()
 
     lista_facturas = []
@@ -166,6 +923,7 @@ def facturacion():
 # ==============================================================================
 
 @app.route('/clientes/nuevo', methods=['GET', 'POST'])
+@role_required('Administrador', 'Gestor de proyectos')
 def nuevo_cliente():
     """
     Crea y registra un nuevo cliente en el sistema. La cédula es la clave primaria.
@@ -196,6 +954,8 @@ def nuevo_cliente():
         conn.commit()
         cursor.close()
         conn.close()
+
+        registrar_log('CREAR_CLIENTE', f"Cliente {form.nombre.data.strip()} ({form.cedula.data.strip()}) creado por {current_user.usuario}")
         flash('Cliente registrado correctamente.', 'success')
         return redirect(url_for('clientes'))
 
@@ -205,6 +965,7 @@ def nuevo_cliente():
 
 
 @app.route('/clientes/editar/<cedula>', methods=['GET', 'POST'])
+@role_required('Administrador', 'Gestor de proyectos')
 def editar_cliente(cedula):
     """
     Edita la información de un cliente existente identificado por su cédula (PK).
@@ -239,6 +1000,8 @@ def editar_cliente(cedula):
         conn.commit()
         cursor.close()
         conn.close()
+
+        registrar_log('EDITAR_CLIENTE', f"Cliente {form.nombre.data.strip()} ({cedula}) actualizado por {current_user.usuario}")
         flash(f'Cliente "{form.nombre.data.strip()}" actualizado correctamente.', 'success')
         return redirect(url_for('clientes'))
 
@@ -248,9 +1011,11 @@ def editar_cliente(cedula):
 
 
 @app.route('/clientes/eliminar/<cedula>', methods=['POST', 'GET'])
+@role_required('Administrador')
 def eliminar_cliente(cedula):
     """
     Elimina un cliente de PostgreSQL según su cédula, siempre que no tenga facturas asociadas.
+    Acceso exclusivo para el rol Administrador.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -278,6 +1043,8 @@ def eliminar_cliente(cedula):
     conn.commit()
     cursor.close()
     conn.close()
+
+    registrar_log('ELIMINAR_CLIENTE', f"Cliente {cliente['nombre']} ({cedula}) eliminado por {current_user.usuario}")
     flash(f'Cliente "{cliente["nombre"]}" eliminado correctamente.', 'success')
     return redirect(url_for('clientes'))
 
@@ -287,6 +1054,7 @@ def eliminar_cliente(cedula):
 # ==============================================================================
 
 @app.route('/tipos-negocio')
+@role_required('Administrador')
 def tipos_negocio():
     """
     Lista las categorías de tipo de negocio disponibles para clasificar clientes.
@@ -301,6 +1069,7 @@ def tipos_negocio():
 
 
 @app.route('/tipos-negocio/nuevo', methods=['GET', 'POST'])
+@role_required('Administrador')
 def nuevo_tipo_negocio():
     """
     Registra una nueva categoría de tipo de negocio.
@@ -313,12 +1082,14 @@ def nuevo_tipo_negocio():
         conn.commit()
         cursor.close()
         conn.close()
+        registrar_log('CREAR_TIPO_NEGOCIO', f"Tipo de negocio {form.nombre.data.strip()} creado por {current_user.usuario}")
         flash('Tipo de negocio registrado correctamente.', 'success')
         return redirect(url_for('tipos_negocio'))
     return render_template('formulario_tipo_negocio.html', form=form, editando=False)
 
 
 @app.route('/tipos-negocio/editar/<int:id>', methods=['GET', 'POST'])
+@role_required('Administrador')
 def editar_tipo_negocio(id):
     """
     Edita el nombre de una categoría de tipo de negocio existente.
@@ -341,6 +1112,7 @@ def editar_tipo_negocio(id):
         conn.commit()
         cursor.close()
         conn.close()
+        registrar_log('EDITAR_TIPO_NEGOCIO', f"Tipo de negocio ID {id} actualizado a {form.nombre.data.strip()} por {current_user.usuario}")
         flash(f'Tipo de negocio "{form.nombre.data.strip()}" actualizado correctamente.', 'success')
         return redirect(url_for('tipos_negocio'))
 
@@ -350,6 +1122,7 @@ def editar_tipo_negocio(id):
 
 
 @app.route('/tipos-negocio/eliminar/<int:id>', methods=['POST', 'GET'])
+@role_required('Administrador')
 def eliminar_tipo_negocio(id):
     """
     Elimina un tipo de negocio, siempre que ningún cliente lo esté usando.
@@ -377,6 +1150,7 @@ def eliminar_tipo_negocio(id):
     conn.commit()
     cursor.close()
     conn.close()
+    registrar_log('ELIMINAR_TIPO_NEGOCIO', f"Tipo de negocio {tipo['nombre']} (ID {id}) eliminado por {current_user.usuario}")
     flash(f'Tipo de negocio "{tipo["nombre"]}" eliminado correctamente.', 'success')
     return redirect(url_for('tipos_negocio'))
 
@@ -386,6 +1160,7 @@ def eliminar_tipo_negocio(id):
 # ==============================================================================
 
 @app.route('/tipos-servicio')
+@role_required('Administrador')
 def tipos_servicio():
     """
     Lista las categorías de servicio disponibles en el catálogo.
@@ -400,6 +1175,7 @@ def tipos_servicio():
 
 
 @app.route('/tipos-servicio/nuevo', methods=['GET', 'POST'])
+@role_required('Administrador')
 def nuevo_tipo_servicio():
     """
     Registra una nueva categoría de servicio.
@@ -412,12 +1188,14 @@ def nuevo_tipo_servicio():
         conn.commit()
         cursor.close()
         conn.close()
+        registrar_log('CREAR_TIPO_SERVICIO', f"Categoría de servicio {form.nombre.data.strip()} creada por {current_user.usuario}")
         flash('Categoría registrada correctamente.', 'success')
         return redirect(url_for('tipos_servicio'))
     return render_template('formulario_tipo_servicio.html', form=form, editando=False)
 
 
 @app.route('/tipos-servicio/editar/<int:id>', methods=['GET', 'POST'])
+@role_required('Administrador')
 def editar_tipo_servicio(id):
     """
     Edita el nombre de una categoría de servicio existente.
@@ -440,6 +1218,7 @@ def editar_tipo_servicio(id):
         conn.commit()
         cursor.close()
         conn.close()
+        registrar_log('EDITAR_TIPO_SERVICIO', f"Categoría de servicio ID {id} actualizada a {form.nombre.data.strip()} por {current_user.usuario}")
         flash(f'Categoría "{form.nombre.data.strip()}" actualizada correctamente.', 'success')
         return redirect(url_for('tipos_servicio'))
 
@@ -449,6 +1228,7 @@ def editar_tipo_servicio(id):
 
 
 @app.route('/tipos-servicio/eliminar/<int:id>', methods=['POST', 'GET'])
+@role_required('Administrador')
 def eliminar_tipo_servicio(id):
     """
     Elimina una categoría de servicio, siempre que ningún servicio la esté usando.
@@ -476,18 +1256,22 @@ def eliminar_tipo_servicio(id):
     conn.commit()
     cursor.close()
     conn.close()
+    registrar_log('ELIMINAR_TIPO_SERVICIO', f"Categoría de servicio {tipo['nombre']} (ID {id}) eliminada por {current_user.usuario}")
     flash(f'Categoría "{tipo["nombre"]}" eliminada correctamente.', 'success')
     return redirect(url_for('tipos_servicio'))
 
 
 # ==============================================================================
-# MÓDULO CRUD: SERVICIOS
+# MÓDULO CRUD: SERVICIOS / PRODUCTOS
 # ==============================================================================
 
+@app.route('/productos/nuevo', methods=['GET', 'POST'])
 @app.route('/servicio/nuevo', methods=['GET', 'POST'])
+@role_required('Administrador', 'Gestor de proyectos')
 def nuevo_servicio():
     """
     Registra un nuevo servicio en el catálogo, asociado a una categoría (tipo_servicio_id).
+    Acceso para Administrador y Gestor de proyectos.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -498,7 +1282,13 @@ def nuevo_servicio():
     form.tipo_servicio_id.choices = [(t['id'], t['nombre']) for t in tipos]
 
     if form.validate_on_submit():
-        imagen_url = form.imagen.data.strip() if form.imagen.data and form.imagen.data.strip() else "https://images.unsplash.com/photo-1460925895917-afdab827c52f"
+        imagen_ingresada = form.imagen.data.strip() if form.imagen.data else ''
+        imagen_url = resolver_url_imagen(imagen_ingresada) if imagen_ingresada else None
+        if imagen_ingresada and not imagen_url:
+            flash('El enlace no contiene una imagen accesible. Se usará la imagen predeterminada.', 'warning')
+            imagen_url = "https://images.unsplash.com/photo-1460925895917-afdab827c52f"
+        elif not imagen_url:
+            imagen_url = "https://images.unsplash.com/photo-1460925895917-afdab827c52f"
 
         cursor.execute(
             '''INSERT INTO servicios (tipo_servicio_id, nombre, precio_base, imagen, descripcion, disponible)
@@ -509,6 +1299,8 @@ def nuevo_servicio():
         conn.commit()
         cursor.close()
         conn.close()
+
+        registrar_log('CREAR_SERVICIO', f"Servicio {form.nombre.data.strip()} creado por {current_user.usuario}")
         flash('Servicio registrado correctamente.', 'success')
         return redirect(url_for('servicios'))
 
@@ -517,11 +1309,14 @@ def nuevo_servicio():
     return render_template('formulario_servicio.html', form=form, editando=False)
 
 
+@app.route('/productos/editar/<int:id>', methods=['GET', 'POST'])
 @app.route('/servicios/editar/<int:id>', methods=['GET', 'POST'])
 @app.route('/servicio/editar/<int:id>', methods=['GET', 'POST'])
+@role_required('Administrador', 'Gestor de proyectos')
 def editar_servicio(id):
     """
     Edita un servicio existente identificado por su id real de PostgreSQL.
+    Acceso para Administrador y Gestor de proyectos.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -546,7 +1341,11 @@ def editar_servicio(id):
         form.tipo_servicio_id.data = servicio['tipo_servicio_id']
 
     if form.validate_on_submit():
-        imagen_url = form.imagen.data.strip() if form.imagen.data and form.imagen.data.strip() else servicio['imagen']
+        imagen_ingresada = form.imagen.data.strip() if form.imagen.data else ''
+        imagen_url = resolver_url_imagen(imagen_ingresada) if imagen_ingresada else servicio['imagen']
+        if imagen_ingresada and not imagen_url:
+            flash('El enlace no contiene una imagen accesible. Se conservará la imagen anterior.', 'warning')
+            imagen_url = servicio['imagen']
 
         cursor.execute(
             '''UPDATE servicios SET tipo_servicio_id=%s, nombre=%s, precio_base=%s, imagen=%s, descripcion=%s, disponible=%s
@@ -557,6 +1356,8 @@ def editar_servicio(id):
         conn.commit()
         cursor.close()
         conn.close()
+
+        registrar_log('EDITAR_SERVICIO', f"Servicio {form.nombre.data.strip()} (ID {id}) editado por {current_user.usuario}")
         flash(f'Servicio "{form.nombre.data.strip()}" actualizado correctamente.', 'success')
         return redirect(url_for('servicios'))
 
@@ -565,11 +1366,14 @@ def editar_servicio(id):
     return render_template('formulario_servicio.html', form=form, editando=True, id=id)
 
 
+@app.route('/productos/eliminar/<int:id>', methods=['POST', 'GET'])
 @app.route('/servicios/eliminar/<int:id>', methods=['POST', 'GET'])
 @app.route('/servicio/eliminar/<int:id>', methods=['POST', 'GET'])
+@role_required('Administrador')
 def eliminar_servicio(id):
     """
     Elimina un servicio del catálogo en PostgreSQL.
+    Acceso exclusivo para el rol Administrador.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -586,6 +1390,8 @@ def eliminar_servicio(id):
     conn.commit()
     cursor.close()
     conn.close()
+
+    registrar_log('ELIMINAR_SERVICIO', f"Servicio {servicio['nombre']} (ID {id}) eliminado por {current_user.usuario}")
     flash(f'Servicio "{servicio["nombre"]}" eliminado correctamente.', 'success')
     return redirect(url_for('servicios'))
 
@@ -595,9 +1401,11 @@ def eliminar_servicio(id):
 # ==============================================================================
 
 @app.route('/proveedores/nuevo', methods=['GET', 'POST'])
+@role_required('Administrador', 'Soporte técnico')
 def nuevo_proveedor():
     """
     Registra un nuevo proveedor de servicios o infraestructura en PostgreSQL.
+    Acceso para Administrador y Soporte técnico.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -619,6 +1427,8 @@ def nuevo_proveedor():
         conn.commit()
         cursor.close()
         conn.close()
+
+        registrar_log('CREAR_PROVEEDOR', f"Proveedor {form.nombre.data.strip()} creado por {current_user.usuario}")
         flash('Proveedor registrado correctamente.', 'success')
         return redirect(url_for('proveedores'))
 
@@ -628,9 +1438,11 @@ def nuevo_proveedor():
 
 
 @app.route('/proveedores/editar/<int:id>', methods=['GET', 'POST'])
+@role_required('Administrador', 'Soporte técnico')
 def editar_proveedor(id):
     """
     Modifica los datos de un proveedor existente en PostgreSQL.
+    Acceso para Administrador y Soporte técnico.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -664,6 +1476,8 @@ def editar_proveedor(id):
         conn.commit()
         cursor.close()
         conn.close()
+
+        registrar_log('EDITAR_PROVEEDOR', f"Proveedor {form.nombre.data.strip()} (ID {id}) actualizado por {current_user.usuario}")
         flash(f'Proveedor "{form.nombre.data.strip()}" actualizado correctamente.', 'success')
         return redirect(url_for('proveedores'))
 
@@ -673,9 +1487,11 @@ def editar_proveedor(id):
 
 
 @app.route('/proveedores/eliminar/<int:id>', methods=['POST', 'GET'])
+@role_required('Administrador')
 def eliminar_proveedor(id):
     """
     Elimina un proveedor de PostgreSQL.
+    Acceso exclusivo para el rol Administrador.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -692,6 +1508,8 @@ def eliminar_proveedor(id):
     conn.commit()
     cursor.close()
     conn.close()
+
+    registrar_log('ELIMINAR_PROVEEDOR', f"Proveedor {proveedor['nombre']} (ID {id}) eliminado por {current_user.usuario}")
     flash(f'Proveedor "{proveedor["nombre"]}" eliminado correctamente.', 'success')
     return redirect(url_for('proveedores'))
 
@@ -701,6 +1519,7 @@ def eliminar_proveedor(id):
 # ==============================================================================
 
 @app.route('/categorias-proveedor')
+@role_required('Administrador', 'Soporte técnico')
 def categorias_proveedor():
     """
     Lista las categorías de infraestructura disponibles para clasificar proveedores.
@@ -715,6 +1534,7 @@ def categorias_proveedor():
 
 
 @app.route('/categorias-proveedor/nueva', methods=['GET', 'POST'])
+@role_required('Administrador', 'Soporte técnico')
 def nueva_categoria_proveedor():
     """
     Registra una nueva categoría de proveedor.
@@ -727,12 +1547,15 @@ def nueva_categoria_proveedor():
         conn.commit()
         cursor.close()
         conn.close()
+
+        registrar_log('CREAR_CATEGORIA_PROVEEDOR', f"Categoría {form.nombre.data.strip()} creada por {current_user.usuario}")
         flash('Categoría registrada correctamente.', 'success')
         return redirect(url_for('categorias_proveedor'))
     return render_template('formulario_categoria_proveedor.html', form=form, editando=False)
 
 
 @app.route('/categorias-proveedor/editar/<int:id>', methods=['GET', 'POST'])
+@role_required('Administrador', 'Soporte técnico')
 def editar_categoria_proveedor(id):
     """
     Edita el nombre de una categoría de proveedor existente.
@@ -755,6 +1578,8 @@ def editar_categoria_proveedor(id):
         conn.commit()
         cursor.close()
         conn.close()
+
+        registrar_log('EDITAR_CATEGORIA_PROVEEDOR', f"Categoría ID {id} actualizada a {form.nombre.data.strip()} por {current_user.usuario}")
         flash(f'Categoría "{form.nombre.data.strip()}" actualizada correctamente.', 'success')
         return redirect(url_for('categorias_proveedor'))
 
@@ -764,6 +1589,7 @@ def editar_categoria_proveedor(id):
 
 
 @app.route('/categorias-proveedor/eliminar/<int:id>', methods=['POST', 'GET'])
+@role_required('Administrador', 'Soporte técnico')
 def eliminar_categoria_proveedor(id):
     """
     Elimina una categoría de proveedor, siempre que ningún proveedor la esté usando.
@@ -791,6 +1617,8 @@ def eliminar_categoria_proveedor(id):
     conn.commit()
     cursor.close()
     conn.close()
+
+    registrar_log('ELIMINAR_CATEGORIA_PROVEEDOR', f"Categoría {categoria['nombre']} (ID {id}) eliminada por {current_user.usuario}")
     flash(f'Categoría "{categoria["nombre"]}" eliminada correctamente.', 'success')
     return redirect(url_for('categorias_proveedor'))
 
@@ -800,11 +1628,15 @@ def eliminar_categoria_proveedor(id):
 # ==============================================================================
 
 @app.route('/facturacion/nueva', methods=['GET', 'POST'])
+@role_required('Administrador', 'Gestor de proyectos')
+@permission_required('facturas.crear')
 def nueva_factura():
     """
     Emite un nuevo documento comercial (Factura o Cotización).
     El cliente se selecciona de una lista real (cliente_cedula), y cada servicio
     incluido se guarda como una fila propia en detalle_factura.
+    Acceso exclusivo para Administrador y Gestor de proyectos.
+    Genera automáticamente el número correlativo si no se especifica.
     """
     form = FacturacionForm()
     tipo_solicitado = request.args.get('tipo', 'Cotizacion' if request.args.get('servicio_id') is not None else 'Factura')
@@ -822,15 +1654,16 @@ def nueva_factura():
     id_por_nombre = {e['nombre']: e['id'] for e in estados}
 
     if request.method == 'GET':
-        cursor.execute('SELECT COUNT(*) AS total FROM facturacion')
-        total_docs = cursor.fetchone()['total']
+        cursor.execute("SELECT last_value, is_called FROM " + ("secuencia_cotizaciones" if tipo_solicitado == 'Cotizacion' else "secuencia_facturas"))
+        seq_row = cursor.fetchone()
+        proximo = (seq_row['last_value'] + 1) if (seq_row and seq_row['is_called']) else (seq_row['last_value'] if seq_row else 1)
         form.tipo.data = tipo_solicitado
         if tipo_solicitado == 'Cotizacion':
-            form.numero.data = f"COT-2026-{total_docs + 1:04d}"
+            form.numero.data = f"COT-2026-{proximo:04d}"
             form.validez.data = "15 días"
             form.estado_id.data = id_por_nombre.get('En revision')
         else:
-            form.numero.data = f"001-001-{total_docs + 1:04d}"
+            form.numero.data = f"001-001-{proximo:04d}"
             form.validez.data = "30 días"
             form.estado_id.data = id_por_nombre.get('Pendiente')
         form.fecha.data = str(date.today())
@@ -838,20 +1671,24 @@ def nueva_factura():
         form.saldo_pendiente.data = 0.00
 
     if form.validate_on_submit():
-        numero_limpio = form.numero.data.strip()
-        cursor.execute('SELECT * FROM facturacion WHERE numero = %s', (numero_limpio,))
-        existente = cursor.fetchone()
-        if existente is not None:
-            cursor.execute('SELECT * FROM servicios')
-            servicios_catalogo = cursor.fetchall()
-            cursor.close()
-            conn.close()
-            flash(f'Ya existe un documento con el número "{numero_limpio}". Usa un número distinto.', 'danger')
-            return render_template(
-                'formulario_facturacion.html', form=form, editando=False,
-                servicios_catalogo=servicios_catalogo, clientes_registrados=clientes_registrados,
-                servicio_seleccionado_id=request.args.get('servicio_id', type=int)
-            )
+        tipo_doc = form.tipo.data
+        numero_limpio = form.numero.data.strip() if form.numero.data else ''
+        numero_param = None
+
+        if numero_limpio:
+            cursor.execute('SELECT 1 FROM facturacion WHERE numero = %s', (numero_limpio,))
+            if cursor.fetchone() is not None:
+                cursor.execute('SELECT * FROM servicios')
+                servicios_catalogo = cursor.fetchall()
+                cursor.close()
+                conn.close()
+                flash(f'Ya existe un documento con el número "{numero_limpio}". Usa un número distinto.', 'danger')
+                return render_template(
+                    'formulario_facturacion.html', form=form, editando=False,
+                    servicios_catalogo=servicios_catalogo, clientes_registrados=clientes_registrados,
+                    servicio_seleccionado_id=request.args.get('servicio_id', type=int)
+                )
+            numero_param = numero_limpio
 
         servicios_detalle = []
         if form.servicios_json.data:
@@ -866,7 +1703,6 @@ def nueva_factura():
         anticipo_val = float(form.anticipo.data) if form.anticipo.data is not None else 0.00
         saldo_val = float(form.saldo_pendiente.data) if form.saldo_pendiente.data is not None else max(0.0, total_val - anticipo_val)
 
-        tipo_doc = form.tipo.data
         estado_id_final = form.estado_id.data
         if tipo_doc == 'Factura' and saldo_val <= 0 and estado_id_final == id_por_nombre.get('Pendiente'):
             estado_id_final = id_por_nombre.get('Pagada')
@@ -875,14 +1711,19 @@ def nueva_factura():
             "Propuesta emitida por NexoDigital." if tipo_doc == 'Cotizacion' else "Comprobante emitido por NexoDigital."
         )
 
+        # Inserción con autogeneración secuencial atómica (trigger en PostgreSQL si numero_param es None)
         cursor.execute(
             '''INSERT INTO facturacion
                (numero, tipo, cliente_cedula, fecha, validez, subtotal, iva, monto, anticipo, saldo_pendiente, estado_id, notas)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)''',
-            (numero_limpio, tipo_doc, form.cliente_cedula.data, str(form.fecha.data),
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+               RETURNING numero''',
+            (numero_param, tipo_doc, form.cliente_cedula.data, str(form.fecha.data),
              form.validez.data.strip() if form.validez.data else "15 días",
              subtotal_val, iva_val, total_val, anticipo_val, saldo_val, estado_id_final, notas_final)
         )
+        row_insertado = cursor.fetchone()
+        numero_limpio = row_insertado['numero']
+
 
         for item in servicios_detalle:
             cursor.execute(
@@ -898,6 +1739,7 @@ def nueva_factura():
         conn.close()
 
         nombre_doc = "Cotización" if tipo_doc == 'Cotizacion' else "Factura"
+        registrar_log('EMITIR_FACTURA', f"{nombre_doc} {numero_limpio} emitida por {current_user.usuario} por un monto de ${total_val:.2f}")
         flash(f'{nombre_doc} "{numero_limpio}" guardada correctamente.', 'success')
         return redirect(url_for('facturacion'))
 
@@ -917,10 +1759,13 @@ def nueva_factura():
 
 
 @app.route('/facturacion/editar/<numero>', methods=['GET', 'POST'])
+@role_required('Administrador', 'Gestor de proyectos')
+@permission_required('facturas.editar')
 def editar_factura(numero):
     """
     Edita un documento comercial existente, identificado por su número (clave primaria).
     El número no se modifica desde este formulario, ya que detalle_factura depende de él.
+    Acceso para Administrador y Gestor de proyectos.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -997,6 +1842,7 @@ def editar_factura(numero):
         conn.close()
 
         nombre_doc = "Cotización" if tipo_doc == 'Cotizacion' else "Factura"
+        registrar_log('EDITAR_FACTURA', f"{nombre_doc} {numero} actualizada por {current_user.usuario}")
         flash(f'{nombre_doc} "{numero}" actualizada correctamente.', 'success')
         return redirect(url_for('facturacion'))
 
@@ -1017,10 +1863,13 @@ def editar_factura(numero):
 
 
 @app.route('/facturacion/eliminar/<numero>', methods=['POST', 'GET'])
+@role_required('Administrador')
+@permission_required('facturas.eliminar')
 def eliminar_factura(numero):
     """
     Elimina un documento comercial identificado por su número. El detalle asociado
     se borra automáticamente gracias a ON DELETE CASCADE en detalle_factura.
+    Acceso exclusivo para el rol Administrador.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1040,19 +1889,23 @@ def eliminar_factura(numero):
     cursor.close()
     conn.close()
 
+    registrar_log('ELIMINAR_FACTURA', f"{tipo_str} {numero} eliminada por {current_user.usuario}")
     flash(f'{tipo_str} "{numero}" eliminada correctamente.', 'success')
     return redirect(url_for('facturacion'))
 
 
 @app.route('/facturacion/comprobante/<numero>')
+@role_required('Administrador', 'Gestor de proyectos', 'Cliente')
+@permission_required('facturas.ver_propias')
 def ver_comprobante(numero):
     """
     Genera la vista imprimible del comprobante, identificado por su número (PK).
+    Acceso para Administrador, Gestor de proyectos y Cliente (solo sus propios comprobantes).
     """
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT f.*, c.nombre AS cliente_nombre, e.nombre AS estado_nombre
+        SELECT f.*, c.nombre AS cliente_nombre, c.correo AS cliente_correo, e.nombre AS estado_nombre
         FROM facturacion f
         JOIN clientes c ON f.cliente_cedula = c.cedula
         JOIN estados_documento e ON f.estado_id = e.id
@@ -1065,6 +1918,26 @@ def ver_comprobante(numero):
         conn.close()
         flash('El documento seleccionado no existe.', 'danger')
         return redirect(url_for('facturacion'))
+
+    # Si el usuario es Cliente, verificar que el comprobante pertenezca a sus datos
+    if current_user.rol_nombre == 'Cliente':
+        cliente_correo = (fila.get('cliente_correo') or '').strip().lower()
+        cliente_cedula = (fila.get('cliente_cedula') or '').strip()
+        cliente_nombre = (fila.get('cliente_nombre') or '').strip().lower()
+        usuario_actual = current_user.usuario.strip().lower()
+        correo_actual = current_user.correo.strip().lower()
+
+        if (correo_actual != cliente_correo and
+            usuario_actual != cliente_cedula.lower() and
+            usuario_actual not in cliente_nombre):
+            cursor.close()
+            conn.close()
+            registrar_log(
+                'ACCESO_DENEGADO_COMPROBANTE',
+                f"Cliente {current_user.usuario} intentó ver comprobante ajeno {numero} de {fila.get('cliente_nombre')}"
+            )
+            flash('No tienes autorización para ver comprobantes emitidos a otros clientes.', 'danger')
+            return redirect(url_for('facturacion'))
 
     factura = dict(fila)
     cursor.execute('SELECT * FROM detalle_factura WHERE factura_numero = %s', (numero,))
@@ -1091,12 +1964,15 @@ def ver_comprobante(numero):
 # Cumple el requisito de "consulta relacionada entre dos tablas con JOIN".
 
 @app.route('/estadisticas')
+@role_required('Administrador', 'Gestor de proyectos', 'Cliente')
+@permission_required('reportes.ver')
 def estadisticas():
     """
-    Panel de resultados del negocio. Calcula, a partir de las facturas reales:
+    Panel de resultados del negocio y ranking de demanda de servicios.
+    Calcula, a partir de las facturas reales:
       - El ranking de servicios más solicitados (JOIN detalle_factura + servicios).
-      - Totales generales (servicios vendidos e ingresos estimados).
-    Es una vista de SOLO LECTURA: no agrega, edita ni elimina datos.
+      - Totales generales (servicios vendidos e ingresos para administradores/gestores).
+    Permite acceso a Administrador, Gestor de proyectos y Clientes (solo ranking de demanda).
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1109,7 +1985,7 @@ def estadisticas():
                t.nombre AS categoria,
                SUM(d.cantidad) AS unidades,
                SUM(d.total)    AS ingresos
-        FROM detalle_factura d
+            FROM detalle_factura d
         JOIN servicios s      ON d.servicio_id = s.id
         JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
         GROUP BY s.nombre, t.nombre
@@ -1133,14 +2009,55 @@ def estadisticas():
     # La unidad máxima sirve para dibujar el ancho de las barras en la plantilla.
     max_unidades = ranking[0]['unidades'] if ranking else 0
 
+    es_cliente = (current_user.rol_nombre == 'Cliente')
+    total_ingresos_mostrar = fila_totales['total_ingresos'] if not es_cliente else 0.0
+
     return render_template(
         'estadisticas.html',
         ranking=ranking,
         total_unidades=fila_totales['total_unidades'],
-        total_ingresos=fila_totales['total_ingresos'],
+        total_ingresos=total_ingresos_mostrar,
         servicio_top=servicio_top,
-        max_unidades=max_unidades
+        max_unidades=max_unidades,
+        es_cliente=es_cliente
     )
+
+
+# ==============================================================================
+# MANEJADORES DE ERRORES PERSONALIZADOS (404, 403, 500)
+# ==============================================================================
+
+@app.errorhandler(404)
+def error_404(e):
+    """Manejo elegante de rutas inexistentes o recursos no encontrados."""
+    return render_template('404.html'), 404
+
+
+@app.errorhandler(403)
+def error_403(e):
+    """Manejo de acceso denegado por falta de permisos o roles."""
+    registrar_log('ERROR_403_ACCESO_PROHIBIDO', f"Ruta: {request.path}")
+    return render_template('403.html'), 403
+
+
+@app.errorhandler(500)
+def error_500(e):
+    """Manejo de errores internos del servidor o desconexión de base de datos."""
+    registrar_log('ERROR_500_SERVIDOR', f"Excepción interna en {request.path}: {str(e)}")
+    return render_template('500.html'), 500
+
+
+@app.errorhandler(Exception)
+def error_general(e):
+    """
+    Captura global de excepciones no controladas en producción.
+    Si estamos en modo DEBUG de desarrollo, permite la propagación para que Flask
+    muestre el depurador detallado en consola.
+    """
+    if app.debug:
+        raise e
+    registrar_log('EXCEPCION_NO_CONTROLADA', f"Error en {request.path}: {str(e)}")
+    return render_template('500.html'), 500
 
 
 # ==============================================================================
@@ -1149,3 +2066,4 @@ def estadisticas():
 if __name__ == '__main__':
     # Ejecuta el servidor de desarrollo local con recarga automática y depurador activo
     app.run(debug=True)
+

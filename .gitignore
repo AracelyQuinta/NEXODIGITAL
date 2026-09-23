@@ -1,4 +1,14 @@
+# Entorno virtual y dependencias locales
 venv/
+
+# Archivos de caché compilados de Python
+**/__pycache__/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+
+# Variables de entorno y credenciales sensibles
 .env
+
+# Scripts temporales de pruebas locales
+scratch/
