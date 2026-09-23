@@ -154,6 +154,7 @@ CREATE TABLE solicitudes (
     fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     estado VARCHAR(30) NOT NULL DEFAULT 'Pendiente',
     responsable_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
+    respuesta_cliente TEXT,
     trabajo_realizado TEXT,
     evidencia_url TEXT
 );

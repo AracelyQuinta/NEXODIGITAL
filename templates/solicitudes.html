@@ -29,6 +29,12 @@
                         {% endif %}
                         <p class="small fw-semibold text-emerald mb-2">{{ solicitud['tipo_servicio'] }}</p>
                         <p class="mb-3">{{ solicitud['mensaje'] }}</p>
+                        {% if solicitud['respuesta_cliente'] %}
+                        <div class="alert alert-info py-2 small">
+                            <strong>Respuesta al cliente:</strong>
+                            <div class="mt-1">{{ solicitud['respuesta_cliente'] }}</div>
+                        </div>
+                        {% endif %}
                         {% if current_user.rol_nombre == 'Soporte técnico' and solicitud['responsable_id'] == current_user.id %}
                         <form method="post" action="{{ url_for('actualizar_solicitud', id=solicitud['id']) }}" class="row g-2 align-items-end">
                             <div class="col-md-4">
@@ -38,6 +44,10 @@
                                     <option value="{{ estado }}" {% if solicitud['estado'] == estado %}selected{% endif %}>{{ estado }}</option>
                                     {% endfor %}
                                 </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Respuesta al cliente</label>
+                                <textarea name="respuesta_cliente" class="form-control form-control-sm" rows="2" maxlength="5000">{{ solicitud['respuesta_cliente'] or '' }}</textarea>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-semibold">Trabajo realizado</label>
@@ -76,6 +86,10 @@
                                     <option value="{{ responsable['id'] }}" {% if solicitud['responsable_id'] == responsable['id'] %}selected{% endif %}>{{ responsable['usuario'] }}</option>
                                     {% endfor %}
                                 </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Respuesta al cliente</label>
+                                <textarea name="respuesta_cliente" class="form-control form-control-sm" rows="2" maxlength="5000">{{ solicitud['respuesta_cliente'] or '' }}</textarea>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small fw-semibold">Trabajo realizado</label>

@@ -1034,7 +1034,7 @@ def admin_logs():
 @login_required
 @role_required('Administrador', 'Gestor de proyectos', 'Soporte técnico')
 def solicitudes():
-    """Muestra las peticiones de clientes y permite su asignación operativa."""
+    """Muestra las peticiones de clientes y permite responderlas y asignarlas."""
     conn = get_db_connection()
     cursor = conn.cursor()
     if current_user.rol_nombre == 'Soporte técnico':
@@ -1117,9 +1117,10 @@ def crear_solicitud():
 @login_required
 @role_required('Administrador', 'Gestor de proyectos', 'Soporte técnico')
 def actualizar_solicitud(id):
-    """Actualiza una petición y registra el trabajo realizado/evidencia."""
+    """Actualiza una petición, su respuesta y el trabajo realizado/evidencia."""
     estado = (request.form.get('estado') or '').strip()
     responsable_id = request.form.get('responsable_id', type=int)
+    respuesta_cliente = (request.form.get('respuesta_cliente') or '').strip()
     trabajo_realizado = (request.form.get('trabajo_realizado') or '').strip()
     evidencia_url = (request.form.get('evidencia_url') or '').strip()
     estados_validos = {'Pendiente', 'En revisión', 'Asignada', 'En proceso', 'Finalizada', 'Cancelada'}
@@ -1154,9 +1155,12 @@ def actualizar_solicitud(id):
     cursor.execute('''
         UPDATE solicitudes
         SET estado = %s, responsable_id = %s,
-            trabajo_realizado = %s, evidencia_url = %s
+            respuesta_cliente = %s, trabajo_realizado = %s, evidencia_url = %s
         WHERE id = %s
-    ''', (estado, responsable_id or None, trabajo_realizado or None, evidencia_url or None, id))
+    ''', (
+        estado, responsable_id or None, respuesta_cliente or None,
+        trabajo_realizado or None, evidencia_url or None, id
+    ))
     if cursor.rowcount == 0:
         conn.rollback()
         cursor.close()

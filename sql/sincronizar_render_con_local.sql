@@ -15,6 +15,7 @@ SET dos_factores_activo = TRUE,
 ALTER TABLE solicitudes
     ADD COLUMN IF NOT EXISTS estado VARCHAR(30) NOT NULL DEFAULT 'Pendiente',
     ADD COLUMN IF NOT EXISTS responsable_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS respuesta_cliente TEXT,
     ADD COLUMN IF NOT EXISTS trabajo_realizado TEXT,
     ADD COLUMN IF NOT EXISTS evidencia_url TEXT;
 
