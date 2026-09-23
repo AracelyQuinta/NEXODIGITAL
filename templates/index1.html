@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Nexo Digital - Soluciones web y herramientas digitales para pequeños negocios.">
+
+    <title>Nexo Digital - Soluciones Web</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- CSS del sitio -->
+    <link rel="stylesheet" href="static/css/estilo.css">
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Barra de navegacion -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-navy sticky-top shadow-sm py-2">
+        <div class="container">
+            <a class="navbar-brand fw-bold d-flex align-items-center gap-2 py-1" href="#inicio">
+                <span class="brand-badge"><i class="bi bi-lightning-charge-fill"></i></span>
+                <span class="text-white">Nexo<span class="text-mint">Digital</span></span>
+            </a>
+
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#menuNav" aria-controls="menuNav" aria-expanded="false" aria-label="Abrir menu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="menuNav">
+                <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-2">
+                    <li class="nav-item">
+                        <a class="nav-link px-2 active" href="#inicio">
+                            <i class="bi bi-house-door me-1"></i>Inicio
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-2" href="#quienes-somos">
+                            <i class="bi bi-info-circle me-1"></i>Quiénes Somos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-2" href="#servicios">
+                            <i class="bi bi-grid me-1"></i>Servicios
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-2" href="#video">
+                            <i class="bi bi-play-circle me-1"></i>Video
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-2" href="#solicitudes">
+                            <i class="bi bi-send-plus me-1"></i>Solicitudes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link px-2" href="#contacto">
+                            <i class="bi bi-envelope me-1"></i>Contacto
+                        </a>
+                    </li>
+                    <li class="nav-item ms-lg-2">
+                        <a class="btn btn-verde btn-sm px-3 rounded-pill fw-semibold shadow-sm" href="http://127.0.0.1:5000/servicios" target="_blank">
+                            <i class="bi bi-box-arrow-in-right me-1"></i>Acceso al Sistema
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido principal -->
+    <main class="flex-grow-1">
+
+        <!-- Banner principal -->
+        <section id="inicio" class="hero-section text-center text-white py-5">
+            <div class="container py-lg-5">
+                <span class="badge bg-emerald px-3 py-2 text-uppercase fw-semibold mb-3">
+                    Emprendimiento Tecnológico
+                </span>
+                <h1 class="display-4 fw-bold mb-3 text-white">
+                    Impulsamos tu negocio en el mundo digital
+                </h1>
+                <p class="lead text-light-emerald mx-auto mb-4" style="max-width: 760px;">
+                    Creamos páginas web, catálogos digitales, menús QR y herramientas de contacto para que pequeños negocios y emprendimientos aumenten sus ventas.
+                </p>
+                <div class="d-flex gap-3 justify-content-center flex-wrap align-items-center">
+                    <a href="http://127.0.0.1:5000/servicios" target="_blank" class="btn btn-verde btn-lg fw-bold">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Ingresar al Sistema
+                    </a>
+                    <button type="button" class="btn btn-outline-light btn-lg" data-bs-toggle="modal" data-bs-target="#modalAccesoSistema">
+                        <i class="bi bi-grid-3x3-gap-fill me-2"></i>Módulos
+                    </button>
+                    <a href="#servicios" class="btn btn-light btn-lg text-navy fw-semibold">
+                        <i class="bi bi-grid me-2"></i>Ver Servicios
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quienes Somos -->
+        <section id="quienes-somos" class="py-5">
+            <div class="container py-lg-4">
+                <div class="row align-items-center g-5">
+                    <div class="col-lg-5 col-md-6">
+                        <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085"
+                            alt="Desarrollo web" class="img-fluid rounded-4 shadow w-100 object-fit-cover" style="height: 380px;">
+                    </div>
+
+                    <article class="col-lg-7 col-md-6">
+                        <span class="badge bg-navy text-white mb-2 px-3 py-1 text-uppercase fw-semibold">Sobre nosotros</span>
+                        <h2 class="display-6 fw-bold text-navy mb-3">Quiénes Somos</h2>
+                        <p class="text-body lead">
+                            <strong>Nexo Digital</strong> es un proyecto creado por estudiantes de la carrera de Tecnologías de la Información. Nuestro objetivo es apoyar a pequeños negocios, locales y emprendedores a tener presencia en internet con herramientas digitales útiles y accesibles.
+                        </p>
+                        <p class="text-body">
+                            Creamos páginas web sencillas, menús digitales con código QR y catálogos de productos para facilitar la comunicación con los clientes.
+                        </p>
+                        <div class="row g-3 mt-2">
+                            <div class="col-sm-6">
+                                <div class="p-3 bg-light rounded-3 border-start border-4 border-emerald">
+                                    <small class="text-muted d-block fw-semibold">Ubicación</small>
+                                    <span class="fw-bold text-navy"><i class="bi bi-geo-alt-fill text-danger me-1"></i>Quito / Puyo — Ecuador</span>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="p-3 bg-light rounded-3 border-start border-4 border-navy">
+                                    <small class="text-muted d-block fw-semibold">Modalidad</small>
+                                    <span class="fw-bold text-navy"><i class="bi bi-globe me-1 text-primary"></i>Atención en línea</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mision y Vision -->
+        <section id="mision-vision" class="py-5 bg-soft">
+            <div class="container py-lg-4">
+                <div class="text-center mb-5">
+                    <h2 class="fw-bold text-navy">Misión y Visión</h2>
+                    <p class="text-muted">Nuestros objetivos y proyección como equipo.</p>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card h-100 shadow-sm border-0 rounded-4 p-4">
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <div class="icon-circle bg-emerald-subtle text-emerald" style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-compass-fill fs-4"></i>
+                                </div>
+                                <h3 class="h4 fw-bold text-navy mb-0">Misión</h3>
+                            </div>
+                            <p class="text-body mb-0">
+                                Brindar soluciones digitales prácticas y efectivas para emprendedores y pequeños negocios, ayudándolos a mejorar su presencia en línea y alcanzar sus metas comerciales.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card h-100 shadow-sm border-0 rounded-4 p-4">
+                            <div class="d-flex align-items-center gap-3 mb-3">
+                                <div class="icon-circle bg-navy-subtle text-navy" style="width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-eye-fill fs-4"></i>
+                                </div>
+                                <h3 class="h4 fw-bold text-navy mb-0">Visión</h3>
+                            </div>
+                            <p class="text-body mb-0">
+                                Consolidarse como una iniciativa de referencia en presencia digital para pequeños negocios en el Ecuador, reconocida por la calidad de sus desarrollos y la cercanía con el cliente.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Servicios con Buscador -->
+        <section id="servicios" class="py-5">
+            <div class="container py-lg-4">
+                <div class="text-center mb-4">
+                    <span class="badge bg-emerald-subtle text-emerald-text px-3 py-2 rounded-pill text-uppercase fw-semibold mb-2">Soluciones Digitales</span>
+                    <h2 class="display-6 fw-bold text-navy">Servicios Disponibles</h2>
+                    <p class="text-muted mx-auto" style="max-width: 600px;">
+                        Opciones digitales diseñadas a la medida de tu presupuesto. Usa nuestro buscador para explorar las soluciones web disponibles.
+                    </p>
+                </div>
+
+                <!-- Buscador y Filtros Rápidos -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white" style="border: 1px solid var(--border-color) !important;">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-7 col-lg-8">
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted rounded-start-pill ps-3">
+                                    <i class="bi bi-search text-emerald"></i>
+                                </span>
+                                <input type="text" id="buscadorIndex" class="form-control bg-light border-start-0 border-end-0 py-2"
+                                       placeholder="Buscar servicio (ej. Páginas Web, Catálogo, Menú QR, WhatsApp)..."
+                                       autocomplete="off">
+                                <button class="btn btn-light border-start-0 rounded-end-pill pe-3 text-muted" type="button" id="btnLimpiarIndex" title="Borrar búsqueda">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-5 col-lg-4">
+                            <select id="categoriaIndex" class="form-select rounded-pill py-2 bg-light">
+                                <option value="">Todas las categorías</option>
+                                <option value="desarrollo web">Desarrollo Web</option>
+                                <option value="marketing digital">Marketing Digital</option>
+                                <option value="diseño y catálogos">Diseño y Catálogos</option>
+                                <option value="soporte y asesoría">Soporte y Asesoría</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Chips de acceso directo -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-2 pt-2 border-top">
+                        <small class="text-muted fw-semibold me-1"><i class="bi bi-funnel text-navy me-1"></i>Filtros:</small>
+                        <button type="button" class="btn btn-sm btn-verde rounded-pill px-3 index-chip active" data-cat="">Todos</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 index-chip" data-cat="desarrollo web">Desarrollo Web</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 index-chip" data-cat="diseño y catálogos">Diseño y Catálogos</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 index-chip" data-cat="marketing digital">Marketing Digital</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 index-chip" data-cat="soporte y asesoría">Soporte y Asesoría</button>
+                    </div>
+                </div>
+
+                <div class="row g-4" id="contenedorServiciosIndex">
+                    <!-- Servicio 1 -->
+                    <div class="col-lg-4 col-md-6 service-index-col"
+                         data-nombre="páginas web para negocios"
+                         data-descripcion="diseño de sitios web claros, rápidos y adaptados para celulares y computadoras."
+                         data-tipo="desarrollo web">
+                        <div class="card h-100 service-card shadow-sm border-0 d-flex flex-column">
+                            <div class="card-img-wrapper">
+                                <img src="https://images.unsplash.com/photo-1547658719-da2b51169166" alt="Páginas web">
+                                <div class="price-tag">$250.00 <span>USD</span></div>
+                            </div>
+                            <div class="card-body p-4 d-flex flex-column flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="time-badge"><i class="bi bi-clock-history text-emerald me-1"></i>5 a 7 días</span>
+                                    <span class="badge badge-disponible"><i class="bi bi-check-circle-fill me-1"></i>Disponible</span>
+                                </div>
+                                <span class="badge bg-light text-navy border px-2 py-1 mb-2 align-self-start">
+                                    <i class="bi bi-collection me-1"></i>Desarrollo Web
+                                </span>
+                                <h3 class="h5 fw-bold text-navy my-2">Páginas Web para Negocios</h3>
+                                <p class="text-body small flex-grow-1 mb-3">Diseño de sitios web claros, rápidos y adaptados para celulares y computadoras.</p>
+                                <div class="pt-3 border-top mt-auto">
+                                    <a href="#contacto" class="btn btn-verde btn-sm rounded-pill w-100">Cotizar este servicio</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Servicio 2 -->
+                    <div class="col-lg-4 col-md-6 service-index-col"
+                         data-nombre="catálogo digital de productos"
+                         data-descripcion="muestra tus productos con fotos, precios y botón para hacer pedidos por whatsapp."
+                         data-tipo="diseño y catálogos">
+                        <div class="card h-100 service-card shadow-sm border-0 d-flex flex-column">
+                            <div class="card-img-wrapper">
+                                <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f" alt="Catálogos digitales">
+                                <div class="price-tag">$120.00 <span>USD</span></div>
+                            </div>
+                            <div class="card-body p-4 d-flex flex-column flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="time-badge"><i class="bi bi-clock-history text-emerald me-1"></i>3 a 4 días</span>
+                                    <span class="badge badge-disponible"><i class="bi bi-check-circle-fill me-1"></i>Disponible</span>
+                                </div>
+                                <span class="badge bg-light text-navy border px-2 py-1 mb-2 align-self-start">
+                                    <i class="bi bi-collection me-1"></i>Diseño y Catálogos
+                                </span>
+                                <h3 class="h5 fw-bold text-navy my-2">Catálogo Digital de Productos</h3>
+                                <p class="text-body small flex-grow-1 mb-3">Muestra tus productos con fotos, precios y botón para hacer pedidos por WhatsApp.</p>
+                                <div class="pt-3 border-top mt-auto">
+                                    <a href="#contacto" class="btn btn-verde btn-sm rounded-pill w-100">Cotizar este servicio</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Servicio 3 -->
+                    <div class="col-lg-4 col-md-6 service-index-col"
+                         data-nombre="menú digital con código qr"
+                         data-descripcion="menú interactivo para restaurantes y cafeterías accesible escaneando un código qr."
+                         data-tipo="diseño y catálogos">
+                        <div class="card h-100 service-card shadow-sm border-0 d-flex flex-column">
+                            <div class="card-img-wrapper">
+                                <img src="https://images.unsplash.com/photo-1595079672139-5470887216e9" alt="Menús QR">
+                                <div class="price-tag">$65.00 <span>USD</span></div>
+                            </div>
+                            <div class="card-body p-4 d-flex flex-column flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="time-badge"><i class="bi bi-clock-history text-emerald me-1"></i>24 a 48 horas</span>
+                                    <span class="badge badge-disponible"><i class="bi bi-check-circle-fill me-1"></i>Disponible</span>
+                                </div>
+                                <span class="badge bg-light text-navy border px-2 py-1 mb-2 align-self-start">
+                                    <i class="bi bi-collection me-1"></i>Diseño y Catálogos
+                                </span>
+                                <h3 class="h5 fw-bold text-navy my-2">Menú Digital con Código QR</h3>
+                                <p class="text-body small flex-grow-1 mb-3">Menú interactivo para restaurantes y cafeterías accesible escaneando un código QR.</p>
+                                <div class="pt-3 border-top mt-auto">
+                                    <a href="#contacto" class="btn btn-verde btn-sm rounded-pill w-100">Cotizar este servicio</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Servicio 4 -->
+                    <div class="col-lg-4 col-md-6 service-index-col"
+                         data-nombre="formularios de contacto y pedidos"
+                         data-descripcion="formularios personalizados para recibir solicitudes, cotizaciones y reservas."
+                         data-tipo="desarrollo web">
+                        <div class="card h-100 service-card shadow-sm border-0 d-flex flex-column">
+                            <div class="card-img-wrapper">
+                                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71" alt="Formularios">
+                                <div class="price-tag">$85.00 <span>USD</span></div>
+                            </div>
+                            <div class="card-body p-4 d-flex flex-column flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="time-badge"><i class="bi bi-clock-history text-emerald me-1"></i>2 a 3 días</span>
+                                    <span class="badge badge-disponible"><i class="bi bi-check-circle-fill me-1"></i>Disponible</span>
+                                </div>
+                                <span class="badge bg-light text-navy border px-2 py-1 mb-2 align-self-start">
+                                    <i class="bi bi-collection me-1"></i>Desarrollo Web
+                                </span>
+                                <h3 class="h5 fw-bold text-navy my-2">Formularios de Contacto y Pedidos</h3>
+                                <p class="text-body small flex-grow-1 mb-3">Formularios personalizados para recibir solicitudes, cotizaciones y reservas.</p>
+                                <div class="pt-3 border-top mt-auto">
+                                    <a href="#contacto" class="btn btn-verde btn-sm rounded-pill w-100">Cotizar este servicio</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Servicio 5 -->
+                    <div class="col-lg-4 col-md-6 service-index-col"
+                         data-nombre="botón de whatsapp y redes sociales"
+                         data-descripcion="integración de botones directos a whatsapp, instagram, facebook y tiktok."
+                         data-tipo="marketing digital">
+                        <div class="card h-100 service-card shadow-sm border-0 d-flex flex-column">
+                            <div class="card-img-wrapper">
+                                <img src="https://images.unsplash.com/photo-1611746872915-64382b5c76da" alt="WhatsApp">
+                                <div class="price-tag">$45.00 <span>USD</span></div>
+                            </div>
+                            <div class="card-body p-4 d-flex flex-column flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="time-badge"><i class="bi bi-clock-history text-emerald me-1"></i>24 horas</span>
+                                    <span class="badge badge-disponible"><i class="bi bi-check-circle-fill me-1"></i>Disponible</span>
+                                </div>
+                                <span class="badge bg-light text-navy border px-2 py-1 mb-2 align-self-start">
+                                    <i class="bi bi-collection me-1"></i>Marketing Digital
+                                </span>
+                                <h3 class="h5 fw-bold text-navy my-2">Botón de WhatsApp y Redes</h3>
+                                <p class="text-body small flex-grow-1 mb-3">Integración de botones directos a WhatsApp, Instagram, Facebook y TikTok.</p>
+                                <div class="pt-3 border-top mt-auto">
+                                    <a href="#contacto" class="btn btn-verde btn-sm rounded-pill w-100">Cotizar este servicio</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Servicio 6 -->
+                    <div class="col-lg-4 col-md-6 service-index-col"
+                         data-nombre="asesoría y optimización web"
+                         data-descripcion="revisión técnica de páginas web para mejorar su velocidad de carga y accesibilidad."
+                         data-tipo="soporte y asesoría">
+                        <div class="card h-100 service-card shadow-sm border-0 d-flex flex-column">
+                            <div class="card-img-wrapper">
+                                <img src="https://images.unsplash.com/photo-1507238691740-187a5b1d37b8" alt="Accesibilidad">
+                                <div class="price-tag">$110.00 <span>USD</span></div>
+                            </div>
+                            <div class="card-body p-4 d-flex flex-column flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="time-badge"><i class="bi bi-clock-history text-emerald me-1"></i>3 a 5 días</span>
+                                    <span class="badge badge-proximamente"><i class="bi bi-clock-fill me-1"></i>Próximamente</span>
+                                </div>
+                                <span class="badge bg-light text-navy border px-2 py-1 mb-2 align-self-start">
+                                    <i class="bi bi-collection me-1"></i>Soporte y Asesoría
+                                </span>
+                                <h3 class="h5 fw-bold text-navy my-2">Asesoría y Optimización Web</h3>
+                                <p class="text-body small flex-grow-1 mb-3">Revisión técnica de páginas web para mejorar su velocidad de carga y accesibilidad.</p>
+                                <div class="pt-3 border-top mt-auto">
+                                    <a href="#contacto" class="btn btn-outline-secondary btn-sm rounded-pill w-100">Consultar</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estado sin resultados -->
+                <div id="sinResultadosIndex" class="card p-4 text-center border-0 shadow-sm rounded-4 mt-3 d-none bg-white">
+                    <p class="text-muted mb-2">No se encontraron servicios que coincidan con la búsqueda.</p>
+                    <div>
+                        <button type="button" id="btnResetIndex" class="btn btn-sm btn-verde rounded-pill px-3">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Ver todos los servicios
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const input = document.getElementById("buscadorIndex");
+            const btnLimpiar = document.getElementById("btnLimpiarIndex");
+            const select = document.getElementById("categoriaIndex");
+            const chips = document.querySelectorAll(".index-chip");
+            const cards = Array.from(document.querySelectorAll(".service-index-col"));
+            const sinRes = document.getElementById("sinResultadosIndex");
+            const btnReset = document.getElementById("btnResetIndex");
+
+            if (!cards.length || !input) return;
+
+            function norm(t) {
+                return (t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            }
+
+            function filtrar() {
+                const q = norm(input.value);
+                const cat = norm(select.value);
+                let count = 0;
+
+                cards.forEach(card => {
+                    const n = norm(card.dataset.nombre);
+                    const d = norm(card.dataset.descripcion);
+                    const t = norm(card.dataset.tipo);
+
+                    const matchQ = !q || n.includes(q) || d.includes(q) || t.includes(q);
+                    const matchC = !cat || t === cat;
+
+                    if (matchQ && matchC) {
+                        card.classList.remove("d-none");
+                        count++;
+                    } else {
+                        card.classList.add("d-none");
+                    }
+                });
+
+                if (sinRes) sinRes.classList.toggle("d-none", count > 0);
+            }
+
+            input.addEventListener("input", filtrar);
+            btnLimpiar.addEventListener("click", () => {
+                input.value = "";
+                filtrar();
+                input.focus();
+            });
+
+            select.addEventListener("change", function () {
+                const val = this.value;
+                chips.forEach(c => {
+                    const act = c.dataset.cat === val;
+                    c.classList.toggle("btn-verde", act);
+                    c.classList.toggle("active", act);
+                    c.classList.toggle("btn-outline-secondary", !act);
+                });
+                filtrar();
+            });
+
+            chips.forEach(chip => {
+                chip.addEventListener("click", function () {
+                    const val = this.dataset.cat;
+                    select.value = val;
+                    chips.forEach(c => {
+                        c.classList.remove("btn-verde", "active");
+                        c.classList.add("btn-outline-secondary");
+                    });
+                    this.classList.add("btn-verde", "active");
+                    this.classList.remove("btn-outline-secondary");
+                    filtrar();
+                });
+            });
+
+            if (btnReset) {
+                btnReset.addEventListener("click", () => {
+                    input.value = "";
+                    select.value = "";
+                    chips.forEach(c => {
+                        const act = c.dataset.cat === "";
+                        c.classList.toggle("btn-verde", act);
+                        c.classList.toggle("active", act);
+                        c.classList.toggle("btn-outline-secondary", !act);
+                    });
+                    filtrar();
+                });
+            }
+        });
+        </script>
+
+
+        <!-- Video -->
+        <section id="video" class="py-5 bg-soft">
+            <div class="container py-lg-4">
+                <div class="text-center mb-4">
+                    <h2 class="fw-bold text-navy">Video Relacionado</h2>
+                    <p class="text-muted">Importancia del desarrollo web para los pequeños comercios.</p>
+                </div>
+
+                <div class="row justify-content-center">
+                    <div class="col-lg-9">
+                        <div class="ratio ratio-16x9 shadow rounded-4 overflow-hidden border">
+                            <iframe src="https://www.youtube.com/embed/cVoTm6OvsfI" title="Video de desarrollo web"
+                                allowfullscreen></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Informacion de atencion -->
+        <section class="py-4">
+            <div class="container">
+                <aside class="p-4 rounded-4 shadow-sm promo-aside">
+                    <div class="row align-items-center g-3">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="text-emerald fs-2">
+                                    <i class="bi bi-info-circle"></i>
+                                </div>
+                                <div>
+                                    <h3 class="h5 fw-bold text-navy mb-1">Información de Atención</h3>
+                                    <p class="text-body mb-0 small">Asesoría inicial gratuita para evaluar el proyecto web de tu negocio.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <div class="text-body small">
+                                <i class="bi bi-clock me-1 text-navy"></i><strong>Horario:</strong> Lunes a viernes (09h00 a 17h00)
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+        <!-- Contacto -->
+        <section id="contacto" class="py-5">
+            <div class="container py-lg-4">
+                <div class="text-center mb-5">
+                    <h2 class="fw-bold text-navy">Contáctanos</h2>
+                    <p class="text-muted">Escríbenos para consultar detalles o solicitar una cotización.</p>
+                </div>
+
+                <div class="row g-5">
+                    <div class="col-lg-7">
+                        <form id="contactoForm" method="post" class="p-4 p-md-5 rounded-4 shadow-sm bg-white border" novalidate>
+                            <h3 class="h5 fw-bold text-navy mb-4 border-bottom pb-2">
+                                <i class="bi bi-envelope-fill text-emerald me-2"></i>Envíanos un mensaje
+                            </h3>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="nombre" class="form-label fw-semibold text-navy small">Nombre completo</label>
+                                    <input type="text" id="nombre" name="nombre" class="form-control"
+                                        placeholder="Tu nombre" minlength="3" required>
+                                    <div class="invalid-feedback">Ingresa solo letras (mínimo 3 caracteres).</div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="correo" class="form-label fw-semibold text-navy small">Correo electrónico</label>
+                                    <input type="email" id="correo" name="correo" class="form-control"
+                                        placeholder="correo@ejemplo.com" required>
+                                    <div class="invalid-feedback">Ingresa un correo electrónico válido.</div>
+                                </div>
+
+                                <div class="col-12">
+                                    <label for="asunto" class="form-label fw-semibold text-navy small">Asunto</label>
+                                    <input type="text" id="asunto" name="asunto" class="form-control"
+                                        placeholder="Tema de la consulta" minlength="5" required>
+                                    <div class="invalid-feedback">El asunto debe tener al menos 5 caracteres.</div>
+                                </div>
+
+                                <div class="col-12">
+                                    <label for="mensaje" class="form-label fw-semibold text-navy small">Mensaje</label>
+                                    <textarea id="mensaje" name="mensaje" class="form-control" rows="4"
+                                        placeholder="Escribe aquí los requerimientos de tu proyecto..." minlength="10" required></textarea>
+                                    <div class="invalid-feedback">El mensaje debe tener al menos 10 caracteres.</div>
+                                </div>
+
+                                <div class="col-12 pt-2">
+                                    <button type="submit" class="btn btn-verde btn-lg w-100">
+                                        <i class="bi bi-send me-2"></i>Enviar mensaje
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div class="modal fade" id="statusSuccessModal" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-sm">
+                                <div class="modal-content rounded-4 border-0 text-center p-4">
+                                    <div class="modal-body p-0">
+                                        <div class="text-success mb-3" style="font-size: 3rem;">
+                                            <i class="bi bi-check-circle-fill"></i>
+                                        </div>
+                                        <h4 class="text-navy fw-bold">¡Mensaje Enviado!</h4>
+                                        <p class="text-muted small">Tu mensaje fue registrado correctamente. Nos pondremos en contacto contigo pronto.</p>
+                                        <button type="button" class="btn btn-verde btn-sm w-100 mt-2" data-bs-dismiss="modal">Aceptar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal fade" id="statusErrorsModal" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-sm">
+                                <div class="modal-content rounded-4 border-0 text-center p-4">
+                                    <div class="modal-body p-0">
+                                        <div class="text-danger mb-3" style="font-size: 3rem;">
+                                            <i class="bi bi-exclamation-octagon-fill"></i>
+                                        </div>
+                                        <h4 class="text-danger fw-bold">Campos Incompletos</h4>
+                                        <p class="text-muted small">Por favor completa los campos requeridos antes de enviar.</p>
+                                        <button type="button" class="btn btn-danger btn-sm w-100 mt-2" data-bs-dismiss="modal">Entendido</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-5">
+                        <div class="p-4 p-md-5 rounded-4 shadow-sm bg-white border h-100 d-flex flex-column justify-content-between">
+                            <div>
+                                <h3 class="h5 fw-bold text-navy mb-4 border-bottom pb-2">
+                                    <i class="bi bi-telephone-fill text-emerald me-2"></i>Datos de Contacto
+                                </h3>
+                                
+                                <div class="d-flex flex-column gap-3 mb-4">
+                                    <div class="d-flex align-items-start gap-3">
+                                        <div class="contact-icon-box text-emerald bg-emerald-subtle" style="width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                                            <i class="bi bi-envelope"></i>
+                                        </div>
+                                        <div>
+                                            <span class="d-block small text-muted">Correo</span>
+                                            <span class="fw-bold text-navy">nexodigital.ec@gmail.com</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex align-items-start gap-3">
+                                        <div class="contact-icon-box text-emerald bg-emerald-subtle" style="width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                                            <i class="bi bi-telephone"></i>
+                                        </div>
+                                        <div>
+                                            <span class="d-block small text-muted">Teléfono</span>
+                                            <span class="fw-bold text-navy">096 977 3007</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex align-items-start gap-3">
+                                        <div class="contact-icon-box text-emerald bg-emerald-subtle" style="width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                                            <i class="bi bi-geo-alt"></i>
+                                        </div>
+                                        <div>
+                                            <span class="d-block small text-muted">Ciudad</span>
+                                            <span class="fw-bold text-navy">Puyo / Quito, Ecuador</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 class="h6 fw-bold text-navy mb-3">Redes Sociales</h4>
+                                <div class="d-grid gap-2">
+                                    <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm text-start ps-3">
+                                        <i class="bi bi-facebook me-2"></i>Facebook
+                                    </a>
+                                    <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer" class="btn btn-danger btn-sm text-start ps-3">
+                                        <i class="bi bi-instagram me-2"></i>Instagram
+                                    </a>
+                                    <a href="https://www.tiktok.com" target="_blank" rel="noopener noreferrer" class="btn btn-dark btn-sm text-start ps-3">
+                                        <i class="bi bi-tiktok me-2"></i>TikTok
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Herramientas -->
+        <section id="herramientas" class="py-5 bg-soft">
+            <div class="container py-lg-4">
+                <div class="text-center mb-5">
+                    <h2 class="fw-bold text-navy">Herramientas de Desarrollo</h2>
+                    <p class="text-muted">Tecnologías empleadas en el proyecto.</p>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="card h-100 shadow-sm border-0 rounded-4 text-center p-4">
+                            <div class="text-primary mb-3">
+                                <i class="bi bi-code-slash fs-1"></i>
+                            </div>
+                            <h3 class="h5 fw-bold text-navy">VS Code & Python</h3>
+                            <p class="text-body small mb-0">Editor de código y lenguaje backend utilizado en el proyecto.</p>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="card h-100 shadow-sm border-0 rounded-4 text-center p-4">
+                            <div class="text-danger mb-3">
+                                <i class="bi bi-filetype-html fs-1"></i>
+                            </div>
+                            <h3 class="h5 fw-bold text-navy">HTML5 & CSS3</h3>
+                            <p class="text-body small mb-0">Estructura del contenido y estilos visuales responsivos.</p>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="card h-100 shadow-sm border-0 rounded-4 text-center p-4">
+                            <div class="text-emerald mb-3">
+                                <i class="bi bi-bootstrap-fill fs-1"></i>
+                            </div>
+                            <h3 class="h5 fw-bold text-navy">Bootstrap 5 & Flask</h3>
+                            <p class="text-body small mb-0">Framework de interfaz junto al microframework Flask.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Solicitudes -->
+        <section id="solicitudes" class="py-5 bg-white">
+            <div class="container py-lg-4">
+                <div class="text-center mb-5">
+                    <h2 class="fw-bold text-navy">Registro Rápido de Solicitudes</h2>
+                    <p class="text-muted">Módulo interactivo con almacenamiento local.</p>
+                </div>
+
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <form id="formSolicitud" class="card p-4 p-md-5 shadow-sm border-0 rounded-4 mb-4" novalidate>
+                            <h3 class="h5 fw-bold text-navy mb-3">
+                                <i class="bi bi-pencil-square text-emerald me-2"></i>Nueva Solicitud
+                            </h3>
+
+                            <div class="mb-3">
+                                <label for="nombreCliente" class="form-label fw-semibold text-navy small">Nombre del cliente</label>
+                                <input type="text" id="nombreCliente" class="form-control" placeholder="Ej: Carlos Mendoza" minlength="3" required>
+                                <div class="invalid-feedback">Ingresa al menos 3 caracteres.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="tipoServicio" class="form-label fw-semibold text-navy small">Tipo de servicio</label>
+                                <select id="tipoServicio" class="form-select" required>
+                                    <option value="">Seleccione un servicio...</option>
+                                    <option value="Página web">Página web</option>
+                                    <option value="Catálogo digital">Catálogo digital</option>
+                                    <option value="Menú QR">Menú QR</option>
+                                    <option value="Formulario">Formulario</option>
+                                    <option value="WhatsApp Business">WhatsApp Business</option>
+                                </select>
+                                <div class="invalid-feedback">Selecciona una opción.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="descripcionSolicitud" class="form-label fw-semibold text-navy small">Descripción del requerimiento</label>
+                                <textarea id="descripcionSolicitud" class="form-control" rows="3" placeholder="Describe lo que necesitas..." minlength="10" required></textarea>
+                                <div class="invalid-feedback">Mínimo 10 caracteres.</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-verde btn-lg">
+                                <i class="bi bi-plus-circle me-2"></i>Registrar solicitud
+                            </button>
+                        </form>
+
+                        <div id="spinnerCarga" class="text-center d-none my-4">
+                            <div class="spinner-border text-emerald" role="status">
+                                <span class="visually-hidden">Guardando...</span>
+                            </div>
+                        </div>
+
+                        <div class="modal fade" id="solicitudSuccessModal" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-sm">
+                                <div class="modal-content rounded-4 border-0 text-center p-4">
+                                    <div class="modal-body p-0">
+                                        <div class="text-success mb-3" style="font-size: 3rem;">
+                                            <i class="bi bi-check-circle-fill"></i>
+                                        </div>
+                                        <h4 class="text-navy fw-bold">¡Solicitud Guardada!</h4>
+                                        <p class="text-muted small">La solicitud ha sido registrada en la lista.</p>
+                                        <button type="button" class="btn btn-verde btn-sm w-100 mt-2" data-bs-dismiss="modal">Aceptar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal fade" id="solicitudErrorModal" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-sm">
+                                <div class="modal-content rounded-4 border-0 text-center p-4">
+                                    <div class="modal-body p-0">
+                                        <div class="text-danger mb-3" style="font-size: 3rem;">
+                                            <i class="bi bi-exclamation-octagon-fill"></i>
+                                        </div>
+                                        <h4 class="text-danger fw-bold">Campos Incompletos</h4>
+                                        <p class="text-muted small">Por favor revisa los campos antes de guardar.</p>
+                                        <button type="button" class="btn btn-danger btn-sm w-100 mt-2" data-bs-dismiss="modal">Aceptar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                        <h3 class="h5 fw-bold text-navy mb-0">
+                            Solicitudes Activas (<span id="totalSolicitudes">0</span>)
+                        </h3>
+                    </div>
+
+                    <div id="listaSolicitudes" class="row g-3">
+                        <!-- Tarjetas dinámicas -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Pie de pagina -->
+    <footer class="footer-custom mt-auto text-white">
+        <div class="container py-5">
+            <div class="row g-4 justify-content-between align-items-center">
+                <div class="col-lg-5 text-center text-lg-start">
+                    <div class="d-flex align-items-center justify-content-center justify-content-lg-start gap-2 mb-2">
+                        <span class="brand-badge"><i class="bi bi-lightning-charge-fill"></i></span>
+                        <span class="h5 mb-0 fw-bold">Nexo<span class="text-mint">Digital</span></span>
+                    </div>
+                    <p class="text-light-muted mb-0 small">
+                        Soluciones web y herramientas digitales para pequeños negocios.
+                    </p>
+                    <p class="text-light-muted small mt-2 mb-0">
+                        <i class="bi bi-geo-alt me-1 text-mint"></i>Quito / Puyo — Ecuador
+                    </p>
+                </div>
+
+                <div class="col-lg-7 text-center text-lg-end">
+                    <div class="credits-box p-3 rounded-3 bg-navy-light d-inline-block text-start">
+                        <p class="mb-1 small fw-semibold text-mint">
+                            <i class="bi bi-mortarboard me-1"></i>Universidad Estatal Amazónica — Cuarto Semestre
+                        </p>
+                        <p class="mb-1 small text-light-muted">
+                            <strong>Asignatura:</strong> Desarrollo de Aplicaciones Web
+                        </p>
+                        <p class="mb-0 small text-light-muted">
+                            <strong>Desarrollado por:</strong> Cinthia Carrión, Aracely Quintanilla y Santiago Lara.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-top border-secondary-subtle mt-4 pt-3 text-center small text-light-muted">
+                <p class="mb-0">© 2026 NexoDigital. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal de acceso al sistema -->
+    <div class="modal fade" id="modalAccesoSistema" tabindex="-1" aria-labelledby="modalAccesoSistemaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow-lg">
+                <div class="modal-header bg-navy text-white p-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="brand-badge"><i class="bi bi-shield-lock-fill"></i></span>
+                        <div>
+                            <h4 class="modal-title h5 fw-bold mb-0 text-white" id="modalAccesoSistemaLabel">Panel de Gestión - NexoDigital</h4>
+                            <small class="text-light-emerald">Selecciona el módulo al que deseas acceder</small>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body p-4 p-md-5">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <a href="http://127.0.0.1:5000/servicios" target="_blank" class="card h-100 p-4 border rounded-4 text-decoration-none shadow-sm service-shortcut-card">
+                                <div class="d-flex align-items-center gap-3 mb-2">
+                                    <div class="service-icon-box bg-emerald-subtle text-emerald">
+                                        <i class="bi bi-grid-fill fs-4"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="fw-bold text-navy mb-0">Catálogo de Servicios</h5>
+                                        <span class="badge bg-emerald text-white small">Precios y Tiempos</span>
+                                    </div>
+                                </div>
+                                <p class="text-muted small mb-0 mt-2">Administra los precios, tiempos de entrega y disponibilidad de servicios.</p>
+                            </a>
+                        </div>
+
+                        <div class="col-md-6">
+                            <a href="http://127.0.0.1:5000/facturacion" target="_blank" class="card h-100 p-4 border rounded-4 text-decoration-none shadow-sm service-shortcut-card">
+                                <div class="d-flex align-items-center gap-3 mb-2">
+                                    <div class="service-icon-box bg-navy text-white">
+                                        <i class="bi bi-calculator-fill fs-4 text-mint"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="fw-bold text-navy mb-0">Facturas y Cotizaciones</h5>
+                                        <span class="badge bg-navy text-white small">Cobros y Proformas</span>
+                                    </div>
+                                </div>
+                                <p class="text-muted small mb-0 mt-2">Emite facturas y cotizaciones, registra anticipos y saldos pendientes.</p>
+                            </a>
+                        </div>
+
+                        <div class="col-md-6">
+                            <a href="http://127.0.0.1:5000/clientes" target="_blank" class="card h-100 p-4 border rounded-4 text-decoration-none shadow-sm service-shortcut-card">
+                                <div class="d-flex align-items-center gap-3 mb-2">
+                                    <div class="service-icon-box bg-primary-subtle text-primary">
+                                        <i class="bi bi-people-fill fs-4"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="fw-bold text-navy mb-0">Clientes</h5>
+                                        <span class="badge bg-primary text-white small">Directorio</span>
+                                    </div>
+                                </div>
+                                <p class="text-muted small mb-0 mt-2">Registro de clientes atendidos y negocios locales.</p>
+                            </a>
+                        </div>
+
+                        <div class="col-md-6">
+                            <a href="http://127.0.0.1:5000/proveedores" target="_blank" class="card h-100 p-4 border rounded-4 text-decoration-none shadow-sm service-shortcut-card">
+                                <div class="d-flex align-items-center gap-3 mb-2">
+                                    <div class="service-icon-box bg-warning-subtle text-warning">
+                                        <i class="bi bi-truck fs-4 text-dark"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="fw-bold text-navy mb-0">Proveedores</h5>
+                                        <span class="badge bg-warning text-dark small">Hosting y Dominios</span>
+                                    </div>
+                                </div>
+                                <p class="text-muted small mb-0 mt-2">Gestión de hosting, dominios y licencias externas.</p>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 p-3 bg-light rounded-3 border text-center">
+                        <small class="text-muted d-block mb-1">
+                            <i class="bi bi-info-circle text-primary me-1"></i>Para interactuar con el sistema, inicia el servidor con:
+                        </small>
+                        <code class="text-navy fw-bold">.\venv\Scripts\python.exe app.py</code>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light p-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                    <a href="http://127.0.0.1:5000/servicios" target="_blank" class="btn btn-verde btn-sm px-4">
+                        <i class="bi bi-box-arrow-in-right me-1"></i>Entrar al Sistema
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- JS personalizado -->
+    <script src="static/js/contacto.js"></script>
+    <script src="static/js/script.js"></script>
+</body>
+
+</html>
