@@ -284,7 +284,7 @@ class User(UserMixin, db.Model):
             SELECT u.*, r.nombre AS rol_nombre
             FROM usuarios u
             LEFT JOIN roles r ON u.rol_id = r.id
-            WHERE u.usuario = %s
+            WHERE LOWER(TRIM(u.usuario)) = LOWER(TRIM(%s))
         ''', (username,))
         row = cursor.fetchone()
         cursor.close()
@@ -301,7 +301,7 @@ class User(UserMixin, db.Model):
             SELECT u.*, r.nombre AS rol_nombre
             FROM usuarios u
             LEFT JOIN roles r ON u.rol_id = r.id
-            WHERE u.correo = %s
+            WHERE LOWER(TRIM(u.correo)) = LOWER(TRIM(%s))
         ''', (email,))
         row = cursor.fetchone()
         cursor.close()
@@ -318,7 +318,8 @@ class User(UserMixin, db.Model):
             SELECT u.*, r.nombre AS rol_nombre
             FROM usuarios u
             LEFT JOIN roles r ON u.rol_id = r.id
-            WHERE u.usuario = %s OR u.correo = %s
+            WHERE LOWER(TRIM(u.usuario)) = LOWER(TRIM(%s))
+               OR LOWER(TRIM(u.correo)) = LOWER(TRIM(%s))
         ''', (identificador, identificador))
         row = cursor.fetchone()
         cursor.close()

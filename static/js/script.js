@@ -469,42 +469,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Referencias a los elementos del DOM
     const nombreCliente = document.getElementById("nombreCliente");
+    const correoSolicitud = document.getElementById("correoSolicitud");
+    const telefonoSolicitud = document.getElementById("telefonoSolicitud");
     const tipoServicio = document.getElementById("tipoServicio");
     const descripcionSolicitud = document.getElementById("descripcionSolicitud");
     const listaSolicitudes = document.getElementById("listaSolicitudes");
     const totalSolicitudes = document.getElementById("totalSolicitudes");
     const spinner = document.getElementById("spinnerCarga");
 
-    // Clave de almacenamiento en localStorage
-    const STORAGE_KEY = "nexodigital_solicitudes";
-
-    // Datos iniciales de demostración si localStorage está vacío
-    const ejemplosIniciales = [
-        {
-            nombre: "Restaurante Sabor Amazónico",
-            servicio: "Menú QR",
-            descripcion: "Necesitamos digitalizar nuestra carta de platos típicos con código QR para las mesas."
-        },
-        {
-            nombre: "Consultora Contable Gómez",
-            servicio: "Página web",
-            descripcion: "Sitio web corporativo de 4 secciones con botón directo a WhatsApp."
-        }
-    ];
-
-    // Cargar datos almacenados previamente o inicializar con los ejemplos
-    let solicitudes = [];
-    try {
-        const dataGuardada = localStorage.getItem(STORAGE_KEY);
-        if (dataGuardada) {
-            solicitudes = JSON.parse(dataGuardada);
-        } else {
-            solicitudes = ejemplosIniciales;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(solicitudes));
-        }
-    } catch (e) {
-        solicitudes = ejemplosIniciales;
-    }
+    // Las solicitudes reales se guardan en PostgreSQL; esta lista solo se limpia
+    // para no mostrar datos de demostración almacenados en navegadores antiguos.
+    const solicitudes = [];
 
     // --------------------------------------------------------------------------
     // FUNCIONES DE VALIDACIÓN INDIVIDUAL DE CAMPOS
@@ -646,16 +621,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // FUNCIÓN PARA ELIMINAR UNA SOLICITUD
     // --------------------------------------------------------------------------
     /**
-     * Elimina una solicitud del arreglo según su posición y sincroniza con localStorage.
+     * La eliminación de solicitudes está reservada al gestor en la vista operativa.
      */
     window.eliminarSolicitud = function (index) {
         if (confirm("¿Estás seguro de que deseas eliminar esta solicitud?")) {
-            solicitudes.splice(index, 1);
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(solicitudes));
-            } catch (e) {
-                console.error("No se pudo guardar en localStorage", e);
-            }
             mostrarSolicitudes();
         }
     };
@@ -669,9 +638,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const nombreValido = validarNombre();
         const servicioValido = validarServicio();
         const descripcionValida = validarDescripcion();
+        const correoValido = correoSolicitud && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoSolicitud.value.trim());
 
         // Si algún campo no es válido, mostrar modal de advertencia
-        if (!nombreValido || !servicioValido || !descripcionValida) {
+        if (!nombreValido || !servicioValido || !descripcionValida || !correoValido) {
             const errorModalEl = document.getElementById("solicitudErrorModal");
             if (errorModalEl && typeof bootstrap !== "undefined") {
                 bootstrap.Modal.getOrCreateInstance(errorModalEl).show();
@@ -679,45 +649,38 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Mostrar indicador de carga (spinner)
         if (spinner) spinner.classList.remove("d-none");
-
-        // Simular un tiempo de respuesta de guardado
-        setTimeout(() => {
-            if (spinner) spinner.classList.add("d-none");
-
-            // Crear objeto con los datos de la nueva solicitud
-            const nuevaSolicitud = {
+        fetch("/api/solicitudes", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
                 nombre: nombreCliente.value.trim(),
-                servicio: tipoServicio.value.trim(),
-                descripcion: descripcionSolicitud.value.trim()
-            };
-
-            // Añadir al inicio de la lista
-            solicitudes.unshift(nuevaSolicitud);
-
-            // Persistir en localStorage
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(solicitudes));
-            } catch (e) {
-                console.error("No se pudo guardar en localStorage", e);
-            }
-
-            // Actualizar vista en pantalla
-            mostrarSolicitudes();
-
-            // Mostrar modal de confirmación exitosa
-            const successModalEl = document.getElementById("solicitudSuccessModal");
-            if (successModalEl && typeof bootstrap !== "undefined") {
-                bootstrap.Modal.getOrCreateInstance(successModalEl).show();
-            }
-
-            // Limpiar formulario y remover clases visuales
-            formulario.reset();
-            [nombreCliente, tipoServicio, descripcionSolicitud].forEach(campo => {
-                if (campo) campo.classList.remove("is-valid", "is-invalid");
+                correo: correoSolicitud.value.trim(),
+                telefono: telefonoSolicitud ? telefonoSolicitud.value.trim() : "",
+                tipo_servicio: tipoServicio.value.trim(),
+                mensaje: descripcionSolicitud.value.trim()
+            })
+        })
+            .then(respuesta => respuesta.json().then(datos => ({ok: respuesta.ok, datos})))
+            .then(resultado => {
+                if (!resultado.ok) throw new Error(resultado.datos.mensaje || "No se pudo guardar la petición.");
+                const successModalEl = document.getElementById("solicitudSuccessModal");
+                if (successModalEl && typeof bootstrap !== "undefined") {
+                    bootstrap.Modal.getOrCreateInstance(successModalEl).show();
+                }
+                formulario.reset();
+                mostrarSolicitudes();
+            })
+            .catch(error => {
+                console.error(error);
+                const errorModalEl = document.getElementById("solicitudErrorModal");
+                if (errorModalEl && typeof bootstrap !== "undefined") {
+                    bootstrap.Modal.getOrCreateInstance(errorModalEl).show();
+                }
+            })
+            .finally(() => {
+                if (spinner) spinner.classList.add("d-none");
             });
-        }, 500);
     });
 
     // Renderizar solicitudes iniciales al cargar la página

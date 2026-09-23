@@ -75,6 +75,14 @@
                         </li>
                     {% endif %}
 
+                    {% if current_user.has_role('Administrador', 'Gestor de proyectos', 'Soporte técnico') %}
+                        <li class="nav-item">
+                            <a class="nav-link px-2 {{ 'active' if request.endpoint == 'solicitudes' else '' }}" href="{{ url_for('solicitudes') }}">
+                                <i class="bi bi-inbox me-1"></i>Peticiones
+                            </a>
+                        </li>
+                    {% endif %}
+
 
                     <!-- 8. Menú Exclusivo Administrador -->
                     {% if current_user.is_admin() %}

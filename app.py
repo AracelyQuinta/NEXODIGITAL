@@ -568,10 +568,17 @@ def health():
             '''SELECT table_name
                FROM information_schema.tables
                WHERE table_schema = 'public'
-                 AND table_name IN ('roles', 'usuarios', 'clientes', 'servicios')'''
+                 AND table_name IN (
+                     'roles', 'usuarios', 'clientes', 'servicios',
+                     'facturacion', 'detalle_factura', 'solicitudes',
+                     'proveedores'
+                 )'''
         )
         tablas = {fila['table_name'] for fila in cursor.fetchall()}
-        tablas_requeridas = {'roles', 'usuarios', 'clientes', 'servicios'}
+        tablas_requeridas = {
+            'roles', 'usuarios', 'clientes', 'servicios',
+            'facturacion', 'detalle_factura', 'solicitudes', 'proveedores'
+        }
         faltantes = sorted(tablas_requeridas - tablas)
         if faltantes:
             app.logger.error('Esquema incompleto. Faltan tablas: %s', ', '.join(faltantes))
@@ -580,6 +587,44 @@ def health():
                 'database': 'connected',
                 'schema': 'incomplete',
                 'missing_tables': faltantes
+            }, 503
+
+        cursor.execute(
+            '''SELECT table_name, column_name
+               FROM information_schema.columns
+               WHERE table_schema = 'public'
+                 AND (
+                     (table_name = 'solicitudes' AND column_name IN
+                        ('estado', 'responsable_id', 'trabajo_realizado', 'evidencia_url'))
+                     OR
+                     (table_name = 'usuarios' AND column_name IN
+                        ('activo', 'aprobado', 'rol_id'))
+                 )'''
+        )
+        columnas = {(fila['table_name'], fila['column_name']) for fila in cursor.fetchall()}
+        columnas_requeridas = {
+            ('solicitudes', 'estado'),
+            ('solicitudes', 'responsable_id'),
+            ('solicitudes', 'trabajo_realizado'),
+            ('solicitudes', 'evidencia_url'),
+            ('usuarios', 'activo'),
+            ('usuarios', 'aprobado'),
+            ('usuarios', 'rol_id')
+        }
+        columnas_faltantes = sorted(
+            f'{tabla}.{columna}'
+            for tabla, columna in columnas_requeridas - columnas
+        )
+        if columnas_faltantes:
+            app.logger.error(
+                'Columnas requeridas ausentes: %s',
+                ', '.join(columnas_faltantes)
+            )
+            return {
+                'status': 'error',
+                'database': 'connected',
+                'schema': 'incomplete',
+                'missing_columns': columnas_faltantes
             }, 503
         return {'status': 'ok', 'database': 'connected', 'schema': 'ready'}, 200
     except Exception:
@@ -946,6 +991,132 @@ def admin_logs():
     return render_template('admin_logs.html', logs=logs)
 
 
+@app.route('/solicitudes', methods=['GET'])
+@login_required
+@role_required('Administrador', 'Gestor de proyectos', 'Soporte técnico')
+def solicitudes():
+    """Muestra las peticiones de clientes y permite su asignación operativa."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    if current_user.rol_nombre == 'Soporte técnico':
+        cursor.execute('''
+            SELECT s.*, u.usuario AS responsable_nombre
+            FROM solicitudes s
+            LEFT JOIN usuarios u ON u.id = s.responsable_id
+            WHERE s.responsable_id = %s
+            ORDER BY s.fecha DESC, s.id DESC
+        ''', (current_user.id,))
+    else:
+        cursor.execute('''
+            SELECT s.*, u.usuario AS responsable_nombre
+            FROM solicitudes s
+            LEFT JOIN usuarios u ON u.id = s.responsable_id
+            ORDER BY s.fecha DESC, s.id DESC
+        ''')
+    solicitudes_registradas = cursor.fetchall()
+    cursor.execute('''
+        SELECT u.id, u.usuario
+        FROM usuarios u
+        JOIN roles r ON r.id = u.rol_id
+        WHERE u.activo = TRUE
+          AND r.nombre IN ('Administrador', 'Gestor de proyectos', 'Soporte técnico', 'Usuario interno')
+        ORDER BY u.usuario
+    ''')
+    responsables = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return render_template(
+        'solicitudes.html',
+        solicitudes=solicitudes_registradas,
+        responsables=responsables
+    )
+
+
+@app.route('/api/solicitudes', methods=['POST'])
+def crear_solicitud():
+    """Registra una petición pública directamente en PostgreSQL."""
+    datos = request.get_json(silent=True) or request.form
+    nombre = (datos.get('nombre') or '').strip()
+    correo = (datos.get('correo') or '').strip().lower()
+    telefono = (datos.get('telefono') or '').strip()
+    tipo_servicio = (datos.get('tipo_servicio') or '').strip()
+    mensaje = (datos.get('mensaje') or '').strip()
+
+    if len(nombre) < 3 or not correo or len(tipo_servicio) < 2 or len(mensaje) < 10:
+        return {'ok': False, 'mensaje': 'Completa correctamente todos los campos obligatorios.'}, 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO solicitudes (nombre, correo, telefono, tipo_servicio, mensaje)
+        VALUES (%s, %s, %s, %s, %s)
+        RETURNING id
+    ''', (nombre, correo, telefono or None, tipo_servicio, mensaje))
+    solicitud_id = cursor.fetchone()['id']
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return {'ok': True, 'id': solicitud_id}, 201
+
+
+@app.route('/solicitudes/<int:id>/actualizar', methods=['POST'])
+@login_required
+@role_required('Administrador', 'Gestor de proyectos', 'Soporte técnico')
+def actualizar_solicitud(id):
+    """Actualiza una petición y registra el trabajo realizado/evidencia."""
+    estado = (request.form.get('estado') or '').strip()
+    responsable_id = request.form.get('responsable_id', type=int)
+    trabajo_realizado = (request.form.get('trabajo_realizado') or '').strip()
+    evidencia_url = (request.form.get('evidencia_url') or '').strip()
+    estados_validos = {'Pendiente', 'En revisión', 'Asignada', 'En proceso', 'Finalizada', 'Cancelada'}
+    if estado not in estados_validos:
+        flash('El estado seleccionado no es válido.', 'danger')
+        return redirect(url_for('solicitudes'))
+    if evidencia_url:
+        evidencia_partes = urlparse(evidencia_url)
+        if evidencia_partes.scheme not in ('http', 'https') or not evidencia_partes.netloc:
+            flash('La evidencia debe ser un enlace http(s) válido.', 'danger')
+            return redirect(url_for('solicitudes'))
+    if estado == 'Finalizada' and not (trabajo_realizado or evidencia_url):
+        flash('Para finalizar una tarea agrega el trabajo realizado o un enlace de evidencia.', 'warning')
+        return redirect(url_for('solicitudes'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT responsable_id FROM solicitudes WHERE id = %s', (id,))
+    solicitud_actual = cursor.fetchone()
+    if not solicitud_actual:
+        cursor.close()
+        conn.close()
+        flash('La solicitud no existe.', 'danger')
+        return redirect(url_for('solicitudes'))
+    if current_user.rol_nombre == 'Soporte técnico' and solicitud_actual['responsable_id'] != current_user.id:
+        cursor.close()
+        conn.close()
+        flash('Solo puedes actualizar trabajos asignados a tu usuario.', 'danger')
+        return redirect(url_for('solicitudes'))
+    if current_user.rol_nombre == 'Soporte técnico':
+        responsable_id = current_user.id
+    cursor.execute('''
+        UPDATE solicitudes
+        SET estado = %s, responsable_id = %s,
+            trabajo_realizado = %s, evidencia_url = %s
+        WHERE id = %s
+    ''', (estado, responsable_id or None, trabajo_realizado or None, evidencia_url or None, id))
+    if cursor.rowcount == 0:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        flash('La solicitud no existe.', 'danger')
+        return redirect(url_for('solicitudes'))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    registrar_log('ACTUALIZAR_SOLICITUD', f'Solicitud {id}: {estado}, responsable {responsable_id or "sin asignar"}')
+    flash('La solicitud fue actualizada correctamente.', 'success')
+    return redirect(url_for('solicitudes'))
+
+
 # ==============================================================================
 # MÓDULOS DE ADMINISTRACIÓN Y GESTIÓN CRUD (Protegidos por Roles y Permisos RBAC)
 # ==============================================================================
@@ -1018,6 +1189,7 @@ def proveedores():
         FROM proveedores p
         JOIN estados_proveedor e ON p.estado_id = e.id
         JOIN categorias_proveedor c ON p.categoria_id = c.id
+        ORDER BY p.nombre ASC, p.id ASC
     ''')
     lista_proveedores = cursor.fetchall()
     cursor.close()
@@ -1487,7 +1659,8 @@ def nuevo_servicio():
 @app.route('/productos/editar/<int:id>', methods=['GET', 'POST'])
 @app.route('/servicios/editar/<int:id>', methods=['GET', 'POST'])
 @app.route('/servicio/editar/<int:id>', methods=['GET', 'POST'])
-@role_required('Administrador', 'Gestor de proyectos')
+@role_required('Administrador', 'Gestor de proyectos', 'Soporte técnico')
+@permission_required('servicios.editar')
 def editar_servicio(id):
     """
     Edita un servicio existente identificado por su id real de PostgreSQL.
@@ -1869,14 +2042,67 @@ def nueva_factura():
         if form.servicios_json.data:
             try:
                 servicios_detalle = json.loads(form.servicios_json.data)
-            except Exception:
+            except (TypeError, ValueError, json.JSONDecodeError):
                 servicios_detalle = []
 
-        subtotal_val = float(form.subtotal.data) if form.subtotal.data is not None else float(form.monto.data)
-        iva_val = float(form.iva.data) if form.iva.data is not None else round(subtotal_val * 0.15, 2)
-        total_val = float(form.monto.data)
+        if not servicios_detalle:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            flash('Agrega al menos un servicio antes de guardar el documento.', 'danger')
+            servicios_catalogo = []
+            cursor_reintento = get_db_connection().cursor()
+            cursor_reintento.execute('SELECT * FROM servicios ORDER BY nombre')
+            servicios_catalogo = cursor_reintento.fetchall()
+            cursor_reintento.connection.close()
+            return render_template(
+                'formulario_facturacion.html', form=form, editando=False,
+                servicios_catalogo=servicios_catalogo, clientes_registrados=clientes_registrados,
+                servicio_seleccionado_id=request.args.get('servicio_id', type=int)
+            )
+
+        precios_catalogo = {}
+        ids_catalogo = {
+            int(item.get('id')) for item in servicios_detalle
+            if str(item.get('id', '')).isdigit()
+        }
+        if ids_catalogo:
+            cursor.execute(
+                'SELECT id, nombre, precio_base FROM servicios WHERE id = ANY(%s)',
+                (list(ids_catalogo),)
+            )
+            precios_catalogo = {row['id']: row for row in cursor.fetchall()}
+
+        detalles_validados = []
+        for item in servicios_detalle:
+            servicio_id = int(item.get('id')) if str(item.get('id', '')).isdigit() else None
+            catalogo = precios_catalogo.get(servicio_id)
+            precio = float(catalogo['precio_base']) if catalogo else float(item.get('precio', 0))
+            cantidad = int(item.get('cantidad', 1))
+            ajuste = float(item.get('ajuste', 0))
+            if cantidad < 1 or precio < 0:
+                conn.rollback()
+                cursor.close()
+                conn.close()
+                flash('La cantidad y el precio de cada servicio deben ser válidos.', 'danger')
+                return redirect(url_for('nueva_factura', tipo=tipo_doc))
+            detalles_validados.append({
+                'id': servicio_id,
+                'servicio': catalogo['nombre'] if catalogo else str(item.get('servicio', 'Servicio')).strip(),
+                'cantidad': cantidad,
+                'precio': precio,
+                'ajuste': ajuste,
+                'total': (precio + ajuste) * cantidad
+            })
+
+        servicios_detalle = detalles_validados
+        subtotal_calculado = round(sum(item['total'] for item in servicios_detalle), 2)
+        aplica_iva = float(form.iva.data or 0) > 0
+        subtotal_val = subtotal_calculado
+        iva_val = round(subtotal_val * 0.15, 2) if aplica_iva else 0.0
+        total_val = round(subtotal_val + iva_val, 2)
         anticipo_val = float(form.anticipo.data) if form.anticipo.data is not None else 0.00
-        saldo_val = float(form.saldo_pendiente.data) if form.saldo_pendiente.data is not None else max(0.0, total_val - anticipo_val)
+        saldo_val = max(0.0, round(total_val - anticipo_val, 2))
 
         estado_id_final = form.estado_id.data
         if tipo_doc == 'Factura' and saldo_val <= 0 and estado_id_final == id_por_nombre.get('Pendiente'):
@@ -2155,26 +2381,39 @@ def estadisticas():
     # Consulta relacionada (JOIN) entre detalle_factura y servicios mediante la
     # clave foránea servicio_id. Se agrupa por servicio y se ordena del más
     # solicitado al menos solicitado.
-    cursor.execute('''
-        SELECT s.nombre AS servicio,
-               t.nombre AS categoria,
-               SUM(d.cantidad) AS unidades,
-               SUM(d.total)    AS ingresos
+    es_cliente = (current_user.rol_nombre == 'Cliente')
+    if es_cliente:
+        cursor.execute('''
+            SELECT s.nombre AS servicio, t.nombre AS categoria
             FROM detalle_factura d
-        JOIN servicios s      ON d.servicio_id = s.id
-        JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
-        GROUP BY s.nombre, t.nombre
-        ORDER BY unidades DESC
-    ''')
+            JOIN servicios s ON d.servicio_id = s.id
+            JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
+            GROUP BY s.nombre, t.nombre
+            ORDER BY COUNT(*) DESC, s.nombre ASC
+        ''')
+    else:
+        cursor.execute('''
+            SELECT s.nombre AS servicio,
+                   t.nombre AS categoria,
+                   SUM(d.cantidad) AS unidades,
+                   SUM(d.total) AS ingresos
+            FROM detalle_factura d
+            JOIN servicios s ON d.servicio_id = s.id
+            JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
+            GROUP BY s.nombre, t.nombre
+            ORDER BY unidades DESC
+        ''')
     ranking = cursor.fetchall()
 
-    # Totales generales para las tarjetas resumen del panel.
-    cursor.execute('''
-        SELECT COALESCE(SUM(cantidad), 0) AS total_unidades,
-               COALESCE(SUM(total), 0)    AS total_ingresos
-        FROM detalle_factura
-    ''')
-    fila_totales = cursor.fetchone()
+    if es_cliente:
+        fila_totales = {'total_unidades': 0, 'total_ingresos': 0}
+    else:
+        cursor.execute('''
+            SELECT COALESCE(SUM(cantidad), 0) AS total_unidades,
+                   COALESCE(SUM(total), 0) AS total_ingresos
+            FROM detalle_factura
+        ''')
+        fila_totales = cursor.fetchone()
 
     cursor.close()
     conn.close()
@@ -2182,9 +2421,7 @@ def estadisticas():
     # El servicio más solicitado es el primero del ranking (si existe).
     servicio_top = ranking[0]['servicio'] if ranking else 'Sin datos aún'
     # La unidad máxima sirve para dibujar el ancho de las barras en la plantilla.
-    max_unidades = ranking[0]['unidades'] if ranking else 0
-
-    es_cliente = (current_user.rol_nombre == 'Cliente')
+    max_unidades = ranking[0]['unidades'] if ranking and not es_cliente else 0
     total_ingresos_mostrar = fila_totales['total_ingresos'] if not es_cliente else 0.0
 
     return render_template(

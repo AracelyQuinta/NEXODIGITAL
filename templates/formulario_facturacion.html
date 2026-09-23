@@ -434,7 +434,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         inputSubtotal.value = subtotal.toFixed(2);
         inputIva.value = iva.toFixed(2);
-        inputMonto.value = total > 0 ? total.toFixed(2) : "0.01";
+        inputMonto.value = total.toFixed(2);
         inputSaldoPendiente.value = saldo.toFixed(2);
         inputJson.value = JSON.stringify(itemsFactura);
     }

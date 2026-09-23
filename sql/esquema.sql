@@ -151,7 +151,11 @@ CREATE TABLE solicitudes (
     telefono VARCHAR(30),
     tipo_servicio VARCHAR(100),
     mensaje TEXT NOT NULL,
-    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    estado VARCHAR(30) NOT NULL DEFAULT 'Pendiente',
+    responsable_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
+    trabajo_realizado TEXT,
+    evidencia_url TEXT
 );
 
 -- ==============================================================================
@@ -303,7 +307,7 @@ FROM (VALUES
     ('Gestor de proyectos', 'facturas.ver'), ('Gestor de proyectos', 'facturas.crear'), ('Gestor de proyectos', 'facturas.editar'), ('Gestor de proyectos', 'facturas.eliminar'),
     ('Gestor de proyectos', 'reportes.ver'), ('Gestor de proyectos', 'reportes.financiero'),
     -- Soporte técnico: Infraestructura y proveedores (sin ver datos sensibles ni facturación de clientes)
-    ('Soporte técnico', 'servicios.ver'), ('Soporte técnico', 'servicios.futuros'),
+    ('Soporte técnico', 'servicios.ver'), ('Soporte técnico', 'servicios.editar'), ('Soporte técnico', 'servicios.futuros'),
     ('Soporte técnico', 'proveedores.ver'), ('Soporte técnico', 'proveedores.crear'), ('Soporte técnico', 'proveedores.editar'),
     -- Usuario interno: Tareas asignadas, catálogo y emisión comercial
     ('Usuario interno', 'servicios.ver'), ('Usuario interno', 'servicios.futuros'),

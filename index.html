@@ -734,7 +734,7 @@
             <div class="container py-lg-4">
                 <div class="text-center mb-5">
                     <h2 class="fw-bold text-navy">Registro Rápido de Solicitudes</h2>
-                    <p class="text-muted">Módulo interactivo con almacenamiento local.</p>
+                    <p class="text-muted">Cuéntanos qué necesitas y nuestro equipo dará seguimiento a tu petición.</p>
                 </div>
 
                 <div class="row justify-content-center">
@@ -748,6 +748,17 @@
                                 <label for="nombreCliente" class="form-label fw-semibold text-navy small">Nombre del cliente</label>
                                 <input type="text" id="nombreCliente" class="form-control" placeholder="Ej: Carlos Mendoza" minlength="3" required>
                                 <div class="invalid-feedback">Ingresa al menos 3 caracteres.</div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label for="correoSolicitud" class="form-label fw-semibold text-navy small">Correo electrónico</label>
+                                    <input type="email" id="correoSolicitud" class="form-control" placeholder="tu@correo.com" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="telefonoSolicitud" class="form-label fw-semibold text-navy small">Teléfono (opcional)</label>
+                                    <input type="tel" id="telefonoSolicitud" class="form-control" placeholder="0991234567" maxlength="10">
+                                </div>
                             </div>
 
                             <div class="mb-3">

@@ -37,6 +37,7 @@
                 </div>
             </div>
 
+            {% if not es_cliente %}
             <!-- Total de servicios vendidos -->
             <div class="{{ 'col-md-6' if es_cliente else 'col-md-4' }}">
                 <div class="card border-0 shadow-sm h-100">
@@ -49,8 +50,6 @@
                     </div>
                 </div>
             </div>
-
-            {% if not es_cliente %}
             <!-- Ingreso estimado (Exclusivo Administrador y Gestor) -->
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm h-100">
@@ -88,11 +87,11 @@
                                     <th style="width: 40px;">#</th>
                                     <th>Servicio</th>
                                     <th>Categoría</th>
-                                    <th class="text-center">Unidades</th>
+                                    {% if not es_cliente %}<th class="text-center">Unidades</th>{% endif %}
                                     {% if not es_cliente %}
                                     <th class="text-end">Ingresos</th>
                                     {% endif %}
-                                    <th style="width: 30%;">Demanda</th>
+                                    {% if not es_cliente %}<th style="width: 30%;">Demanda</th>{% endif %}
                                 </tr>
                             </thead>
                             <tbody>
@@ -101,11 +100,11 @@
                                     <td class="fw-bold text-muted">{{ loop.index }}</td>
                                     <td class="fw-semibold">{{ fila.servicio }}</td>
                                     <td><span class="badge bg-light text-dark">{{ fila.categoria }}</span></td>
-                                    <td class="text-center">{{ fila.unidades }}</td>
+                                    {% if not es_cliente %}<td class="text-center">{{ fila.unidades }}</td>{% endif %}
                                     {% if not es_cliente %}
                                     <td class="text-end">${{ '%.2f'|format(fila.ingresos) }}</td>
                                     {% endif %}
-                                    <td>
+                                    {% if not es_cliente %}<td>
                                         <!-- Barra proporcional al servicio más solicitado -->
                                         <div class="progress" style="height: 18px;">
                                             {% set porcentaje = (fila.unidades / max_unidades * 100) if max_unidades > 0 else 0 %}
@@ -117,7 +116,7 @@
                                                  aria-valuemax="{{ max_unidades }}">
                                             </div>
                                         </div>
-                                    </td>
+                                    </td>{% endif %}
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -127,13 +126,13 @@
                     <!-- Mensaje cuando todavía no hay facturas registradas -->
                     <div class="text-center py-5">
                         <i class="bi bi-inbox fs-1 text-muted d-block mb-3"></i>
-                        <p class="text-muted mb-1">Todavía no hay datos de ventas para mostrar.</p>
+                        <p class="text-muted mb-1">Todavía no hay nombres de servicios para mostrar.</p>
                         <p class="text-muted small">
                             Registra facturas con servicios para ver aquí el ranking de los más solicitados.
                         </p>
-                        <a href="{{ url_for('nueva_factura') }}" class="btn btn-verde mt-2">
+                        {% if not es_cliente %}<a href="{{ url_for('nueva_factura') }}" class="btn btn-verde mt-2">
                             <i class="bi bi-plus-circle me-2"></i>Crear una factura
-                        </a>
+                        </a>{% endif %}
                     </div>
                 {% endif %}
 
