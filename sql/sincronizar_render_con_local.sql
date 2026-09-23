@@ -5,6 +5,12 @@
 BEGIN;
 SET client_encoding = 'UTF8';
 
+-- Activa el segundo factor para las cuentas existentes. Las cuentas nuevas
+-- ya se registran con dos_factores_activo = TRUE desde la aplicación.
+UPDATE usuarios
+SET dos_factores_activo = TRUE,
+    dos_factores_codigo = NULL;
+
 -- Estructura agregada después de la primera versión del esquema.
 ALTER TABLE solicitudes
     ADD COLUMN IF NOT EXISTS estado VARCHAR(30) NOT NULL DEFAULT 'Pendiente',

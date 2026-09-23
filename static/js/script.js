@@ -673,6 +673,8 @@ document.addEventListener("DOMContentLoaded", () => {
             })
             .catch(error => {
                 console.error(error);
+                const errorMensaje = document.getElementById("solicitudErrorMensaje");
+                if (errorMensaje) errorMensaje.textContent = error.message;
                 const errorModalEl = document.getElementById("solicitudErrorModal");
                 if (errorModalEl && typeof bootstrap !== "undefined") {
                     bootstrap.Modal.getOrCreateInstance(errorModalEl).show();

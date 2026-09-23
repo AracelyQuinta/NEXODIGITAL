@@ -20,6 +20,7 @@ import os
 import json
 import random
 import re
+import secrets
 import psycopg2
 from html.parser import HTMLParser
 from functools import wraps
@@ -980,6 +981,44 @@ def admin_cambiar_rol(id):
     return redirect(url_for('admin_usuarios'))
 
 
+@app.route('/admin/restablecer-password/<int:id>', methods=['POST'])
+@login_required
+@role_required('Administrador')
+def admin_restablecer_password(id):
+    """Genera una contraseña temporal para una cuenta sin usar correo electrónico."""
+    user = Usuario.get_by_id(id)
+    if not user:
+        flash('El usuario no existe.', 'danger')
+        return redirect(url_for('admin_usuarios'))
+
+    password_temporal = f"Nexo-{secrets.token_urlsafe(6)}!"
+    password_hashed = User.hash_password(password_temporal)
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        '''UPDATE usuarios
+           SET password = %s, activo = TRUE, aprobado = TRUE,
+               dos_factores_activo = TRUE, dos_factores_codigo = NULL
+           WHERE id = %s''',
+        (password_hashed, id)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    registrar_log(
+        'RESTABLECER_PASSWORD',
+        f'El administrador {current_user.usuario} generó una contraseña temporal para {user.usuario}'
+    )
+    flash(
+        f'Contraseña temporal para {user.usuario}: {password_temporal}. '
+        'Entrégala de forma privada y solicita cambiarla después de iniciar sesión.',
+        'warning'
+    )
+    return redirect(url_for('admin_usuarios'))
+
+
 @app.route('/admin/logs')
 @login_required
 @role_required('Administrador')
@@ -1042,21 +1081,36 @@ def crear_solicitud():
     tipo_servicio = (datos.get('tipo_servicio') or '').strip()
     mensaje = (datos.get('mensaje') or '').strip()
 
-    if len(nombre) < 3 or not correo or len(tipo_servicio) < 2 or len(mensaje) < 10:
+    correo_valido = re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', correo)
+    if len(nombre) < 3 or not correo_valido or len(tipo_servicio) < 2 or len(mensaje) < 10:
         return {'ok': False, 'mensaje': 'Completa correctamente todos los campos obligatorios.'}, 400
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO solicitudes (nombre, correo, telefono, tipo_servicio, mensaje)
-        VALUES (%s, %s, %s, %s, %s)
-        RETURNING id
-    ''', (nombre, correo, telefono or None, tipo_servicio, mensaje))
-    solicitud_id = cursor.fetchone()['id']
-    conn.commit()
-    cursor.close()
-    conn.close()
-    return {'ok': True, 'id': solicitud_id}, 201
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO solicitudes (nombre, correo, telefono, tipo_servicio, mensaje)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id
+        ''', (nombre, correo, telefono or None, tipo_servicio, mensaje))
+        solicitud_id = cursor.fetchone()['id']
+        conn.commit()
+        return {'ok': True, 'id': solicitud_id}, 201
+    except psycopg2.Error:
+        if conn:
+            conn.rollback()
+        app.logger.exception('No se pudo guardar la solicitud en PostgreSQL.')
+        return {
+            'ok': False,
+            'mensaje': 'No se pudo guardar la solicitud. Inténtalo nuevamente en unos segundos.'
+        }, 503
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 
 @app.route('/solicitudes/<int:id>/actualizar', methods=['POST'])
