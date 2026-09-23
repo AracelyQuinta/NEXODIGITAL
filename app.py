@@ -49,7 +49,7 @@ from forms.producto_form import ProductoForm
 from forms.dos_factores_form import DosFactoresForm
 
 # Módulo propio de conexión centralizada a PostgreSQL (carpeta conexion/)
-from conexion.conexion import get_db_connection
+from conexion.conexion import close_db_connection, get_db_connection
 
 
 class _ImagenMetaParser(HTMLParser):
@@ -124,6 +124,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_ENV', 'development').lower() == 'production'
+app.teardown_appcontext(close_db_connection)
 
 
 @app.after_request
@@ -489,7 +490,7 @@ def registro():
             columnas_extra = {row['column_name'] for row in cursor.fetchall()}
 
             campos = ['usuario', 'correo', 'password', 'rol_id', 'activo', 'email_confirmado', 'aprobado', 'dos_factores_activo']
-            valores = [usuario_limpio, correo_limpio, password_hashed, form.rol_id.data, True, True, aprobado, True]
+            valores = [usuario_limpio, correo_limpio, password_hashed, form.rol_id.data, True, True, aprobado, False]
 
             if 'nombres' in columnas_extra:
                 campos.append('nombres'); valores.append(nombres_limpios)
@@ -765,6 +766,11 @@ def login():
             return redirect(next_page)
         else:
             session['temp_user_nombre'] = identificador
+            app.logger.warning(
+                'Login rechazado: usuario_encontrado=%s | identificador_normalizado=%s',
+                user is not None,
+                identificador.lower()
+            )
             registrar_log('LOGIN_FALLIDO', f"Credenciales incorrectas para: {identificador}")
             flash('Credenciales incorrectas. Verifica tu usuario/correo y contraseña.', 'danger')
 
