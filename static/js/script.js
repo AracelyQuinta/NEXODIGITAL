@@ -486,12 +486,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // --------------------------------------------------------------------------
 
     /**
-     * Valida que el nombre del cliente contenga al menos 3 caracteres alfabéticos.
+     * Valida que el nombre tenga más de 3 caracteres y solo texto.
      */
     function validarNombre() {
         if (!nombreCliente) return false;
         const valor = nombreCliente.value.trim();
-        const patron = /^[\p{L}\s.'-]{3,}$/u;
+        const patron = /^(?=.{4,150}$)[\p{L}]+(?:[ .'-][\p{L}]+)*$/u;
 
         if (!patron.test(valor)) {
             nombreCliente.classList.add("is-invalid");
@@ -540,6 +540,34 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    function normalizarTelefono() {
+        if (!telefonoSolicitud) return "";
+        telefonoSolicitud.value = telefonoSolicitud.value.replace(/\D/g, "").slice(0, 10);
+        return telefonoSolicitud.value;
+    }
+
+    function validarCorreo() {
+        if (!correoSolicitud) return false;
+        const valor = correoSolicitud.value.trim().toLowerCase();
+        correoSolicitud.value = valor;
+        const valido = correoSolicitud.checkValidity()
+            && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valor)
+            && valor.length <= 150;
+        correoSolicitud.classList.toggle("is-valid", valido);
+        correoSolicitud.classList.toggle("is-invalid", !valido);
+        return valido;
+    }
+
+    function validarTelefono() {
+        const valor = normalizarTelefono();
+        const valido = valor === "" || /^\d{10}$/.test(valor);
+        if (telefonoSolicitud) {
+            telefonoSolicitud.classList.toggle("is-valid", valido && valor !== "");
+            telefonoSolicitud.classList.toggle("is-invalid", !valido);
+        }
+        return valido;
+    }
+
     // --------------------------------------------------------------------------
     // ESCUCHADORES DE EVENTOS DE VALIDACIÓN ('input', 'change', 'blur')
     // --------------------------------------------------------------------------
@@ -556,6 +584,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (descripcionSolicitud) {
         descripcionSolicitud.addEventListener("input", validarDescripcion);
         descripcionSolicitud.addEventListener("blur", validarDescripcion);
+    }
+    if (correoSolicitud) {
+        correoSolicitud.addEventListener("input", validarCorreo);
+        correoSolicitud.addEventListener("blur", validarCorreo);
+    }
+    if (telefonoSolicitud) {
+        telefonoSolicitud.addEventListener("input", validarTelefono);
+        telefonoSolicitud.addEventListener("blur", validarTelefono);
     }
 
     // --------------------------------------------------------------------------
@@ -638,10 +674,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const nombreValido = validarNombre();
         const servicioValido = validarServicio();
         const descripcionValida = validarDescripcion();
-        const correoValido = correoSolicitud && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoSolicitud.value.trim());
+        const correoValido = validarCorreo();
+        const telefonoValido = validarTelefono();
 
-        // Si algún campo no es válido, mostrar modal de advertencia
-        if (!nombreValido || !servicioValido || !descripcionValida || !correoValido) {
+        // Si algún campo no es válido, indicar exactamente qué debe corregirse.
+        if (!nombreValido || !servicioValido || !descripcionValida || !correoValido || !telefonoValido) {
+            const mensajes = [];
+            if (!nombreValido) mensajes.push("El nombre debe tener mínimo 4 letras y solo texto.");
+            if (!correoValido) mensajes.push("Escribe un correo electrónico válido.");
+            if (!telefonoValido) mensajes.push("El teléfono debe tener exactamente 10 números o quedar vacío.");
+            if (!servicioValido) mensajes.push("Selecciona un tipo de servicio.");
+            if (!descripcionValida) mensajes.push("La descripción debe tener mínimo 10 caracteres.");
+            const errorMensaje = document.getElementById("solicitudErrorMensaje");
+            if (errorMensaje) errorMensaje.textContent = mensajes.join(" ");
             const errorModalEl = document.getElementById("solicitudErrorModal");
             if (errorModalEl && typeof bootstrap !== "undefined") {
                 bootstrap.Modal.getOrCreateInstance(errorModalEl).show();
@@ -656,7 +701,7 @@ document.addEventListener("DOMContentLoaded", () => {
             body: JSON.stringify({
                 nombre: nombreCliente.value.trim(),
                 correo: correoSolicitud.value.trim(),
-                telefono: telefonoSolicitud ? telefonoSolicitud.value.trim() : "",
+                telefono: normalizarTelefono(),
                 tipo_servicio: tipoServicio.value.trim(),
                 mensaje: descripcionSolicitud.value.trim()
             })

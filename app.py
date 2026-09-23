@@ -1081,9 +1081,23 @@ def crear_solicitud():
     tipo_servicio = (datos.get('tipo_servicio') or '').strip()
     mensaje = (datos.get('mensaje') or '').strip()
 
-    correo_valido = re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', correo)
-    if len(nombre) < 3 or not correo_valido or len(tipo_servicio) < 2 or len(mensaje) < 10:
-        return {'ok': False, 'mensaje': 'Completa correctamente todos los campos obligatorios.'}, 400
+    correo_valido = re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]{2,}', correo)
+    nombre_valido = re.fullmatch(
+        r"[^\W\d_]+(?:[ .'-][^\W\d_]+)*",
+        nombre,
+        flags=re.UNICODE
+    )
+    telefono_valido = not telefono or re.fullmatch(r'\d{10}', telefono)
+    if (
+        not nombre_valido or len(nombre) < 4 or len(nombre) > 150
+        or not correo_valido or len(correo) > 150
+        or not telefono_valido or len(tipo_servicio) < 2
+        or len(mensaje) < 10 or len(mensaje) > 5000
+    ):
+        return {
+            'ok': False,
+            'mensaje': 'Revisa nombre, correo, teléfono (10 números), servicio y descripción.'
+        }, 400
 
     conn = None
     cursor = None
