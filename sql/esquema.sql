@@ -37,7 +37,7 @@ CREATE TABLE tipos_servicio (
 );
  
 CREATE TABLE servicios (
-    id SERIAL PRIMARY KEY,
+    id SERIAL UNIQUE PRIMARY KEY,
     tipo_servicio_id INT NOT NULL REFERENCES tipos_servicio(id),
     nombre VARCHAR(150) NOT NULL,
     precio_base NUMERIC(12,2) NOT NULL,
@@ -47,17 +47,17 @@ CREATE TABLE servicios (
 );
  
 CREATE TABLE estados_proveedor (
-    id SERIAL PRIMARY KEY,
+    id SERIAL UNIQUE PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL UNIQUE
 );
  
 CREATE TABLE categorias_proveedor (
-    id SERIAL PRIMARY KEY,
+    id SERIAL UNIQUE PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL UNIQUE
 );
  
 CREATE TABLE proveedores (
-    id SERIAL PRIMARY KEY,
+    id SERIAL UNIQUE PRIMARY KEY,
     nombre VARCHAR(150) NOT NULL,
     categoria_id INT NOT NULL REFERENCES categorias_proveedor(id),
     sitio VARCHAR(150) NOT NULL,
@@ -65,13 +65,13 @@ CREATE TABLE proveedores (
 );
  
 CREATE TABLE estados_documento (
-    id SERIAL PRIMARY KEY,
+    id SERIAL UNIQUE PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL UNIQUE
 );
  
 CREATE TABLE facturacion (
-    id SERIAL UNIQUE,
-    numero VARCHAR(30) PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    numero VARCHAR(30) UNIQUE NOT NULL,
     tipo VARCHAR(50) NOT NULL,
     cliente_cedula VARCHAR(20) NOT NULL REFERENCES clientes(cedula) ON UPDATE CASCADE,
     fecha DATE NOT NULL,
@@ -345,6 +345,5 @@ BEGIN
         END IF;
     END LOOP;
 END $$;
-
 
 

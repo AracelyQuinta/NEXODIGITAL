@@ -2064,6 +2064,9 @@ def error_general(e):
 # PUNTO DE ENTRADA PRINCIPAL DE LA APLICACIÓN
 # ==============================================================================
 if __name__ == '__main__':
-    # Ejecuta el servidor de desarrollo local con recarga automática y depurador activo
-    app.run(debug=True)
-
+    # Render proporciona el puerto mediante la variable PORT.
+    app.run(
+        host='0.0.0.0',
+        port=int(os.getenv('PORT', '5000')),
+        debug=os.getenv('FLASK_DEBUG', '').lower() == 'true'
+    )
