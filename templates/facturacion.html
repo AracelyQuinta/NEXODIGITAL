@@ -165,12 +165,12 @@
                                         <a href="{{ url_for('ver_comprobante', numero=doc.numero) }}" class="btn btn-outline-success btn-sm rounded-pill" title="Ver e imprimir {{ 'cotización' if doc.tipo == 'Cotizacion' else 'factura' }}">
                                             <i class="bi bi-file-earmark-text-fill me-1"></i>{{ 'Cotización' if doc.tipo == 'Cotizacion' else 'Factura' }}
                                         </a>
-                                        {% if current_user.has_role('Administrador', 'Gestor de proyectos') %}
+                                        {% if current_user.has_role('Administrador', 'Gestor de proyectos') and current_user.has_permission('facturas.editar') %}
                                         <a href="{{ url_for('editar_factura', numero=doc.numero) }}" class="btn btn-outline-primary btn-sm rounded-pill" title="Editar">
                                             <i class="bi bi-pencil-square"></i>
                                         </a>
                                         {% endif %}
-                                        {% if current_user.has_role('Administrador') %}
+                                        {% if current_user.has_role('Administrador') and current_user.has_permission('facturas.eliminar') %}
                                         <form method="POST" action="{{ url_for('eliminar_factura', numero=doc.numero) }}" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este registro?');" class="d-inline">
                                             <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Eliminar">
                                                 <i class="bi bi-trash-fill"></i>

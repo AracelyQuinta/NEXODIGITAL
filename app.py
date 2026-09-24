@@ -70,7 +70,7 @@ class _ImagenMetaParser(HTMLParser):
 
 
 def resolver_url_imagen(valor):
-    """Acepta una imagen directa o extrae la imagen principal de una página."""
+    """Resuelve una imagen, conservando enlaces HTTPS válidos como respaldo."""
     url = (valor or '').strip()
     partes = urlparse(url)
     if partes.scheme not in ('http', 'https') or not partes.netloc:
@@ -102,9 +102,11 @@ def resolver_url_imagen(valor):
                 if imagen_partes.scheme in ('http', 'https') and imagen_partes.netloc:
                     return imagen
     except Exception:
-        return None
+        # El enlace puede ser válido aunque el servidor remoto bloquee la
+        # verificación desde backend. El navegador aún puede cargarlo.
+        return url
 
-    return None
+    return url
 
 # ------------------------------------------------------------------------------
 # INICIALIZACIÓN DE LA APLICACIÓN FLASK
@@ -283,6 +285,37 @@ def permission_required(codigo_permiso):
 # RUTAS PÚBLICAS Y VISTAS GENERALES
 # ==============================================================================
 
+def asegurar_servicios_minimos(cursor):
+    """Garantiza que el catálogo persistido tenga al menos dos servicios."""
+    cursor.execute('SELECT COUNT(*) AS total FROM servicios')
+    faltantes = max(0, 2 - cursor.fetchone()['total'])
+    if not faltantes:
+        return
+
+    catalogo_base = (
+        ('Desarrollo Web', 'Página web empresarial', 250.00,
+         'Diseño de un sitio web profesional, adaptable y optimizado.',
+         'https://images.unsplash.com/photo-1547658719-da2b51169166'),
+        ('Diseño y Catálogos', 'Catálogo digital', 120.00,
+         'Catálogo de productos con precios y contacto directo por WhatsApp.',
+         'https://images.unsplash.com/photo-1460925895917-afdab827c52f'),
+    )
+    for tipo_nombre, nombre, precio, descripcion, imagen in catalogo_base[:faltantes]:
+        cursor.execute(
+            '''INSERT INTO tipos_servicio (nombre) VALUES (%s)
+               ON CONFLICT (nombre) DO NOTHING''',
+            (tipo_nombre,)
+        )
+        cursor.execute('SELECT id FROM tipos_servicio WHERE nombre = %s', (tipo_nombre,))
+        tipo_id = cursor.fetchone()['id']
+        cursor.execute(
+            '''INSERT INTO servicios
+               (tipo_servicio_id, nombre, precio_base, imagen, descripcion, disponible)
+               VALUES (%s, %s, %s, %s, %s, TRUE)''',
+            (tipo_id, nombre, precio, imagen, descripcion)
+        )
+
+
 @app.route('/')
 def inicio():
     """
@@ -304,27 +337,25 @@ def inicio():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        asegurar_servicios_minimos(cursor)
+        conn.commit()
         base_datos_disponible = True
         cursor.execute('SELECT * FROM tipos_servicio ORDER BY nombre')
         tipos_servicio = cursor.fetchall()
 
-        if current_user.is_authenticated:
-            cursor.execute('''
-                SELECT s.*, t.nombre AS tipo_nombre
-                FROM servicios s
-                JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
-                ORDER BY s.disponible DESC, s.id ASC
-                LIMIT 6
-            ''')
-        else:
-            cursor.execute('''
-                SELECT s.*, t.nombre AS tipo_nombre
-                FROM servicios s
-                JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
-                WHERE s.disponible = TRUE
-                ORDER BY s.id ASC
-                LIMIT 6
-            ''')
+        # La portada muestra solo los tres servicios vigentes con mayor
+        # demanda; el catálogo completo queda en /servicios.
+        cursor.execute('''
+            SELECT s.*, t.nombre AS tipo_nombre,
+                   COUNT(d.id) AS unidades_solicitadas
+            FROM servicios s
+            JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
+            LEFT JOIN detalle_factura d ON d.servicio_id = s.id
+            WHERE s.disponible = TRUE
+            GROUP BY s.id, t.nombre
+            ORDER BY unidades_solicitadas DESC, s.id ASC
+            LIMIT 3
+        ''')
         servicios_destacados = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -1319,13 +1350,13 @@ def servicios():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        asegurar_servicios_minimos(cursor)
+        conn.commit()
         cursor.execute('SELECT * FROM tipos_servicio ORDER BY nombre')
         tipos_servicio = cursor.fetchall()
 
         params = []
         where_clauses = []
-        if not current_user.is_authenticated:
-            where_clauses.append("s.disponible = TRUE")
         if q:
             where_clauses.append("(s.nombre ILIKE %s OR s.descripcion ILIKE %s OR t.nombre ILIKE %s)")
             params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
@@ -1824,10 +1855,7 @@ def nuevo_servicio():
     if form.validate_on_submit():
         imagen_ingresada = form.imagen.data.strip() if form.imagen.data else ''
         imagen_url = resolver_url_imagen(imagen_ingresada) if imagen_ingresada else None
-        if imagen_ingresada and not imagen_url:
-            flash('El enlace no contiene una imagen accesible. Se usará la imagen predeterminada.', 'warning')
-            imagen_url = "https://images.unsplash.com/photo-1460925895917-afdab827c52f"
-        elif not imagen_url:
+        if not imagen_url:
             imagen_url = "https://images.unsplash.com/photo-1460925895917-afdab827c52f"
 
         cursor.execute(
@@ -1884,9 +1912,8 @@ def editar_servicio(id):
     if form.validate_on_submit():
         imagen_ingresada = form.imagen.data.strip() if form.imagen.data else ''
         imagen_url = resolver_url_imagen(imagen_ingresada) if imagen_ingresada else servicio['imagen']
-        if imagen_ingresada and not imagen_url:
-            flash('El enlace no contiene una imagen accesible. Se conservará la imagen anterior.', 'warning')
-            imagen_url = servicio['imagen']
+        if not imagen_url:
+            imagen_url = "https://images.unsplash.com/photo-1460925895917-afdab827c52f"
 
         cursor.execute(
             '''UPDATE servicios SET tipo_servicio_id=%s, nombre=%s, precio_base=%s, imagen=%s, descripcion=%s, disponible=%s
@@ -2394,8 +2421,8 @@ def editar_factura(numero):
     cursor.execute('SELECT * FROM detalle_factura WHERE factura_numero = %s', (numero,))
     detalle_actual = cursor.fetchall()
     factura['servicios_detalle'] = [
-        {'id': d['servicio_id'], 'servicio': d['nombre_servicio'], 'cantidad': d['cantidad'],
-         'precio': d['precio_base'], 'ajuste': d['ajuste'], 'total': d['total']}
+        {'id': d['servicio_id'], 'servicio': d['nombre_servicio'], 'cantidad': int(d['cantidad']),
+         'precio': float(d['precio_base']), 'ajuste': float(d['ajuste']), 'total': float(d['total'])}
         for d in detalle_actual
     ]
 
@@ -2631,6 +2658,10 @@ def estadisticas():
 
     # El servicio más solicitado es el primero del ranking (si existe).
     servicio_top = ranking[0]['servicio'] if ranking else 'Sin datos aún'
+    servicio_mayor_ingreso = (
+        max(ranking, key=lambda fila: fila['ingresos'] or 0)['servicio']
+        if ranking and not es_cliente else 'Sin datos aún'
+    )
     # La unidad máxima sirve para dibujar el ancho de las barras en la plantilla.
     max_unidades = ranking[0]['unidades'] if ranking and not es_cliente else 0
     total_ingresos_mostrar = fila_totales['total_ingresos'] if not es_cliente else 0.0

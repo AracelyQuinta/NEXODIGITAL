@@ -18,9 +18,11 @@
             </a>
         </div>
         <div class="d-flex gap-2">
+            {% if current_user.has_role('Administrador', 'Gestor de proyectos') and current_user.has_permission('facturas.editar') %}
             <a href="{{ url_for('editar_factura', numero=numero) }}" class="btn btn-outline-primary btn-sm">
                 <i class="bi bi-pencil-square me-1"></i>Editar Datos
             </a>
+            {% endif %}
             <button type="button" class="btn btn-verde btn-sm" onclick="window.print();">
                 <i class="bi bi-printer-fill me-1"></i>Imprimir / Guardar PDF
             </button>

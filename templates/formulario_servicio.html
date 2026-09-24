@@ -89,7 +89,12 @@
                                     {{ form.imagen(class="form-control" + (" is-invalid" if form.imagen.errors else ""), placeholder="https://images.unsplash.com/...") }}
                                 </div>
                                 <div class="form-text small text-muted">
-                                    Pega el enlace directo de una imagen o el enlace de una página que contenga la imagen (opcional).
+                                    Pega un enlace HTTPS directo a una imagen. También puedes pegar un enlace de página; se intentará encontrar su imagen principal.
+                                </div>
+                                <div id="imagenPreviewContenedor" class="mt-3 d-none">
+                                    <img id="imagenPreview" src="" alt="Vista previa de la imagen del servicio"
+                                         class="img-fluid rounded-3 border shadow-sm" style="max-height: 180px; width: 100%; object-fit: cover;">
+                                    <small id="imagenPreviewEstado" class="text-muted d-block mt-1"></small>
                                 </div>
                                 {% for error in form.imagen.errors %}
                                     <div class="text-danger small mt-1"><i class="bi bi-exclamation-circle me-1"></i>{{ error }}</div>
@@ -132,4 +137,40 @@
         </div>
     </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+(() => {
+    const campo = document.getElementById('{{ form.imagen.id }}');
+    const contenedor = document.getElementById('imagenPreviewContenedor');
+    const preview = document.getElementById('imagenPreview');
+    const estado = document.getElementById('imagenPreviewEstado');
+    if (!campo || !contenedor || !preview) return;
+
+    const actualizarVistaPrevia = () => {
+        const url = campo.value.trim();
+        if (!url) {
+            contenedor.classList.add('d-none');
+            preview.removeAttribute('src');
+            return;
+        }
+        preview.src = url;
+        contenedor.classList.remove('d-none');
+        estado.textContent = 'Vista previa del enlace ingresado.';
+    };
+
+    preview.addEventListener('load', () => {
+        estado.textContent = 'Imagen cargada correctamente.';
+        estado.className = 'text-success d-block mt-1';
+    });
+    preview.addEventListener('error', () => {
+        estado.textContent = 'El enlace no devuelve una imagen directamente; se guardará el enlace para que puedas corregirlo o usar una URL directa.';
+        estado.className = 'text-warning d-block mt-1';
+    });
+    campo.addEventListener('input', actualizarVistaPrevia);
+    actualizarVistaPrevia();
+})();
+</script>
 {% endblock %}
