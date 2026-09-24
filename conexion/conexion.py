@@ -1,12 +1,14 @@
 import os
 import time
+from pathlib import Path
 
 import psycopg2
 from flask import g, has_app_context
 from dotenv import load_dotenv
 from psycopg2.extras import RealDictCursor
 
-load_dotenv()
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(PROJECT_ROOT / '.env')
 
 
 def get_db_connection():
@@ -16,7 +18,7 @@ def get_db_connection():
         if conexion_actual is not None and not conexion_actual.closed:
             return conexion_actual
 
-    db_url = os.getenv('DATABASE_URL')
+    db_url = (os.getenv('DATABASE_URL') or '').strip()
     parametros = {}
     application_name = 'nexodigital-web'
 
@@ -26,13 +28,19 @@ def get_db_connection():
         parametros['dsn'] = db_url
     else:
         application_name = 'nexodigital-local'
+        password = os.getenv('DB_PASSWORD', '')
         parametros = {
             'host': os.getenv('DB_HOST', 'localhost'),
             'port': os.getenv('DB_PORT', '5432'),
             'dbname': os.getenv('DB_NAME', 'nexodigital'),
             'user': os.getenv('DB_USER', 'postgres'),
-            'password': os.getenv('DB_PASSWORD', ''),
+            'password': password,
         }
+        if not password:
+            raise psycopg2.OperationalError(
+                'Falta DB_PASSWORD o DATABASE_URL. Configura las credenciales '
+                f'de PostgreSQL en {PROJECT_ROOT / ".env"}.'
+            )
 
     ultimo_error = None
     for intento in range(3):

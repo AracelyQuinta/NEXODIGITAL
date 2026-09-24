@@ -197,7 +197,20 @@ h1, h2, h3, h4, h5, h6 {
 .text-rose { color: var(--rose-text) !important; }
 .text-light-emerald { color: #a7f3d0 !important; }
 .text-light-muted { color: #cbd5e1 !important; }
+.text-muted { color: var(--text-muted) !important; }
+.form-text { color: var(--text-muted) !important; }
 .tracking-wider { letter-spacing: 0.08em; }
+
+.form-select option,
+.form-control,
+.form-select {
+    color: var(--text-body);
+}
+
+.empty-state {
+    background-color: var(--bg-card);
+    border-color: var(--border-color) !important;
+}
 
 /* ==============================================================================
    3. BARRA DE NAVEGACIÓN (NAVBAR)

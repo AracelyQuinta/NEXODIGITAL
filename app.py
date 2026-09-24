@@ -298,37 +298,46 @@ def inicio():
         "ubicacion": "Quito / Puyo - Ecuador",
         "modalidad": "Atención 100% en línea"
     }
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM tipos_servicio ORDER BY nombre')
-    tipos_servicio = cursor.fetchall()
+    tipos_servicio = []
+    servicios_destacados = []
+    base_datos_disponible = False
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        base_datos_disponible = True
+        cursor.execute('SELECT * FROM tipos_servicio ORDER BY nombre')
+        tipos_servicio = cursor.fetchall()
 
-    if current_user.is_authenticated:
-        cursor.execute('''
-            SELECT s.*, t.nombre AS tipo_nombre
-            FROM servicios s
-            JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
-            ORDER BY s.disponible DESC, s.id ASC
-            LIMIT 6
-        ''')
-    else:
-        cursor.execute('''
-            SELECT s.*, t.nombre AS tipo_nombre
-            FROM servicios s
-            JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
-            WHERE s.disponible = TRUE
-            ORDER BY s.id ASC
-            LIMIT 6
-        ''')
-    servicios_destacados = cursor.fetchall()
-    cursor.close()
-    conn.close()
+        if current_user.is_authenticated:
+            cursor.execute('''
+                SELECT s.*, t.nombre AS tipo_nombre
+                FROM servicios s
+                JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
+                ORDER BY s.disponible DESC, s.id ASC
+                LIMIT 6
+            ''')
+        else:
+            cursor.execute('''
+                SELECT s.*, t.nombre AS tipo_nombre
+                FROM servicios s
+                JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
+                WHERE s.disponible = TRUE
+                ORDER BY s.id ASC
+                LIMIT 6
+            ''')
+        servicios_destacados = cursor.fetchall()
+        cursor.close()
+        conn.close()
+    except psycopg2.Error:
+        app.logger.exception('No se pudo cargar el catálogo de la portada.')
+
     return render_template(
         'index.html',
         mensaje=mensaje,
         empresa=empresa,
         servicios=servicios_destacados,
-        tipos_servicio=tipos_servicio
+        tipos_servicio=tipos_servicio,
+        base_datos_disponible=base_datos_disponible
     )
 
 
@@ -634,7 +643,14 @@ def health():
         return {'status': 'ok', 'database': 'connected', 'schema': 'ready'}, 200
     except Exception:
         app.logger.exception('Healthcheck de PostgreSQL fallido.')
-        return {'status': 'error', 'database': 'unavailable'}, 503
+        return {
+            'status': 'error',
+            'database': 'unavailable',
+            'configuration': (
+                'Configura DATABASE_URL o DB_PASSWORD en el archivo .env '
+                'de la raíz del proyecto.'
+            )
+        }, 503
     finally:
         if cursor:
             cursor.close()
@@ -1291,42 +1307,53 @@ def servicios():
     q = request.args.get('q', '').strip()
     tipo = request.args.get('tipo', '').strip()
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    tipos_servicio = []
+    lista_servicios = []
+    base_datos_disponible = False
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM tipos_servicio ORDER BY nombre')
+        tipos_servicio = cursor.fetchall()
 
-    cursor.execute('SELECT * FROM tipos_servicio ORDER BY nombre')
-    tipos_servicio = cursor.fetchall()
+        params = []
+        where_clauses = []
+        if not current_user.is_authenticated:
+            where_clauses.append("s.disponible = TRUE")
+        if q:
+            where_clauses.append("(s.nombre ILIKE %s OR s.descripcion ILIKE %s OR t.nombre ILIKE %s)")
+            params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
+        if tipo:
+            where_clauses.append("t.nombre = %s")
+            params.append(tipo)
 
-    params = []
-    where_clauses = []
-    if not current_user.is_authenticated:
-        where_clauses.append("s.disponible = TRUE")
-    if q:
-        where_clauses.append("(s.nombre ILIKE %s OR s.descripcion ILIKE %s OR t.nombre ILIKE %s)")
-        params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
-    if tipo:
-        where_clauses.append("t.nombre = %s")
-        params.append(tipo)
-
-    sql_where = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
-    query = f'''
-        SELECT s.*, t.nombre AS tipo_nombre
-        FROM servicios s
-        JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
-        {sql_where}
-        ORDER BY s.disponible DESC, s.id ASC
-    '''
-    cursor.execute(query, tuple(params))
-    lista_servicios = cursor.fetchall()
-    cursor.close()
-    conn.close()
+        sql_where = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+        query = f'''
+            SELECT s.*, t.nombre AS tipo_nombre
+            FROM servicios s
+            JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
+            {sql_where}
+            ORDER BY s.disponible DESC, s.id ASC
+        '''
+        cursor.execute(query, tuple(params))
+        lista_servicios = cursor.fetchall()
+        base_datos_disponible = True
+        cursor.close()
+        conn.close()
+    except psycopg2.Error:
+        app.logger.exception('No se pudo cargar el catálogo de servicios.')
+        flash(
+            'No se puede consultar el catálogo porque la conexión con la base de datos no está disponible.',
+            'warning'
+        )
     return render_template(
         'servicios.html',
         servicios=lista_servicios,
         tipos_servicio=tipos_servicio,
         query_busqueda=q,
-        tipo_seleccionado=tipo
-    )
+        tipo_seleccionado=tipo,
+        base_datos_disponible=base_datos_disponible
+    ), (200 if base_datos_disponible else 503)
 
 
 
@@ -2619,7 +2646,7 @@ def error_postgresql(e):
         '500.html',
         codigo_http=503,
         titulo_error='Base de datos temporalmente no disponible',
-        mensaje_error='La operación no se completó. Tus datos no se guardaron a medias; inténtalo nuevamente en unos segundos.'
+        mensaje_error='La operación no se completó. Tus datos no se guardaron o quedaron a medias; inténtalo nuevamente en unos segundos.'
     ), 503
 
 

@@ -21,6 +21,14 @@ from werkzeug.security import check_password_hash as werkzeug_check_hash
 db = SQLAlchemy()
 
 
+def normalizar_nombre_rol(nombre):
+    """Mantiene un único nombre visible y funcional para el rol administrador."""
+    nombre_limpio = (nombre or '').strip()
+    if nombre_limpio.casefold() in {'admin', 'administrador'}:
+        return 'Administrador'
+    return nombre_limpio
+
+
 # ==============================================================================
 # MODELO: ROLES DEL SISTEMA
 # ==============================================================================
@@ -42,8 +50,26 @@ class Role(db.Model):
         from conexion.conexion import get_db_connection
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM roles ORDER BY id')
-        roles = cursor.fetchall()
+        cursor.execute('''
+            SELECT *
+            FROM roles
+            ORDER BY
+                CASE
+                    WHEN LOWER(TRIM(nombre)) = 'administrador' THEN 0
+                    WHEN LOWER(TRIM(nombre)) = 'admin' THEN 1
+                    ELSE 2
+                END,
+                id
+        ''')
+        roles = []
+        nombres_vistos = set()
+        for fila in cursor.fetchall():
+            rol = dict(fila)
+            rol['nombre'] = normalizar_nombre_rol(rol.get('nombre'))
+            clave = rol['nombre'].casefold()
+            if clave not in nombres_vistos:
+                roles.append(rol)
+                nombres_vistos.add(clave)
         cursor.close()
         conn.close()
         return roles
@@ -57,6 +83,9 @@ class Role(db.Model):
         rol = cursor.fetchone()
         cursor.close()
         conn.close()
+        if rol:
+            rol = dict(rol)
+            rol['nombre'] = normalizar_nombre_rol(rol.get('nombre'))
         return rol
 
 
@@ -305,7 +334,7 @@ class User(UserMixin, db.Model):
             correo=row.get('correo', f"{row['usuario']}@nexodigital.ec"),
             password=row['password'],
             rol_id=row.get('rol_id', 1),
-            rol_nombre=row.get('rol_nombre', 'Administrador'),
+            rol_nombre=normalizar_nombre_rol(row.get('rol_nombre', 'Administrador')),
             activo=row.get('activo', True),
             email_confirmado=row.get('email_confirmado', True),
             aprobado=row.get('aprobado', True),
@@ -395,7 +424,11 @@ class User(UserMixin, db.Model):
             LEFT JOIN roles r ON u.rol_id = r.id
             ORDER BY u.id ASC
         ''')
-        rows = cursor.fetchall()
+        rows = []
+        for fila in cursor.fetchall():
+            usuario = dict(fila)
+            usuario['rol_nombre'] = normalizar_nombre_rol(usuario.get('rol_nombre'))
+            rows.append(usuario)
         cursor.close()
         conn.close()
         return rows
