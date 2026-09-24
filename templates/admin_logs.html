@@ -64,7 +64,12 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small mb-1">Acción</label>
-                    <input type="search" name="accion" class="form-control form-control-sm" value="{{ filtros.accion }}" placeholder="LOGIN, CREAR...">
+                    <select name="accion" class="form-select form-select-sm">
+                        <option value="">Todas las acciones</option>
+                        {% for accion in acciones_disponibles %}
+                        <option value="{{ accion }}" {% if filtros.accion == accion %}selected{% endif %}>{{ accion }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label small mb-1">IP</label>

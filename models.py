@@ -175,13 +175,15 @@ class ActivityLog(db.Model):
             parametros.append(hora_hasta)
         for columna, valor in (
             ('l.usuario_nombre', persona),
-            ('l.accion', accion),
             ('l.ip', ip),
             ('l.detalles', detalles),
         ):
             if valor:
                 condiciones.append(f'COALESCE({columna}, \'\') ILIKE %s')
                 parametros.append(f'%{valor}%')
+        if accion:
+            condiciones.append('l.accion = %s')
+            parametros.append(accion)
 
         where = f"WHERE {' AND '.join(condiciones)}" if condiciones else ''
         parametros.append(limit)
@@ -198,6 +200,23 @@ class ActivityLog(db.Model):
         cursor.close()
         conn.close()
         return logs
+
+    @staticmethod
+    def acciones_disponibles():
+        """Obtiene las acciones existentes para el selector de auditoría."""
+        from conexion.conexion import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT DISTINCT accion
+            FROM logs_actividad
+            WHERE accion IS NOT NULL AND TRIM(accion) <> ''
+            ORDER BY accion
+        ''')
+        acciones = [row['accion'] for row in cursor.fetchall()]
+        cursor.close()
+        conn.close()
+        return acciones
 
 
 # ==============================================================================

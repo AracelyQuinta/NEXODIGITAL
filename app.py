@@ -1108,7 +1108,13 @@ def admin_logs():
                 filtros[nombre_filtro] = ''
                 flash(f'El filtro {nombre_filtro.replace("_", " ")} no es válido.', 'warning')
     logs = ActivityLog.buscar(**filtros)
-    return render_template('admin_logs.html', logs=logs, filtros=filtros)
+    acciones_disponibles = ActivityLog.acciones_disponibles()
+    return render_template(
+        'admin_logs.html',
+        logs=logs,
+        filtros=filtros,
+        acciones_disponibles=acciones_disponibles
+    )
 
 
 @app.route('/solicitudes', methods=['GET'])
