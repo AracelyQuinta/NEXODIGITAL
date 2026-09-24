@@ -88,7 +88,8 @@ CREATE TABLE facturacion (
 CREATE TABLE detalle_factura (
     id SERIAL PRIMARY KEY,
     factura_numero VARCHAR(30) NOT NULL REFERENCES facturacion(numero) ON DELETE CASCADE ON UPDATE CASCADE,
-    servicio_id INT REFERENCES servicios(id) ON DELETE SET NULL,
+    -- Un servicio usado en una factura/cotización no puede eliminarse.
+    servicio_id INT REFERENCES servicios(id) ON DELETE RESTRICT,
     nombre_servicio VARCHAR(150) NOT NULL,
     cantidad INT NOT NULL DEFAULT 1,
     precio_base NUMERIC(12,2) NOT NULL DEFAULT 0,

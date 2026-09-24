@@ -1335,10 +1335,13 @@ def servicios():
 
         sql_where = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
         query = f'''
-            SELECT s.*, t.nombre AS tipo_nombre
+            SELECT s.*, t.nombre AS tipo_nombre,
+                   COUNT(d.id) AS detalles_relacionados
             FROM servicios s
             JOIN tipos_servicio t ON s.tipo_servicio_id = t.id
+            LEFT JOIN detalle_factura d ON d.servicio_id = s.id
             {sql_where}
+            GROUP BY s.id, t.nombre
             ORDER BY s.disponible DESC, s.id ASC
         '''
         cursor.execute(query, tuple(params))
@@ -1547,7 +1550,7 @@ def editar_cliente(cedula):
     return render_template('formulario_cliente.html', form=form, editando=True, cedula=cedula)
 
 
-@app.route('/clientes/eliminar/<cedula>', methods=['POST', 'GET'])
+@app.route('/clientes/eliminar/<cedula>', methods=['POST'])
 @role_required('Administrador')
 def eliminar_cliente(cedula):
     """
@@ -1658,7 +1661,7 @@ def editar_tipo_negocio(id):
     return render_template('formulario_tipo_negocio.html', form=form, editando=True, id=id)
 
 
-@app.route('/tipos-negocio/eliminar/<int:id>', methods=['POST', 'GET'])
+@app.route('/tipos-negocio/eliminar/<int:id>', methods=['POST'])
 @role_required('Administrador')
 def eliminar_tipo_negocio(id):
     """
@@ -1764,7 +1767,7 @@ def editar_tipo_servicio(id):
     return render_template('formulario_tipo_servicio.html', form=form, editando=True, id=id)
 
 
-@app.route('/tipos-servicio/eliminar/<int:id>', methods=['POST', 'GET'])
+@app.route('/tipos-servicio/eliminar/<int:id>', methods=['POST'])
 @role_required('Administrador')
 def eliminar_tipo_servicio(id):
     """
@@ -1904,9 +1907,9 @@ def editar_servicio(id):
     return render_template('formulario_servicio.html', form=form, editando=True, id=id)
 
 
-@app.route('/productos/eliminar/<int:id>', methods=['POST', 'GET'])
-@app.route('/servicios/eliminar/<int:id>', methods=['POST', 'GET'])
-@app.route('/servicio/eliminar/<int:id>', methods=['POST', 'GET'])
+@app.route('/productos/eliminar/<int:id>', methods=['POST'])
+@app.route('/servicios/eliminar/<int:id>', methods=['POST'])
+@app.route('/servicio/eliminar/<int:id>', methods=['POST'])
 @role_required('Administrador')
 def eliminar_servicio(id):
     """
@@ -1922,6 +1925,22 @@ def eliminar_servicio(id):
         cursor.close()
         conn.close()
         flash('El servicio seleccionado no existe.', 'danger')
+        return redirect(url_for('servicios'))
+
+    cursor.execute(
+        'SELECT COUNT(*) AS total FROM detalle_factura WHERE servicio_id = %s',
+        (id,)
+    )
+    relaciones = cursor.fetchone()['total']
+    if relaciones > 0:
+        cursor.close()
+        conn.close()
+        flash(
+            f'No se puede eliminar "{servicio["nombre"]}" porque está relacionado '
+            f'con {relaciones} detalle(s) de factura o cotización. Puedes editarlo '
+            'o marcarlo como no disponible.',
+            'danger'
+        )
         return redirect(url_for('servicios'))
 
     cursor.execute('DELETE FROM servicios WHERE id = %s', (id,))
@@ -2024,7 +2043,7 @@ def editar_proveedor(id):
     return render_template('formulario_proveedor.html', form=form, editando=True, id=id)
 
 
-@app.route('/proveedores/eliminar/<int:id>', methods=['POST', 'GET'])
+@app.route('/proveedores/eliminar/<int:id>', methods=['POST'])
 @role_required('Administrador')
 def eliminar_proveedor(id):
     """
@@ -2126,7 +2145,7 @@ def editar_categoria_proveedor(id):
     return render_template('formulario_categoria_proveedor.html', form=form, editando=True, id=id)
 
 
-@app.route('/categorias-proveedor/eliminar/<int:id>', methods=['POST', 'GET'])
+@app.route('/categorias-proveedor/eliminar/<int:id>', methods=['POST'])
 @role_required('Administrador', 'Soporte técnico')
 def eliminar_categoria_proveedor(id):
     """
@@ -2455,7 +2474,7 @@ def editar_factura(numero):
     )
 
 
-@app.route('/facturacion/eliminar/<numero>', methods=['POST', 'GET'])
+@app.route('/facturacion/eliminar/<numero>', methods=['POST'])
 @role_required('Administrador')
 @permission_required('facturas.eliminar')
 def eliminar_factura(numero):
