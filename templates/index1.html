@@ -746,8 +746,20 @@
 
                             <div class="mb-3">
                                 <label for="nombreCliente" class="form-label fw-semibold text-navy small">Nombre del cliente</label>
-                                <input type="text" id="nombreCliente" class="form-control" placeholder="Ej: Carlos Mendoza" minlength="3" required>
-                                <div class="invalid-feedback">Ingresa al menos 3 caracteres.</div>
+                                <input type="text" id="nombreCliente" class="form-control" placeholder="Ej: Carlos Mendoza" minlength="4" maxlength="150" autocomplete="name" required>
+                                <div class="invalid-feedback">Ingresa mínimo 4 letras, sin números.</div>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label for="correoSolicitud" class="form-label fw-semibold text-navy small">Correo electrónico</label>
+                                    <input type="email" id="correoSolicitud" class="form-control" placeholder="tu@correo.com" maxlength="150" autocomplete="email" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="telefonoSolicitud" class="form-label fw-semibold text-navy small">Teléfono (opcional)</label>
+                                    <input type="tel" id="telefonoSolicitud" class="form-control" placeholder="0991234567" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" autocomplete="tel">
+                                    <div class="invalid-feedback">Escribe exactamente 10 números o déjalo vacío.</div>
+                                </div>
                             </div>
 
                             <div class="mb-3">
@@ -803,7 +815,7 @@
                                             <i class="bi bi-exclamation-octagon-fill"></i>
                                         </div>
                                         <h4 class="text-danger fw-bold">Campos Incompletos</h4>
-                                        <p class="text-muted small">Por favor revisa los campos antes de guardar.</p>
+                                        <p id="solicitudErrorMensaje" class="text-muted small">Por favor revisa los campos antes de guardar.</p>
                                         <button type="button" class="btn btn-danger btn-sm w-100 mt-2" data-bs-dismiss="modal">Aceptar</button>
                                     </div>
                                 </div>
@@ -966,7 +978,7 @@
 
     <!-- JS personalizado -->
     <script src="static/js/contacto.js"></script>
-    <script src="static/js/script.js"></script>
+    <script src="static/js/script.js?v=20260923"></script>
 </body>
 
 </html>

@@ -706,7 +706,8 @@ def login():
 
     form = LoginForm()
     if form.validate_on_submit():
-        identificador = form.usuario.data.strip()
+        identificador = (form.usuario.data or '').strip()
+        password = form.password.data or ''
         try:
             user = Usuario.get_by_usuario_o_correo(identificador)
         except psycopg2.Error:
@@ -714,7 +715,9 @@ def login():
             flash('La base de datos de Render no está disponible en este momento. Espera unos segundos y vuelve a intentarlo.', 'warning')
             return render_template('login.html', form=form), 503
 
-        if user and user.check_password(form.password.data):
+        # La identidad se busca por usuario/correo y la contraseña se verifica
+        # contra su hash; nunca se compara la contraseña dentro de SQL.
+        if user and user.check_password(password):
             # Validar si el usuario está activo
             if not user.activo:
                 registrar_log('LOGIN_BLOQUEADO', f"Usuario inactivo: {user.usuario}")
@@ -1178,13 +1181,19 @@ def crear_solicitud():
         solicitud_id = cursor.fetchone()['id']
         conn.commit()
         return {'ok': True, 'id': solicitud_id}, 201
-    except psycopg2.Error:
+    except psycopg2.Error as error:
         if conn:
             conn.rollback()
         app.logger.exception('No se pudo guardar la solicitud en PostgreSQL.')
+        if getattr(error, 'pgcode', None) == '42P01':
+            mensaje_error = 'La tabla solicitudes no existe en la base de datos conectada.'
+        elif getattr(error, 'pgcode', None) == '42703':
+            mensaje_error = 'La tabla solicitudes no tiene una columna requerida por la aplicación.'
+        else:
+            mensaje_error = 'La base de datos rechazó la solicitud. Revisa la conexión y el esquema.'
         return {
             'ok': False,
-            'mensaje': 'No se pudo guardar la solicitud. Inténtalo nuevamente en unos segundos.'
+            'mensaje': mensaje_error
         }, 503
     finally:
         if cursor:

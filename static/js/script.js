@@ -550,9 +550,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!correoSolicitud) return false;
         const valor = correoSolicitud.value.trim().toLowerCase();
         correoSolicitud.value = valor;
-        const valido = correoSolicitud.checkValidity()
-            && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valor)
-            && valor.length <= 150;
+        const valido = valor.length <= 150
+            && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(valor);
         correoSolicitud.classList.toggle("is-valid", valido);
         correoSolicitud.classList.toggle("is-invalid", !valido);
         return valido;
@@ -686,10 +685,22 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!servicioValido) mensajes.push("Selecciona un tipo de servicio.");
             if (!descripcionValida) mensajes.push("La descripción debe tener mínimo 10 caracteres.");
             const errorMensaje = document.getElementById("solicitudErrorMensaje");
-            if (errorMensaje) errorMensaje.textContent = mensajes.join(" ");
+            if (errorMensaje) {
+                errorMensaje.textContent = `Revisa: ${mensajes.join(" ")}`;
+            }
             const errorModalEl = document.getElementById("solicitudErrorModal");
             if (errorModalEl && typeof bootstrap !== "undefined") {
                 bootstrap.Modal.getOrCreateInstance(errorModalEl).show();
+            }
+            const primerCampoInvalido = [
+                [nombreCliente, nombreValido],
+                [correoSolicitud, correoValido],
+                [telefonoSolicitud, telefonoValido],
+                [tipoServicio, servicioValido],
+                [descripcionSolicitud, descripcionValida]
+            ].find(([, valido]) => !valido);
+            if (primerCampoInvalido && primerCampoInvalido[0]) {
+                primerCampoInvalido[0].focus();
             }
             return;
         }
