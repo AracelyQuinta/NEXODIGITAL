@@ -2339,12 +2339,42 @@ def nueva_factura():
         subtotal_val = subtotal_calculado
         iva_val = round(subtotal_val * 0.15, 2) if aplica_iva else 0.0
         total_val = round(subtotal_val + iva_val, 2)
-        anticipo_val = float(form.anticipo.data) if form.anticipo.data is not None else 0.00
-        saldo_val = max(0.0, round(total_val - anticipo_val, 2))
+       anticipo_val = float(form.anticipo.data) if form.anticipo.data is not None else 0.00
+saldo_val = max(0.0, round(total_val - anticipo_val, 2))
 
-        estado_id_final = form.estado_id.data
-        if tipo_doc == 'Factura' and saldo_val <= 0 and estado_id_final == id_por_nombre.get('Pendiente'):
-            estado_id_final = id_por_nombre.get('Pagada')
+# Evitar que el abono sea mayor que el total
+if anticipo_val > total_val:
+    conn.rollback()
+    cursor.close()
+    conn.close()
+
+    flash(
+        f'El abono (${anticipo_val:.2f}) no puede ser mayor '
+        f'al total del documento (${total_val:.2f}).',
+        'danger'
+    )
+    return redirect(url_for('nueva_factura', tipo=tipo_doc))
+
+# REGLA DEL SISTEMA:
+# Una factura final solo puede emitirse cuando el pago está completo.
+if tipo_doc == 'Factura' and saldo_val > 0:
+    conn.rollback()
+    cursor.close()
+    conn.close()
+
+    flash(
+        f'No se puede emitir la factura porque existe un saldo '
+        f'pendiente de ${saldo_val:.2f}. '
+        'Debe registrarse un comprobante del abono hasta completar el pago.',
+        'warning'
+    )
+
+    return redirect(url_for('nueva_factura', tipo='Cotizacion'))
+
+estado_id_final = form.estado_id.data
+
+if tipo_doc == 'Factura' and saldo_val == 0:
+    estado_id_final = id_por_nombre.get('Pagada', estado_id_final)
 
         notas_final = form.notas.data.strip() if form.notas.data else (
             "Propuesta emitida por NexoDigital." if tipo_doc == 'Cotizacion' else "Comprobante emitido por NexoDigital."
