@@ -16,7 +16,7 @@
         {% if solicitudes %}
         <div class="row g-3">
             {% for solicitud in solicitudes %}
-            <div class="col-lg-6">
+            <div class="col-lg-6 fila-solicitud">
                 <article class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between gap-3 mb-2">
@@ -125,6 +125,18 @@
             </div>
             {% endfor %}
         </div>
+
+        <!-- Paginación de Solicitudes (10 por página) -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-3 border-top mt-4 {{ 'd-none' if solicitudes|length <= 10 else '' }}" id="contenedorPaginacionSolicitudes">
+            <small class="text-muted">
+                Mostrando <span id="contadorPaginacionSolicitudesTexto" class="fw-semibold text-navy">1 - {{ 10 if solicitudes|length > 10 else solicitudes|length }}</span> de <span class="fw-semibold text-navy">{{ solicitudes|length }}</span> solicitudes
+            </small>
+            <nav aria-label="Navegación de solicitudes">
+                <ul class="pagination pagination-sm mb-0 gap-1" id="listaBotonesPaginacionSolicitudes">
+                    <!-- Botones generados dinámicamente -->
+                </ul>
+            </nav>
+        </div>
         {% else %}
         <div class="card border-0 shadow-sm rounded-4 p-5 text-center">
             <i class="bi bi-inbox text-muted display-5"></i>
@@ -134,4 +146,73 @@
         {% endif %}
     </div>
 </section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const filasSolicitudes = Array.from(document.querySelectorAll(".fila-solicitud"));
+    const contenedorPaginacion = document.getElementById("contenedorPaginacionSolicitudes");
+    const listaBotones = document.getElementById("listaBotonesPaginacionSolicitudes");
+    const contadorTexto = document.getElementById("contadorPaginacionSolicitudesTexto");
+    const REGISTROS_POR_PAGINA = 10;
+
+    if (!filasSolicitudes.length || filasSolicitudes.length <= REGISTROS_POR_PAGINA) {
+        return;
+    }
+
+    const totalPaginas = Math.ceil(filasSolicitudes.length / REGISTROS_POR_PAGINA);
+    let paginaActual = 1;
+
+    function renderizarPagina(p) {
+        paginaActual = Math.max(1, Math.min(p, totalPaginas));
+        filasSolicitudes.forEach(f => f.classList.add("d-none"));
+
+        const inicio = (paginaActual - 1) * REGISTROS_POR_PAGINA;
+        const fin = Math.min(inicio + REGISTROS_POR_PAGINA, filasSolicitudes.length);
+
+        for (let i = inicio; i < fin; i++) {
+            filasSolicitudes[i].classList.remove("d-none");
+        }
+
+        if (contadorTexto) {
+            contadorTexto.textContent = `${inicio + 1} - ${fin}`;
+        }
+
+        renderizarBotones();
+    }
+
+    function renderizarBotones() {
+        if (!listaBotones) return;
+        listaBotones.innerHTML = "";
+
+        // Botón Anterior
+        const liAnt = document.createElement("li");
+        liAnt.className = `page-item ${paginaActual === 1 ? 'disabled' : ''}`;
+        liAnt.innerHTML = `<button class="page-link" type="button">&laquo; Anterior</button>`;
+        liAnt.addEventListener("click", () => {
+            if (paginaActual > 1) renderizarPagina(paginaActual - 1);
+        });
+        listaBotones.appendChild(liAnt);
+
+        // Páginas numeradas
+        for (let i = 1; i <= totalPaginas; i++) {
+            const li = document.createElement("li");
+            li.className = `page-item ${i === paginaActual ? 'active' : ''}`;
+            li.innerHTML = `<button class="page-link" type="button">${i}</button>`;
+            li.addEventListener("click", () => renderizarPagina(i));
+            listaBotones.appendChild(li);
+        }
+
+        // Botón Siguiente
+        const liSig = document.createElement("li");
+        liSig.className = `page-item ${paginaActual === totalPaginas ? 'disabled' : ''}`;
+        liSig.innerHTML = `<button class="page-link" type="button">Siguiente &raquo;</button>`;
+        liSig.addEventListener("click", () => {
+            if (paginaActual < totalPaginas) renderizarPagina(paginaActual + 1);
+        });
+        listaBotones.appendChild(liSig);
+    }
+
+    renderizarPagina(1);
+});
+</script>
 {% endblock %}

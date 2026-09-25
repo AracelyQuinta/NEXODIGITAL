@@ -2432,7 +2432,18 @@ def nueva_factura():
                 'total': (precio + ajuste) * cantidad
             })
 
-        servicios_detalle = detalles_validados
+        # Consolidar servicios si viniera alguno duplicado (solo permite una vez cada servicio)
+        servicios_consolidados = {}
+        for item in detalles_validados:
+            sid = item['id']
+            key = (sid, item['servicio'].strip().lower())
+            if key in servicios_consolidados:
+                servicios_consolidados[key]['cantidad'] += item['cantidad']
+                servicios_consolidados[key]['total'] = (servicios_consolidados[key]['precio'] + servicios_consolidados[key]['ajuste']) * servicios_consolidados[key]['cantidad']
+            else:
+                servicios_consolidados[key] = dict(item)
+        servicios_detalle = list(servicios_consolidados.values())
+
         subtotal_calculado = round(sum(item['total'] for item in servicios_detalle), 2)
         aplica_iva = float(form.iva.data or 0) > 0
         subtotal_val = subtotal_calculado
@@ -2440,16 +2451,14 @@ def nueva_factura():
         total_original = round(subtotal_val + iva_val, 2)
         anticipo_val = float(form.anticipo.data) if form.anticipo.data is not None else 0.00
 
-        # Plan de pagos e intereses financieros
+        # Plan de pagos: Financiación directa NexoDigital (Sin intereses)
         forma_pago = form.forma_pago.data or 'Transferencia bancaria'
         tipo_pago = form.tipo_pago.data or 'contado'
         plazo_meses = int(form.plazo_meses.data or 3) if tipo_pago == 'plazos' else 1
-        con_intereses = (form.con_intereses.data == '1') if tipo_pago == 'plazos' else False
-        tasa_interes = float(form.tasa_interes.data or 0) if con_intereses else 0.0
-
-        saldo_base = max(0.0, total_original - anticipo_val)
-        monto_interes = round(saldo_base * (tasa_interes / 100), 2) if con_intereses else 0.0
-        total_con_interes = round(total_original + monto_interes, 2)
+        con_intereses = False
+        tasa_interes = 0.0
+        monto_interes = 0.0
+        total_con_interes = total_original
 
         # REGLA CRÍTICA C: No permitir anticipo > total_deuda
         if anticipo_val > total_con_interes and total_con_interes > 0:
@@ -2480,9 +2489,17 @@ def nueva_factura():
             else:
                 numero_factura_final = None  # Bloqueado hasta liquidación total
                 estado_id_final = id_por_nombre.get('Parcial') if anticipo_val > 0 else id_por_nombre.get('Pendiente', 2)
+
         notas_final = form.notas.data.strip() if form.notas.data else (
             "Propuesta emitida por NexoDigital." if tipo_doc == 'Cotizacion' else "Comprobante emitido por NexoDigital."
         )
+
+        # Autogeneración secuencial segura del número de documento si no se proporcionó
+        if not numero_param or numero_param.strip() == '':
+            seq_name = "secuencia_cotizaciones" if tipo_doc == 'Cotizacion' else "secuencia_facturas"
+            cursor.execute(f"SELECT nextval('{seq_name}') AS seq")
+            seq_num = cursor.fetchone()['seq']
+            numero_param = f"COT-2026-{seq_num:04d}" if tipo_doc == 'Cotizacion' else f"001-001-{seq_num:04d}"
 
         # Inserción con autogeneración secuencial atómica
         cursor.execute(
@@ -2631,6 +2648,29 @@ def editar_factura(numero):
             except Exception:
                 servicios_detalle = factura.get('servicios_detalle', [])
 
+        # Consolidar servicios si viniera alguno duplicado
+        servicios_consolidados = {}
+        for item in servicios_detalle:
+            sid = item.get('id')
+            snombre = (item.get('servicio') or '').strip().lower()
+            key = (sid, snombre)
+            cant = int(item.get('cantidad', 1))
+            prec = float(item.get('precio', 0))
+            ajust = float(item.get('ajuste', 0))
+            if key in servicios_consolidados:
+                servicios_consolidados[key]['cantidad'] += cant
+                servicios_consolidados[key]['total'] = (servicios_consolidados[key]['precio'] + servicios_consolidados[key]['ajuste']) * servicios_consolidados[key]['cantidad']
+            else:
+                servicios_consolidados[key] = {
+                    'id': sid,
+                    'servicio': item.get('servicio', 'Servicio'),
+                    'cantidad': cant,
+                    'precio': prec,
+                    'ajuste': ajust,
+                    'total': (prec + ajust) * cant
+                }
+        servicios_detalle = list(servicios_consolidados.values())
+
         # Consultar pagos registrados en base de datos (Regla 10 G)
         cursor.execute('SELECT COALESCE(SUM(monto), 0) AS total_pagos FROM pagos_factura WHERE factura_numero = %s', (numero,))
         total_pagos_bd = float(cursor.fetchone()['total_pagos'])
@@ -2641,16 +2681,14 @@ def editar_factura(numero):
         forma_pago = form.forma_pago.data or factura.get('forma_pago') or 'Transferencia bancaria'
         tipo_pago = form.tipo_pago.data or factura.get('tipo_pago') or 'contado'
         plazo_meses = int(form.plazo_meses.data or factura.get('plazo_meses') or 3) if tipo_pago == 'plazos' else 1
-        con_intereses = (form.con_intereses.data == '1') if tipo_pago == 'plazos' else False
-        tasa_interes = float(form.tasa_interes.data or 0) if con_intereses else 0.0
+        con_intereses = False
+        tasa_interes = 0.0
+        monto_interes = 0.0
 
         subtotal_val = float(form.subtotal.data) if form.subtotal.data is not None else float(form.monto.data)
         iva_val = float(form.iva.data) if form.iva.data is not None else round(subtotal_val * 0.15, 2)
         total_original = float(form.monto.data)
-
-        saldo_base = max(0.0, total_original - total_abonado)
-        monto_interes = round(saldo_base * (tasa_interes / 100), 2) if con_intereses else 0.0
-        total_con_interes = round(total_original + monto_interes, 2)
+        total_con_interes = total_original
 
         saldo_val = max(0.0, round(total_con_interes - total_abonado, 2))
         tipo_doc = form.tipo.data
@@ -3245,10 +3283,13 @@ def estadisticas():
 
     # El servicio más solicitado es el primero del ranking (si existe).
     servicio_top = ranking[0]['servicio'] if ranking else 'Sin datos aún'
-    servicio_mayor_ingreso = (
-        max(ranking, key=lambda fila: fila['ingresos'] or 0)['servicio']
-        if ranking and not es_cliente else 'Sin datos aún'
+    fila_mayor_ingreso = (
+        max(ranking, key=lambda fila: fila['ingresos'] or 0)
+        if ranking and not es_cliente else None
     )
+    servicio_mayor_ingreso = fila_mayor_ingreso['servicio'] if fila_mayor_ingreso else 'Sin datos aún'
+    mayor_ingreso_monto = float(fila_mayor_ingreso['ingresos'] or 0.0) if fila_mayor_ingreso else 0.0
+
     # La unidad máxima sirve para dibujar el ancho de las barras en la plantilla.
     max_unidades = ranking[0]['unidades'] if ranking and not es_cliente else 0
     total_ingresos_mostrar = fila_totales['total_ingresos'] if not es_cliente else 0.0
@@ -3259,6 +3300,8 @@ def estadisticas():
         total_unidades=fila_totales['total_unidades'],
         total_ingresos=total_ingresos_mostrar,
         servicio_top=servicio_top,
+        servicio_mayor_ingreso=servicio_mayor_ingreso,
+        mayor_ingreso_monto=mayor_ingreso_monto,
         max_unidades=max_unidades,
         es_cliente=es_cliente
     )

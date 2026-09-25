@@ -234,6 +234,18 @@
             {% endfor %}
         </div>
 
+        <!-- Paginación de Servicios (10 por página) -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-4 border-top mt-4" id="contenedorPaginacionServicios">
+            <small class="text-muted">
+                Mostrando <span id="contadorPaginacionServiciosTexto" class="fw-semibold text-navy">1 - {{ 10 if servicios|length > 10 else servicios|length }}</span> de <span id="totalServiciosPaginacion" class="fw-semibold text-navy">{{ servicios|length }}</span> servicios
+            </small>
+            <nav aria-label="Navegación de servicios">
+                <ul class="pagination pagination-sm mb-0 gap-1" id="listaBotonesPaginacionServicios">
+                    <!-- Botones generados dinámicamente -->
+                </ul>
+            </nav>
+        </div>
+
         <!-- Estado "Sin Resultados" cuando el buscador no encuentra coincidencias -->
         <div id="sinResultados" class="card p-5 text-center shadow-sm border-0 rounded-4 mt-4 d-none bg-white">
             <div class="mb-3 text-muted">
@@ -305,6 +317,15 @@ document.addEventListener("DOMContentLoaded", function () {
     const btnRestablecer = document.getElementById("btnRestablecerFiltros");
     const btnRestablecerSinRes = document.getElementById("btnRestablecerSinResultados");
 
+    const contadorPaginacionTexto = document.getElementById("contadorPaginacionServiciosTexto");
+    const totalServiciosPaginacion = document.getElementById("totalServiciosPaginacion");
+    const listaBotones = document.getElementById("listaBotonesPaginacionServicios");
+    const contenedorPaginacion = document.getElementById("contenedorPaginacionServicios");
+
+    const REGISTROS_POR_PAGINA = 10;
+    let paginaActual = 1;
+    let cardsFiltradas = [...cards];
+
     if (!cards.length) return;
 
     function normalizar(texto) {
@@ -315,13 +336,12 @@ document.addEventListener("DOMContentLoaded", function () {
             .trim();
     }
 
-    function aplicarFiltros() {
+    function filtrarYPaginar(irAPagina = 1) {
         const query = normalizar(inputBuscador.value);
         const categoria = normalizar(selectCategoria.value);
         const disponibilidad = selectDisponibilidad.value;
-        let visibles = 0;
 
-        cards.forEach(card => {
+        cardsFiltradas = cards.filter(card => {
             const nombre = normalizar(card.dataset.nombre);
             const descripcion = normalizar(card.dataset.descripcion);
             const tipo = normalizar(card.dataset.tipo);
@@ -331,17 +351,48 @@ document.addEventListener("DOMContentLoaded", function () {
             const coincideCategoria = !categoria || tipo === categoria;
             const coincideDisp = !disponibilidad || disp === disponibilidad;
 
-            if (coincideTexto && coincideCategoria && coincideDisp) {
-                card.classList.remove("d-none");
-                visibles++;
-            } else {
-                card.classList.add("d-none");
-            }
+            return coincideTexto && coincideCategoria && coincideDisp;
         });
 
+        // Ordenar cardsFiltradas según criterio
+        const criterio = selectOrdenar.value;
+        cardsFiltradas.sort((a, b) => {
+            const precioA = parseFloat(a.dataset.precio || 0);
+            const precioB = parseFloat(b.dataset.precio || 0);
+            const nombreA = a.dataset.nombre || "";
+            const nombreB = b.dataset.nombre || "";
+
+            if (criterio === "precio-asc") return precioA - precioB;
+            if (criterio === "precio-desc") return precioB - precioA;
+            if (criterio === "nombre-asc") return nombreA.localeCompare(nombreB);
+            return 0;
+        });
+
+        // Reordenar en el DOM
+        if (contenedor) {
+            cardsFiltradas.forEach(card => contenedor.appendChild(card));
+        }
+
+        const totalRegistros = cardsFiltradas.length;
+        const totalPaginas = Math.max(1, Math.ceil(totalRegistros / REGISTROS_POR_PAGINA));
+        paginaActual = Math.min(Math.max(1, irAPagina), totalPaginas);
+
+        cards.forEach(card => card.classList.add("d-none"));
+
+        const inicio = (paginaActual - 1) * REGISTROS_POR_PAGINA;
+        const fin = Math.min(inicio + REGISTROS_POR_PAGINA, totalRegistros);
+
+        for (let i = inicio; i < fin; i++) {
+            cardsFiltradas[i].classList.remove("d-none");
+        }
+
         // Actualizar contadores
-        if (contadorVisibles) contadorVisibles.textContent = visibles;
+        if (contadorVisibles) contadorVisibles.textContent = totalRegistros;
         if (contadorTotal) contadorTotal.textContent = cards.length;
+        if (totalServiciosPaginacion) totalServiciosPaginacion.textContent = totalRegistros;
+        if (contadorPaginacionTexto) {
+            contadorPaginacionTexto.textContent = totalRegistros > 0 ? `${inicio + 1} - ${fin}` : "0 - 0";
+        }
 
         // Actualizar badge de filtros activos
         const filtrosActivos = [];
@@ -360,38 +411,78 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // Mostrar u ocultar estado sin resultados
-        if (visibles === 0) {
+        if (totalRegistros === 0) {
             sinResultados.classList.remove("d-none");
             if (query) {
                 sinResultadosDetalle.textContent = `No encontramos servicios que coincidan con "${inputBuscador.value.trim()}". Intenta con otra palabra clave o restablece los filtros.`;
             } else {
                 sinResultadosDetalle.textContent = "No hay servicios que cumplan con la combinación de filtros seleccionada.";
             }
+            if (contenedorPaginacion) contenedorPaginacion.classList.add("d-none");
         } else {
             sinResultados.classList.add("d-none");
+            if (contenedorPaginacion) contenedorPaginacion.classList.toggle("d-none", totalRegistros <= 10);
         }
 
-        aplicarOrdenamiento();
+        renderizarBotones(totalPaginas);
     }
 
-    function aplicarOrdenamiento() {
-        if (!contenedor) return;
-        const criterio = selectOrdenar.value;
-        const visibles = cards.filter(c => !c.classList.contains("d-none"));
+    function renderizarBotones(totalPaginas) {
+        if (!listaBotones) return;
+        listaBotones.innerHTML = "";
 
-        visibles.sort((a, b) => {
-            const precioA = parseFloat(a.dataset.precio || 0);
-            const precioB = parseFloat(b.dataset.precio || 0);
-            const nombreA = a.dataset.nombre || "";
-            const nombreB = b.dataset.nombre || "";
+        if (totalPaginas <= 1) {
+            if (contenedorPaginacion) contenedorPaginacion.classList.toggle("d-none", cardsFiltradas.length <= 10);
+            return;
+        }
+        if (contenedorPaginacion) contenedorPaginacion.classList.remove("d-none");
 
-            if (criterio === "precio-asc") return precioA - precioB;
-            if (criterio === "precio-desc") return precioB - precioA;
-            if (criterio === "nombre-asc") return nombreA.localeCompare(nombreB);
-            return 0; // relevancia / orden original
-        });
+        const crearItem = (texto, pag, activo = false, deshabilitado = false) => {
+            const li = document.createElement("li");
+            li.className = `page-item ${activo ? 'active' : ''} ${deshabilitado ? 'disabled' : ''}`;
+            li.innerHTML = `<button class="page-link" type="button">${texto}</button>`;
+            if (!deshabilitado && !activo) {
+                li.addEventListener("click", () => filtrarYPaginar(pag));
+            }
+            return li;
+        };
 
-        visibles.forEach(card => contenedor.appendChild(card));
+        // Anterior
+        listaBotones.appendChild(crearItem("&laquo; Anterior", paginaActual - 1, false, paginaActual === 1));
+
+        if (totalPaginas <= 7) {
+            for (let p = 1; p <= totalPaginas; p++) {
+                listaBotones.appendChild(crearItem(p, p, p === paginaActual));
+            }
+        } else {
+            listaBotones.appendChild(crearItem(1, 1, paginaActual === 1));
+
+            let start = Math.max(2, paginaActual - 1);
+            let end = Math.min(totalPaginas - 1, paginaActual + 1);
+
+            if (start > 2) {
+                const liDots = document.createElement("li");
+                liDots.className = "page-item disabled";
+                liDots.innerHTML = `<span class="page-link">...</span>`;
+                listaBotones.appendChild(liDots);
+            }
+
+            for (let p = start; p <= end; p++) {
+                listaBotones.appendChild(crearItem(p, p, p === paginaActual));
+            }
+
+            if (end < totalPaginas - 1) {
+                const liDots = document.createElement("li");
+                liDots.className = "page-item disabled";
+                liDots.innerHTML = `<span class="page-link">...</span>`;
+                listaBotones.appendChild(liDots);
+            }
+
+            listaBotones.appendChild(crearItem(totalPaginas, totalPaginas, paginaActual === totalPaginas));
+        }
+
+        // Siguiente
+        listaBotones.appendChild(crearItem("Siguiente &raquo;", paginaActual + 1, false, paginaActual === totalPaginas));
     }
 
     function resetearFiltros() {
@@ -410,15 +501,15 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        aplicarFiltros();
+        filtrarYPaginar(1);
         inputBuscador.focus();
     }
 
     // Event listeners
-    inputBuscador.addEventListener("input", aplicarFiltros);
+    inputBuscador.addEventListener("input", () => filtrarYPaginar(1));
     btnLimpiar.addEventListener("click", function () {
         inputBuscador.value = "";
-        aplicarFiltros();
+        filtrarYPaginar(1);
         inputBuscador.focus();
     });
 
@@ -430,11 +521,11 @@ document.addEventListener("DOMContentLoaded", function () {
             c.classList.toggle("active", coincide);
             c.classList.toggle("btn-outline-secondary", !coincide);
         });
-        aplicarFiltros();
+        filtrarYPaginar(1);
     });
 
-    selectDisponibilidad.addEventListener("change", aplicarFiltros);
-    selectOrdenar.addEventListener("change", aplicarOrdenamiento);
+    selectDisponibilidad.addEventListener("change", () => filtrarYPaginar(1));
+    selectOrdenar.addEventListener("change", () => filtrarYPaginar(1));
 
     chipsCategoria.forEach(chip => {
         chip.addEventListener("click", function () {
@@ -448,17 +539,15 @@ document.addEventListener("DOMContentLoaded", function () {
             this.classList.add("btn-verde", "active");
             this.classList.remove("btn-outline-secondary");
 
-            aplicarFiltros();
+            filtrarYPaginar(1);
         });
     });
 
     if (btnRestablecer) btnRestablecer.addEventListener("click", resetearFiltros);
     if (btnRestablecerSinRes) btnRestablecerSinRes.addEventListener("click", resetearFiltros);
 
-    // Inicialización si venía query string en la URL
-    if (inputBuscador.value.trim() !== "" || selectCategoria.value !== "") {
-        aplicarFiltros();
-    }
+    // Inicialización al cargar la página
+    filtrarYPaginar(1);
 });
 </script>
 {% endblock %}

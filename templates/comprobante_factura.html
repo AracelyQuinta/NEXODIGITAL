@@ -247,7 +247,15 @@
                                 <td class="fw-bold">Pago #{{ p.numero_pago }}</td>
                                 <td>{{ p.fecha }}</td>
                                 <td>{{ p.metodo_pago }}</td>
-                                <td class="font-monospace text-navy fw-semibold">{{ p.numero_comprobante or '-' }}</td>
+                                <td class="font-monospace text-navy fw-semibold">
+                                    {% if p.numero_comprobante %}
+                                    <a href="{{ url_for('ver_comprobante_pago', numero_comprobante=p.numero_comprobante) }}" target="_blank" class="text-decoration-none fw-bold text-success" title="Ver Comprobante de Pago {{ p.numero_comprobante }}">
+                                        <i class="bi bi-receipt me-1"></i>{{ p.numero_comprobante }}
+                                    </a>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
                                 <td class="fw-bold text-emerald font-monospace">${{ "%.2f"|format(p.monto) }}</td>
                                 <td class="font-monospace">${{ "%.2f"|format(p.saldo_posterior) }}</td>
                             </tr>

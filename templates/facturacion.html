@@ -253,13 +253,46 @@
                                         </button>
                                         {% endif %}
 
-                                        <!-- Acción 2: Ver Comprobante (De los abonos registrados) -->
-                                        {% if doc.tipo != 'Cotizacion' and doc.ultimo_comprobante %}
-                                        <a href="{{ url_for('ver_comprobante_pago', numero_comprobante=doc.ultimo_comprobante) }}"
-                                           class="btn btn-outline-success btn-sm rounded-pill"
-                                           title="Ver e imprimir Comprobante de Pago {{ doc.ultimo_comprobante }}">
-                                            <i class="bi bi-receipt-cutoff me-1"></i>Comprobante
-                                        </a>
+                                        <!-- Acción 2: Ver Comprobante (De los abonos registrados uno por uno) -->
+                                        {% if doc.tipo != 'Cotizacion' and doc.comprobantes and doc.comprobantes|length > 0 %}
+                                            {% if doc.comprobantes|length == 1 %}
+                                                <a href="{{ url_for('ver_comprobante_pago', numero_comprobante=doc.comprobantes[0].numero_comprobante) }}"
+                                                   class="btn btn-outline-success btn-sm rounded-pill"
+                                                   title="Ver e imprimir Comprobante de Pago {{ doc.comprobantes[0].numero_comprobante }}">
+                                                    <i class="bi bi-receipt-cutoff me-1"></i>Comprobante
+                                                </a>
+                                            {% else %}
+                                                <div class="dropdown d-inline-block">
+                                                    <button class="btn btn-outline-success btn-sm rounded-pill dropdown-toggle"
+                                                            type="button"
+                                                            data-bs-toggle="dropdown"
+                                                            aria-expanded="false"
+                                                            title="Ver los {{ doc.comprobantes|length }} comprobantes emitidos uno por uno">
+                                                        <i class="bi bi-receipt-cutoff me-1"></i>Recibos ({{ doc.comprobantes|length }})
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-2" style="min-width: 250px;">
+                                                        <li class="dropdown-header text-uppercase small fw-bold text-navy px-3 py-1">
+                                                            <i class="bi bi-receipt me-1"></i>Comprobantes Emitidos
+                                                        </li>
+                                                        <li><hr class="dropdown-divider my-1"></li>
+                                                        {% for cp in doc.comprobantes %}
+                                                        <li>
+                                                            <a class="dropdown-item d-flex justify-content-between align-items-center gap-2 px-3 py-2"
+                                                               href="{{ url_for('ver_comprobante_pago', numero_comprobante=cp.numero_comprobante) }}"
+                                                               target="_blank">
+                                                                <div>
+                                                                    <span class="font-monospace fw-bold text-success d-block small">
+                                                                        <i class="bi bi-file-earmark-check me-1"></i>{{ cp.numero_comprobante }}
+                                                                    </span>
+                                                                    <small class="text-muted d-block" style="font-size: 0.72rem;">{{ cp.fecha }}</small>
+                                                                </div>
+                                                                <span class="badge bg-light text-dark font-monospace border">${{ "%.2f"|format(cp.monto_abonado) }}</span>
+                                                            </a>
+                                                        </li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </div>
+                                            {% endif %}
                                         {% endif %}
 
                                         <!-- Acción 3: Ver Plan de Pagos / Cuotas -->
@@ -279,15 +312,17 @@
                                         {% if doc.tipo != 'Cotizacion' %}
                                             {% if es_pagada %}
                                                 <a href="{{ url_for('ver_factura_fiscal', numero=doc.numero) }}"
-                                                   class="btn btn-navy text-white btn-sm rounded-pill"
+                                                   class="btn btn-navy text-white btn-sm rounded-pill shadow-sm"
+                                                   style="background-color: #0A2540 !important; color: #ffffff !important; border: 1px solid #0A2540 !important; font-weight: 600;"
                                                    title="Ver e Imprimir Factura Fiscal Oficial">
-                                                    <i class="bi bi-file-earmark-check-fill me-1"></i>Factura
+                                                    <i class="bi bi-file-earmark-check-fill me-1 text-white"></i>Factura
                                                 </a>
                                             {% else %}
-                                                <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill opacity-75"
+                                                <button type="button" class="btn btn-sm rounded-pill"
                                                         disabled
                                                         data-bs-toggle="tooltip"
                                                         data-bs-placement="top"
+                                                        style="background-color: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; cursor: not-allowed;"
                                                         title="La Factura Oficial se generará cuando el saldo sea $0.00 (Pendiente: ${{ '%.2f'|format(saldo) }})">
                                                     <i class="bi bi-lock-fill me-1"></i>Factura
                                                 </button>
@@ -572,7 +607,7 @@
 </div>
 
 <!-- ==============================================================================
-     JAVASCRIPT: PAGINACIÓN AUTOMÁTICA (20 REGISTROS), FILTROS Y MODALES
+     JAVASCRIPT: PAGINACIÓN AUTOMÁTICA (10 REGISTROS), FILTROS Y MODALES
      ============================================================================== -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -589,7 +624,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const listaBotonesPaginacion = document.getElementById("listaBotonesPaginacion");
     const contenedorPaginacion = document.getElementById("contenedorPaginacionFacturas");
 
-    const REGISTROS_POR_PAGINA = 20;
+    const REGISTROS_POR_PAGINA = 10;
     let paginaActual = 1;
     let filasFiltradas = [...todasLasFilas];
 

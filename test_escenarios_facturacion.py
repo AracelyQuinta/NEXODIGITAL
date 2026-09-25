@@ -9,20 +9,10 @@ from psycopg2.extras import RealDictCursor
 from app import app
 from models import Usuario
 
+from conexion.conexion import get_db_connection
+
 def get_test_db():
-    db_url = (os.getenv('DATABASE_URL') or '').strip()
-    if db_url:
-        if db_url.startswith('postgres://'):
-            db_url = db_url.replace('postgres://', 'postgresql://', 1)
-        return psycopg2.connect(dsn=db_url, cursor_factory=RealDictCursor)
-    return psycopg2.connect(
-        host=os.getenv('DB_HOST', 'localhost'),
-        port=os.getenv('DB_PORT', '5432'),
-        dbname=os.getenv('DB_NAME', 'nexodigital'),
-        user=os.getenv('DB_USER', 'postgres'),
-        password=os.getenv('DB_PASSWORD', ''),
-        cursor_factory=RealDictCursor
-    )
+    return get_db_connection()
 
 def ejecutar_pruebas():
     print("=" * 70)

@@ -316,6 +316,38 @@ h1, h2, h3, h4, h5, h6 {
     transform: translateY(-1px);
 }
 
+.btn-navy {
+    background-color: var(--navy) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--navy) !important;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-navy:hover,
+.btn-navy:focus {
+    background-color: #06192d !important;
+    color: #ffffff !important;
+    border-color: #06192d !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(10, 37, 64, 0.35);
+}
+
+.btn-outline-navy {
+    border: 1.5px solid var(--navy) !important;
+    color: var(--navy) !important;
+    background-color: transparent !important;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-navy:hover,
+.btn-outline-navy:focus {
+    background-color: var(--navy) !important;
+    color: #ffffff !important;
+    transform: translateY(-1px);
+}
+
 /* ==============================================================================
    6. TARJETAS (CARDS) Y CATÁLOGO DE SERVICIOS
    ============================================================================== */

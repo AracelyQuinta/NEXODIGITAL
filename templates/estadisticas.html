@@ -46,7 +46,12 @@
                             <i class="bi bi-graph-up-arrow fs-3 text-success me-2"></i>
                             <span class="text-muted text-uppercase small fw-semibold">Mayor ingreso</span>
                         </div>
-                        <h4 class="fw-bold mb-0">{{ servicio_mayor_ingreso }}</h4>
+                        <h4 class="fw-bold mb-1">{{ servicio_mayor_ingreso }}</h4>
+                        {% if mayor_ingreso_monto and mayor_ingreso_monto > 0 %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace fw-bold">
+                            ${{ '%.2f'|format(mayor_ingreso_monto) }} generados
+                        </span>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -82,18 +87,23 @@
              RANKING DE SERVICIOS MÁS SOLICITADOS
              ====================================================================== -->
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-bottom py-3">
+            <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0 fw-bold">
                     <i class="bi bi-bar-chart-line-fill me-2 text-success"></i>
                     Ranking de servicios más solicitados
                 </h5>
+                {% if ranking %}
+                <small class="text-muted">
+                    Total: <strong class="text-navy">{{ ranking|length }}</strong> servicios analizados
+                </small>
+                {% endif %}
             </div>
             <div class="card-body">
 
                 {% if ranking %}
                     <!-- Tabla con el detalle del ranking -->
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle">
+                        <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 40px;">#</th>
@@ -103,18 +113,18 @@
                                     {% if not es_cliente %}
                                     <th class="text-end">Ingresos</th>
                                     {% endif %}
-                                    {% if not es_cliente %}                                    <th style="width: 30%;">Demanda (unidades)</th>{% endif %}
+                                    {% if not es_cliente %}<th style="width: 30%;">Demanda (unidades)</th>{% endif %}
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="cuerpoTablaRanking">
                                 {% for fila in ranking %}
-                                <tr>
+                                <tr class="fila-ranking">
                                     <td class="fw-bold text-muted">{{ loop.index }}</td>
-                                    <td class="fw-semibold">{{ fila.servicio }}</td>
-                                    <td><span class="badge bg-light text-dark">{{ fila.categoria }}</span></td>
-                                    {% if not es_cliente %}<td class="text-center">{{ fila.unidades }}</td>{% endif %}
+                                    <td class="fw-semibold text-navy">{{ fila.servicio }}</td>
+                                    <td><span class="badge bg-light text-dark border">{{ fila.categoria }}</span></td>
+                                    {% if not es_cliente %}<td class="text-center fw-bold">{{ fila.unidades }}</td>{% endif %}
                                     {% if not es_cliente %}
-                                    <td class="text-end">${{ '%.2f'|format(fila.ingresos) }}</td>
+                                    <td class="text-end font-monospace fw-semibold text-emerald">${{ '%.2f'|format(fila.ingresos) }}</td>
                                     {% endif %}
                                     {% if not es_cliente %}<td>
                                         <!-- Barra proporcional al servicio más solicitado -->
@@ -133,6 +143,18 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Paginación para ranking si supera 10 registros -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-3 border-top mt-3 {{ 'd-none' if ranking|length <= 10 else '' }}" id="contenedorPaginacionRanking">
+                        <small class="text-muted">
+                            Mostrando <span id="contadorPaginacionRankingTexto" class="fw-semibold text-navy">1 - {{ 10 if ranking|length > 10 else ranking|length }}</span> de <span class="fw-semibold text-navy">{{ ranking|length }}</span> servicios
+                        </small>
+                        <nav aria-label="Navegación del ranking">
+                            <ul class="pagination pagination-sm mb-0 gap-1" id="listaBotonesPaginacionRanking">
+                                <!-- Botones de paginación generados por JS -->
+                            </ul>
+                        </nav>
                     </div>
                 {% else %}
                     <!-- Mensaje cuando todavía no hay facturas registradas -->
@@ -153,4 +175,73 @@
 
     </div>
 </section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const filasRanking = Array.from(document.querySelectorAll(".fila-ranking"));
+    const contenedorPaginacion = document.getElementById("contenedorPaginacionRanking");
+    const listaBotones = document.getElementById("listaBotonesPaginacionRanking");
+    const contadorTexto = document.getElementById("contadorPaginacionRankingTexto");
+    const REGISTROS_POR_PAGINA = 10;
+
+    if (!filasRanking.length || filasRanking.length <= REGISTROS_POR_PAGINA) {
+        return;
+    }
+
+    const totalPaginas = Math.ceil(filasRanking.length / REGISTROS_POR_PAGINA);
+    let paginaActual = 1;
+
+    function renderizarPagina(p) {
+        paginaActual = Math.max(1, Math.min(p, totalPaginas));
+        filasRanking.forEach(f => f.classList.add("d-none"));
+
+        const inicio = (paginaActual - 1) * REGISTROS_POR_PAGINA;
+        const fin = Math.min(inicio + REGISTROS_POR_PAGINA, filasRanking.length);
+
+        for (let i = inicio; i < fin; i++) {
+            filasRanking[i].classList.remove("d-none");
+        }
+
+        if (contadorTexto) {
+            contadorTexto.textContent = `${inicio + 1} - ${fin}`;
+        }
+
+        renderizarBotones();
+    }
+
+    function renderizarBotones() {
+        if (!listaBotones) return;
+        listaBotones.innerHTML = "";
+
+        // Botón Anterior
+        const liAnt = document.createElement("li");
+        liAnt.className = `page-item ${paginaActual === 1 ? 'disabled' : ''}`;
+        liAnt.innerHTML = `<button class="page-link" type="button">&laquo; Anterior</button>`;
+        liAnt.addEventListener("click", () => {
+            if (paginaActual > 1) renderizarPagina(paginaActual - 1);
+        });
+        listaBotones.appendChild(liAnt);
+
+        // Páginas numeradas
+        for (let i = 1; i <= totalPaginas; i++) {
+            const li = document.createElement("li");
+            li.className = `page-item ${i === paginaActual ? 'active' : ''}`;
+            li.innerHTML = `<button class="page-link" type="button">${i}</button>`;
+            li.addEventListener("click", () => renderizarPagina(i));
+            listaBotones.appendChild(li);
+        }
+
+        // Botón Siguiente
+        const liSig = document.createElement("li");
+        liSig.className = `page-item ${paginaActual === totalPaginas ? 'disabled' : ''}`;
+        liSig.innerHTML = `<button class="page-link" type="button">Siguiente &raquo;</button>`;
+        liSig.addEventListener("click", () => {
+            if (paginaActual < totalPaginas) renderizarPagina(paginaActual + 1);
+        });
+        listaBotones.appendChild(liSig);
+    }
+
+    renderizarPagina(1);
+});
+</script>
 {% endblock %}

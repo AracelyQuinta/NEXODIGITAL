@@ -201,6 +201,18 @@
                 </table>
             </div>
 
+            <!-- Paginación de Usuarios (10 por página) -->
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-3 border-top mt-3" id="contenedorPaginacionUsuarios">
+                <small class="text-muted">
+                    Mostrando <span id="contadorPaginacionUsuariosTexto" class="fw-semibold text-navy">1 - {{ 10 if usuarios|length > 10 else usuarios|length }}</span> de <span id="totalUsuariosPaginacion" class="fw-semibold text-navy">{{ usuarios|length }}</span> usuarios
+                </small>
+                <nav aria-label="Navegación de usuarios">
+                    <ul class="pagination pagination-sm mb-0 gap-1" id="listaBotonesPaginacionUsuarios">
+                        <!-- Botones generados dinámicamente -->
+                    </ul>
+                </nav>
+            </div>
+
             <!-- Estado sin resultados de búsqueda -->
             <div id="sinResultadosUsuarios" class="p-4 text-center d-none">
                 <div class="mb-2">
@@ -275,47 +287,126 @@ document.addEventListener("DOMContentLoaded", function () {
     const input = document.getElementById("buscadorUsuarios");
     const btnLimpiar = document.getElementById("btnLimpiarUsuarios");
     const btnReset = document.getElementById("btnRestablecerUsuarios");
-    const filas = Array.from(document.querySelectorAll(".fila-usuario"));
+    const todasLasFilas = Array.from(document.querySelectorAll(".fila-usuario"));
     const sinRes = document.getElementById("sinResultadosUsuarios");
     const contador = document.getElementById("contadorUsuariosVisibles");
+    const contadorPaginacionTexto = document.getElementById("contadorPaginacionUsuariosTexto");
+    const totalUsuariosPaginacion = document.getElementById("totalUsuariosPaginacion");
+    const listaBotones = document.getElementById("listaBotonesPaginacionUsuarios");
+    const contenedorPaginacion = document.getElementById("contenedorPaginacionUsuarios");
 
-    if (!filas.length || !input) return;
+    const REGISTROS_POR_PAGINA = 10;
+    let paginaActual = 1;
+    let filasFiltradas = [...todasLasFilas];
+
+    if (!todasLasFilas.length) return;
 
     function normalizar(t) {
         return (t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     }
 
-    function filtrar() {
-        const q = normalizar(input.value);
-        let visibles = 0;
+    function filtrarYPaginar(irAPagina = 1) {
+        const q = normalizar(input ? input.value : "");
 
-        filas.forEach(fila => {
+        filasFiltradas = todasLasFilas.filter(fila => {
             const user = normalizar(fila.dataset.usuario);
             const correo = normalizar(fila.dataset.correo);
             const rol = normalizar(fila.dataset.rol);
-
-            const coincide = !q || user.includes(q) || correo.includes(q) || rol.includes(q);
-
-            if (coincide) {
-                fila.classList.remove("d-none");
-                visibles++;
-            } else {
-                fila.classList.add("d-none");
-            }
+            return !q || user.includes(q) || correo.includes(q) || rol.includes(q);
         });
 
-        if (contador) contador.textContent = visibles;
-        if (sinRes) sinRes.classList.toggle("d-none", visibles > 0);
+        const totalRegistros = filasFiltradas.length;
+        const totalPaginas = Math.max(1, Math.ceil(totalRegistros / REGISTROS_POR_PAGINA));
+        paginaActual = Math.min(Math.max(1, irAPagina), totalPaginas);
+
+        todasLasFilas.forEach(f => f.classList.add("d-none"));
+
+        const inicio = (paginaActual - 1) * REGISTROS_POR_PAGINA;
+        const fin = Math.min(inicio + REGISTROS_POR_PAGINA, totalRegistros);
+
+        for (let i = inicio; i < fin; i++) {
+            filasFiltradas[i].classList.remove("d-none");
+        }
+
+        if (contador) contador.textContent = totalRegistros;
+        if (totalUsuariosPaginacion) totalUsuariosPaginacion.textContent = totalRegistros;
+        if (contadorPaginacionTexto) {
+            contadorPaginacionTexto.textContent = totalRegistros > 0 ? `${inicio + 1} - ${fin}` : "0 - 0";
+        }
+        if (sinRes) sinRes.classList.toggle("d-none", totalRegistros > 0);
+        if (contenedorPaginacion) contenedorPaginacion.classList.toggle("d-none", totalRegistros === 0);
+
+        renderizarBotones(totalPaginas);
     }
 
-    input.addEventListener("input", filtrar);
+    function renderizarBotones(totalPaginas) {
+        if (!listaBotones) return;
+        listaBotones.innerHTML = "";
+
+        if (totalPaginas <= 1) {
+            if (contenedorPaginacion) contenedorPaginacion.classList.toggle("d-none", filasFiltradas.length <= 10);
+            return;
+        }
+        if (contenedorPaginacion) contenedorPaginacion.classList.remove("d-none");
+
+        const crearItem = (texto, pag, activo = false, deshabilitado = false) => {
+            const li = document.createElement("li");
+            li.className = `page-item ${activo ? 'active' : ''} ${deshabilitado ? 'disabled' : ''}`;
+            li.innerHTML = `<button class="page-link" type="button">${texto}</button>`;
+            if (!deshabilitado && !activo) {
+                li.addEventListener("click", () => filtrarYPaginar(pag));
+            }
+            return li;
+        };
+
+        // Anterior
+        listaBotones.appendChild(crearItem("&laquo; Anterior", paginaActual - 1, false, paginaActual === 1));
+
+        if (totalPaginas <= 7) {
+            for (let p = 1; p <= totalPaginas; p++) {
+                listaBotones.appendChild(crearItem(p, p, p === paginaActual));
+            }
+        } else {
+            listaBotones.appendChild(crearItem(1, 1, paginaActual === 1));
+
+            let start = Math.max(2, paginaActual - 1);
+            let end = Math.min(totalPaginas - 1, paginaActual + 1);
+
+            if (start > 2) {
+                const liDots = document.createElement("li");
+                liDots.className = "page-item disabled";
+                liDots.innerHTML = `<span class="page-link">...</span>`;
+                listaBotones.appendChild(liDots);
+            }
+
+            for (let p = start; p <= end; p++) {
+                listaBotones.appendChild(crearItem(p, p, p === paginaActual));
+            }
+
+            if (end < totalPaginas - 1) {
+                const liDots = document.createElement("li");
+                liDots.className = "page-item disabled";
+                liDots.innerHTML = `<span class="page-link">...</span>`;
+                listaBotones.appendChild(liDots);
+            }
+
+            listaBotones.appendChild(crearItem(totalPaginas, totalPaginas, paginaActual === totalPaginas));
+        }
+
+        // Siguiente
+        listaBotones.appendChild(crearItem("Siguiente &raquo;", paginaActual + 1, false, paginaActual === totalPaginas));
+    }
+
+    if (input) input.addEventListener("input", () => filtrarYPaginar(1));
     function limpiar() {
-        input.value = "";
-        filtrar();
-        input.focus();
+        if (input) input.value = "";
+        filtrarYPaginar(1);
+        if (input) input.focus();
     }
     if (btnLimpiar) btnLimpiar.addEventListener("click", limpiar);
     if (btnReset) btnReset.addEventListener("click", limpiar);
+
+    filtrarYPaginar(1);
 });
 </script>
 {% endblock %}
