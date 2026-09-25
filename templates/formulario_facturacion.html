@@ -16,7 +16,7 @@
             {% endif %}
         </h1>
         <p class="text-light-emerald small mb-0">
-            Calcula en tiempo real según los servicios requeridos, ajusta precios por complejidad o urgencia y gestiona anticipos y saldos pendientes.
+            Calcula en tiempo real según servicios, configura planes de amortización (3 a 24 meses), gestiona intereses y liquida saldos según normativa de Ecuador.
         </p>
     </div>
 </section>
@@ -24,7 +24,7 @@
 <!-- ==============================================================================
      FORMULARIO PRINCIPAL
      ============================================================================== -->
-<section class="py-5">
+<section class="py-4 py-md-5">
     <div class="container">
         <form method="POST" id="formFacturacionDinamica" novalidate>
             <!-- Token CSRF -->
@@ -48,8 +48,8 @@
                                 </div>
 
                                 <!-- Selector de Tipo de Documento -->
-                                <div class="btn-group" role="group" aria-label="Tipo de documento" style="min-width: 320px; flex-shrink: 0;">
-                                    {{ form.tipo(class="form-select fw-semibold border-emerald", id="selectTipoDoc", style="min-width: 320px;") }}
+                                <div class="btn-group" role="group" aria-label="Tipo de documento" style="min-width: 280px; flex-shrink: 0;">
+                                    {{ form.tipo(class="form-select fw-semibold border-emerald", id="selectTipoDoc", style="min-width: 280px;") }}
                                 </div>
                             </div>
                         </div>
@@ -69,7 +69,7 @@
                                     {% if editando %}
                                         <small class="text-muted">El número de documento es la clave primaria y no puede modificarse.</small>
                                     {% else %}
-                                        <small class="text-muted"><i class="bi bi-magic me-1 text-mint"></i>Se autogenera de forma secuencial si se deja vacío.</small>
+                                        <small class="text-muted"><i class="bi bi-magic me-1 text-mint"></i>Se autogenera secuencialmente si se deja vacío.</small>
                                     {% endif %}
                                 </div>
 
@@ -78,7 +78,7 @@
                                     {{ form.fecha.label(class="form-label fw-semibold text-navy small") }}
                                     <div class="input-group">
                                         <span class="input-group-text bg-light"><i class="bi bi-calendar3"></i></span>
-                                        {{ form.fecha(class="form-control" + (" is-invalid" if form.fecha.errors else ""), type="date") }}
+                                        {{ form.fecha(class="form-control" + (" is-invalid" if form.fecha.errors else ""), type="date", id="inputFechaDoc") }}
                                     </div>
                                     {% for error in form.fecha.errors %}
                                         <div class="text-danger small mt-1">{{ error }}</div>
@@ -93,23 +93,33 @@
                                         <select name="{{ form.cliente_cedula.name }}" id="{{ form.cliente_cedula.id }}" class="form-select{{ ' is-invalid' if form.cliente_cedula.errors else '' }}">
                                             <option value="">-- Selecciona un cliente registrado --</option>
                                             {% for c in clientes_registrados %}
-                                            <option value="{{ c.cedula }}" {% if form.cliente_cedula.data == c.cedula %}selected{% endif %}>{{ c.nombre }} ({{ c.negocio }} - {{ c.ciudad }})</option>
+                                            <option value="{{ c.cedula }}" {% if form.cliente_cedula.data == c.cedula %}selected{% endif %}>{{ c.nombre }} ({{ c.negocio or 'Cliente' }} - {{ c.ciudad }})</option>
                                             {% endfor %}
                                         </select>
                                     </div>
                                     {% for error in form.cliente_cedula.errors %}
                                         <div class="text-danger small mt-1">{{ error }}</div>
                                     {% endfor %}
-                                    <small class="text-muted">¿El cliente no existe todavía? <a href="{{ url_for('nuevo_cliente') }}">Regístralo aquí</a>.</small>
+                                    <small class="text-muted">¿El cliente no existe todavía? <a href="{{ url_for('nuevo_cliente') }}" target="_blank">Regístralo aquí</a>.</small>
                                 </div>
 
-                                <!-- Validez / Plazo -->
-                                <div class="col-md-4">
+                                <!-- Vigencia / Plazo de la Oferta (SOLO para Cotizaciones) -->
+                                <div class="col-md-4" id="boxVigenciaCotizacion">
                                     {{ form.validez.label(class="form-label fw-semibold text-navy small") }}
                                     <div class="input-group">
                                         <span class="input-group-text bg-light"><i class="bi bi-clock-history"></i></span>
-                                        {{ form.validez(class="form-control", placeholder="Ej: 15 días calendario") }}
+                                        {{ form.validez(class="form-control", placeholder="Ej: 15 días calendario", id="inputValidez") }}
                                     </div>
+                                </div>
+
+                                <!-- Forma de Pago SRI Ecuador (SOLO para Facturas) -->
+                                <div class="col-md-4" id="boxFormaPago">
+                                    {{ form.forma_pago.label(class="form-label fw-semibold text-navy small") }}
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-credit-card-2-front"></i></span>
+                                        {{ form.forma_pago(class="form-select", id="selectFormaPago") }}
+                                    </div>
+                                    <small class="text-muted" style="font-size: 0.72rem;">Medio de cobro según SRI Ecuador.</small>
                                 </div>
 
                                 <!-- Estado Comercial -->
@@ -120,6 +130,76 @@
                                         <option value="{{ value }}" {% if form.estado_id.data == value %}selected{% endif %}>{{ label }}</option>
                                         {% endfor %}
                                     </select>
+                                    <small class="text-muted" style="font-size: 0.72rem;">* Una factura con saldo pendiente > $0.00 se guardará como Pendiente o Parcial.</small>
+                                </div>
+                            </div>
+
+                            <!-- SECCIÓN: PLAN DE PAGOS Y AMORTIZACIÓN (SOLO PARA FACTURACIÓN) -->
+                            <div class="mt-4 pt-3 border-top" id="boxSeccionPlanPagos">
+                                <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                                    <div>
+                                        <h6 class="fw-bold text-navy mb-0">
+                                            <i class="bi bi-calendar2-range text-emerald me-1"></i>Plan de Pagos y Plazo de Amortización
+                                        </h6>
+                                        <small class="text-muted">Define la modalidad al contado o pago diferido en cuotas (3 a 24 meses)</small>
+                                    </div>
+                                    <span class="badge bg-light text-navy border px-2 py-1">Financiamiento Comercial</span>
+                                </div>
+
+                                <div class="row g-3">
+                                    <!-- Modalidad de Pago -->
+                                    <div class="col-md-4">
+                                        {{ form.tipo_pago.label(class="form-label fw-semibold text-navy small") }}
+                                        {{ form.tipo_pago(class="form-select", id="selectTipoPago") }}
+                                    </div>
+
+                                    <!-- Plazo de Amortización (Permite plazos desde 3 hasta 24 meses) -->
+                                    <div class="col-md-4" id="boxPlazoAmortizacion">
+                                        <label class="form-label fw-semibold text-navy small">
+                                            <i class="bi bi-hourglass-split me-1 text-emerald"></i>Plazo de Amortización
+                                        </label>
+                                        {{ form.plazo_meses(class="form-select fw-semibold", id="selectPlazoMeses") }}
+                                        <small class="text-muted" style="font-size: 0.72rem;">Plazos autorizados: 3 a 24 meses.</small>
+                                    </div>
+
+                                    <!-- Opción Con Intereses / Sin Intereses -->
+                                    <div class="col-md-4" id="boxConIntereses">
+                                        <label class="form-label fw-semibold text-navy small">Intereses</label>
+                                        {{ form.con_intereses(class="form-select", id="selectConIntereses") }}
+                                    </div>
+
+                                    <!-- Tasa de Interés (%) -->
+                                    <div class="col-md-4 d-none" id="boxTasaInteres">
+                                        {{ form.tasa_interes.label(class="form-label fw-semibold text-navy small") }}
+                                        <div class="input-group">
+                                            {{ form.tasa_interes(class="form-control font-monospace", id="inputTasaInteres", placeholder="Ej: 10.0") }}
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                        <small class="text-muted" style="font-size: 0.72rem;">Porcentaje financiero a aplicar.</small>
+                                    </div>
+                                </div>
+
+                                <!-- Vista Previa de Cuotas Calculadas -->
+                                <div class="mt-3 p-3 bg-light rounded-3 border d-none" id="boxPreviewCuotas">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong class="small text-navy"><i class="bi bi-list-check me-1"></i>Cuotas calculadas para amortización:</strong>
+                                        <span class="badge bg-navy text-white font-monospace" id="badgeResumenCuota">$0.00 / mes</span>
+                                    </div>
+                                    <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
+                                        <table class="table table-sm table-bordered bg-white text-center align-middle mb-0" style="font-size: 0.78rem;">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>N° Cuota</th>
+                                                    <th>Fecha Vencimiento</th>
+                                                    <th>Monto Cuota ($)</th>
+                                                    <th>Estado Inicial</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="cuerpoTablaCuotasPreview">
+                                                <!-- Inyectado por JS -->
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -228,33 +308,76 @@
                                 </div>
                             </div>
 
-                            <!-- Total General -->
+                            <!-- Total Original -->
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                <span class="text-muted small">Total Original:</span>
+                                <span class="fw-semibold text-dark" id="lblTotalOriginal">$0.00</span>
+                            </div>
+
+                            <!-- Intereses (si existen) -->
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom d-none" id="boxInteresLiquidacion">
+                                <span class="text-muted small"><i class="bi bi-graph-up-arrow me-1 text-warning"></i>Intereses:</span>
+                                <span class="fw-bold text-warning" id="lblMontoInteres">$0.00</span>
+                            </div>
+
+                            <!-- Total del Proyecto / Total General con Financiamiento -->
                             <div class="p-3 bg-light rounded-3 mb-3 text-center border">
-                                <span class="text-uppercase fw-bold text-muted small d-block">Total del Proyecto</span>
+                                <span class="text-uppercase fw-bold text-muted small d-block" id="lblTituloTotalProyecto">Total del Proyecto</span>
                                 <span class="fs-3 fw-bold text-navy" id="lblTotal">$0.00</span>
                             </div>
 
-                            <!-- Módulo de Anticipo y Saldo Pendiente (Diferencia Real) -->
+                            <!-- Módulo de Anticipo / Total Abonado y Saldo Pendiente -->
                             <div class="box-anticipo mb-3">
                                 <div class="mb-2">
                                     <label class="form-label fw-bold text-navy small mb-1">
-                                        <i class="bi bi-cash-coin text-emerald me-1"></i>Abono Recibido ($)
+                                        <i class="bi bi-cash-coin text-emerald me-1"></i>Abono Recibido / Total Abonado ($)
                                     </label>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text">$</span>
-                                        {{ form.anticipo(class="form-control fw-bold", id="inputAnticipo", step="0.01", min="0", value="0.00") }}
+                                        {{ form.anticipo(class="form-control fw-bold", id="inputAnticipo", step="0.01", min="0", value=form.anticipo.data or "0.00") }}
                                     </div>
-                                    <small class="text-muted" style="font-size: 0.75rem;">Monto pagado por el cliente.</small>
+                                    <small class="text-muted" style="font-size: 0.72rem;">Monto pagado acumulado por el cliente.</small>
                                 </div>
 
-                                <div id="boxDiferencia" class="saldo-alerta mt-2">
+                                <!-- Saldo Pendiente -->
+                                <div id="boxDiferencia" class="saldo-alerta mt-2 p-2 rounded-2">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span class="small fw-bold text-dark">Saldo Pendiente:</span>
                                         <span class="fw-bold fs-6 text-danger" id="lblSaldoPendiente">$0.00</span>
                                     </div>
-                                    <small class="d-block text-muted mt-1" id="lblTextoSaldo" style="font-size: 0.75rem;">
+                                    <small class="d-block text-muted mt-1" id="lblTextoSaldo" style="font-size: 0.72rem;">
                                         Monto pendiente a cobrar contra entrega.
                                     </small>
+                                </div>
+
+                                <!-- Fecha Límite de Pago (Requisito: debajo de Saldo pendiente) -->
+                                <div class="mt-2 p-2 bg-light rounded-2 border">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="small fw-semibold text-muted">
+                                            <i class="bi bi-calendar-event text-navy me-1"></i>Fecha Límite de Pago:
+                                        </span>
+                                        <span class="fw-bold text-navy small font-monospace" id="lblFechaLimiteTexto">-</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cuotas y Obligación Comercial (Requisito 8: Liquidación Comercial completa) -->
+                            <div class="p-3 bg-light rounded-3 border mb-3 small" id="boxDetalleObligacion">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted">Cuotas pagadas:</span>
+                                    <span class="fw-bold text-emerald" id="lblCuotasPagadas">0</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted">Cuotas pendientes:</span>
+                                    <span class="fw-bold text-danger" id="lblCuotasPendientes">0</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted">Próxima fecha de pago:</span>
+                                    <span class="fw-semibold text-navy font-monospace" id="lblProximaFechaPago">-</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                    <span class="text-muted fw-bold">Estado de la obligación:</span>
+                                    <span class="badge badge-proximamente px-2 py-1" id="lblEstadoObligacion">Pendiente</span>
                                 </div>
                             </div>
 
@@ -262,7 +385,10 @@
                             {{ form.subtotal(id="inputSubtotal", type="hidden") }}
                             {{ form.iva(id="inputIva", type="hidden") }}
                             {{ form.monto(id="inputMonto", type="hidden") }}
+                            {{ form.monto_interes(id="inputMontoInteres", type="hidden") }}
+                            {{ form.total_con_interes(id="inputTotalConInteres", type="hidden") }}
                             {{ form.saldo_pendiente(id="inputSaldoPendiente", type="hidden") }}
+                            {{ form.fecha_limite(id="inputFechaLimite", type="hidden") }}
 
                             <!-- Notas y Términos Comerciales -->
                             <div class="mb-3">
@@ -302,6 +428,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const selectTipoDoc = document.getElementById("selectTipoDoc");
     const inputNumeroDoc = document.getElementById("inputNumeroDoc");
+    const inputFechaDoc = document.getElementById("inputFechaDoc");
+    const boxVigenciaCotizacion = document.getElementById("boxVigenciaCotizacion");
+    const boxFormaPago = document.getElementById("boxFormaPago");
+    const boxSeccionPlanPagos = document.getElementById("boxSeccionPlanPagos");
+    const selectTipoPago = document.getElementById("selectTipoPago");
+    const boxPlazoAmortizacion = document.getElementById("boxPlazoAmortizacion");
+    const selectPlazoMeses = document.getElementById("selectPlazoMeses");
+    const boxConIntereses = document.getElementById("boxConIntereses");
+    const selectConIntereses = document.getElementById("selectConIntereses");
+    const boxTasaInteres = document.getElementById("boxTasaInteres");
+    const inputTasaInteres = document.getElementById("inputTasaInteres");
+    const boxPreviewCuotas = document.getElementById("boxPreviewCuotas");
+    const cuerpoTablaCuotasPreview = document.getElementById("cuerpoTablaCuotasPreview");
+    const badgeResumenCuota = document.getElementById("badgeResumenCuota");
+
     const selectorCatalogo = document.getElementById("selectorCatalogo");
     const buscadorCatalogo = document.getElementById("buscadorCatalogoFactura");
     const btnLimpiarCatalogo = document.getElementById("btnLimpiarCatalogoFactura");
@@ -334,14 +475,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const lblSubtotal = document.getElementById("lblSubtotal");
     const lblIva = document.getElementById("lblIva");
+    const lblTotalOriginal = document.getElementById("lblTotalOriginal");
+    const boxInteresLiquidacion = document.getElementById("boxInteresLiquidacion");
+    const lblMontoInteres = document.getElementById("lblMontoInteres");
     const lblTotal = document.getElementById("lblTotal");
     const chkIva = document.getElementById("chkIva");
 
     const inputSubtotal = document.getElementById("inputSubtotal");
     const inputIva = document.getElementById("inputIva");
     const inputMonto = document.getElementById("inputMonto");
+    const inputMontoInteres = document.getElementById("inputMontoInteres");
+    const inputTotalConInteres = document.getElementById("inputTotalConInteres");
     const inputAnticipo = document.getElementById("inputAnticipo");
     const inputSaldoPendiente = document.getElementById("inputSaldoPendiente");
+    const inputFechaLimite = document.getElementById("inputFechaLimite");
+    const lblFechaLimiteTexto = document.getElementById("lblFechaLimiteTexto");
+    const lblCuotasPagadas = document.getElementById("lblCuotasPagadas");
+    const lblCuotasPendientes = document.getElementById("lblCuotasPendientes");
+    const lblProximaFechaPago = document.getElementById("lblProximaFechaPago");
+    const lblEstadoObligacion = document.getElementById("lblEstadoObligacion");
+
     const lblSaldoPendiente = document.getElementById("lblSaldoPendiente");
     const boxDiferencia = document.getElementById("boxDiferencia");
     const lblTextoSaldo = document.getElementById("lblTextoSaldo");
@@ -349,7 +502,52 @@ document.addEventListener("DOMContentLoaded", () => {
     const formularioFacturacion = document.getElementById("formFacturacionDinamica");
     const btnGuardarFactura = document.getElementById("btnGuardarFactura");
 
-    // Renderizado de las filas en la tabla interactiva
+    function sumarMesesFecha(fechaStr, meses) {
+        if (!fechaStr) return "";
+        const partes = fechaStr.split("-");
+        if (partes.length !== 3) return "";
+        let y = parseInt(partes[0], 10);
+        let m = parseInt(partes[1], 10) - 1;
+        let d = parseInt(partes[2], 10);
+        let target = new Date(y, m + meses, d);
+        // Ajustar desbordes de fin de mes
+        let mesEsperado = (m + meses) % 12;
+        if (mesEsperado < 0) mesEsperado += 12;
+        if (target.getMonth() !== mesEsperado) {
+            target = new Date(target.getFullYear(), target.getMonth(), 0);
+        }
+        const anio = target.getFullYear();
+        const mes = String(target.getMonth() + 1).padStart(2, "0");
+        const dia = String(target.getDate()).padStart(2, "0");
+        return `${anio}-${mes}-${dia}`;
+    }
+
+    // Alternar campos según tipo de documento (Cotización vs Factura)
+    function actualizarVisibilidadTipoDoc() {
+        const esCotizacion = selectTipoDoc.value === "Cotizacion";
+        if (boxVigenciaCotizacion) boxVigenciaCotizacion.classList.toggle("d-none", !esCotizacion);
+        if (boxFormaPago) boxFormaPago.classList.toggle("d-none", esCotizacion);
+        if (boxSeccionPlanPagos) boxSeccionPlanPagos.classList.toggle("d-none", esCotizacion);
+
+        const esPlazos = !esCotizacion && selectTipoPago.value === "plazos";
+        if (boxPlazoAmortizacion) boxPlazoAmortizacion.classList.toggle("d-none", !esPlazos);
+        if (boxConIntereses) boxConIntereses.classList.toggle("d-none", !esPlazos);
+        
+        const tieneInteres = esPlazos && selectConIntereses.value === "1";
+        if (boxTasaInteres) boxTasaInteres.classList.toggle("d-none", !tieneInteres);
+        if (boxInteresLiquidacion) boxInteresLiquidacion.classList.toggle("d-none", !tieneInteres);
+
+        recalcularTotales();
+    }
+
+    selectTipoDoc.addEventListener("change", actualizarVisibilidadTipoDoc);
+    selectTipoPago.addEventListener("change", actualizarVisibilidadTipoDoc);
+    selectConIntereses.addEventListener("change", actualizarVisibilidadTipoDoc);
+    if (selectPlazoMeses) selectPlazoMeses.addEventListener("change", recalcularTotales);
+    if (inputTasaInteres) inputTasaInteres.addEventListener("input", recalcularTotales);
+    if (inputFechaDoc) inputFechaDoc.addEventListener("change", recalcularTotales);
+
+    // Renderizado de las filas en la tabla interactiva de servicios
     function renderizarTabla() {
         cuerpoTabla.innerHTML = "";
 
@@ -403,7 +601,7 @@ document.addEventListener("DOMContentLoaded", () => {
         recalcularTotales();
     }
 
-    // Recalcular Subtotal, IVA, Total, Anticipo y Saldo Pendiente (Diferencia Real)
+    // Recalcular Subtotal, IVA, Total Original, Intereses, Total Deuda, Anticipo, Saldo y Cuotas
     function recalcularTotales() {
         let subtotal = 0;
         itemsFactura.forEach(item => {
@@ -415,37 +613,118 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const aplicaIva = chkIva.checked;
         const iva = aplicaIva ? (subtotal * 0.15) : 0;
-        const total = subtotal + iva;
+        const totalOriginal = subtotal + iva;
 
-        const anticipo = parseFloat(inputAnticipo.value) || 0;
-        const saldo = Math.max(0, total - anticipo);
+        const esCotizacion = selectTipoDoc.value === "Cotizacion";
+        const esPlazos = !esCotizacion && selectTipoPago.value === "plazos";
+        const conInteres = esPlazos && selectConIntereses.value === "1";
+        const tasa = conInteres ? (parseFloat(inputTasaInteres.value) || 0) : 0;
 
+        let anticipo = parseFloat(inputAnticipo.value) || 0;
+        if (anticipo < 0) anticipo = 0;
+
+        // Cálculo de intereses sobre el saldo a financiar
+        let saldoBaseAFinanciar = Math.max(0, totalOriginal - anticipo);
+        let montoInteres = conInteres ? Math.round(saldoBaseAFinanciar * (tasa / 100) * 100) / 100 : 0;
+        let totalGeneral = Math.round((totalOriginal + montoInteres) * 100) / 100;
+        let saldoPendiente = Math.max(0, Math.round((totalGeneral - anticipo) * 100) / 100);
+
+        // Validar sobrepago
+        if (anticipo > totalGeneral && totalGeneral > 0) {
+            boxDiferencia.className = "saldo-alerta mt-2 p-2 rounded-2 bg-danger text-white";
+            lblSaldoPendiente.className = "fw-bold fs-6 text-white";
+            lblSaldoPendiente.textContent = "$0.00";
+            lblTextoSaldo.textContent = "❌ Error: El abono supera el total de la obligación.";
+            if (btnGuardarFactura) btnGuardarFactura.disabled = true;
+        } else {
+            if (btnGuardarFactura) btnGuardarFactura.disabled = itemsFactura.length === 0;
+            if (saldoPendiente === 0 && totalGeneral > 0) {
+                boxDiferencia.className = "saldo-liquidado mt-2 p-2 rounded-2";
+                lblSaldoPendiente.className = "fw-bold fs-6 text-success";
+                lblTextoSaldo.textContent = "✅ Totalmente cancelado (Sin saldo pendiente).";
+            } else {
+                boxDiferencia.className = "saldo-alerta mt-2 p-2 rounded-2";
+                lblSaldoPendiente.className = "fw-bold fs-6 text-danger";
+                lblTextoSaldo.textContent = "⚠️ Saldo pendiente a liquidar contra entrega.";
+            }
+        }
+
+        // Fechas y Amortización
+        const fechaEmision = inputFechaDoc.value || new Date().toISOString().split("T")[0];
+        let plazoMeses = esPlazos ? (parseInt(selectPlazoMeses.value, 10) || 3) : 1;
+        let fechaLimite = sumarMesesFecha(fechaEmision, plazoMeses);
+        lblFechaLimiteTexto.textContent = fechaLimite || "-";
+
+        // Cuotas y estado de obligación
+        let cuotasTotales = esPlazos ? plazoMeses : 1;
+        let cuotasPagadas = 0;
+        let cuotasPendientes = cuotasTotales;
+        let proximaFecha = sumarMesesFecha(fechaEmision, 1);
+
+        if (saldoPendiente === 0 && totalGeneral > 0) {
+            cuotasPagadas = cuotasTotales;
+            cuotasPendientes = 0;
+            proximaFecha = "Liquidado";
+            lblEstadoObligacion.className = "badge badge-disponible px-2 py-1";
+            lblEstadoObligacion.textContent = "Pagada";
+        } else if (anticipo > 0) {
+            let cuotaProm = totalGeneral / cuotasTotales;
+            cuotasPagadas = Math.min(cuotasTotales - 1, Math.floor(anticipo / cuotaProm));
+            cuotasPendientes = cuotasTotales - cuotasPagadas;
+            proximaFecha = sumarMesesFecha(fechaEmision, cuotasPagadas + 1);
+            lblEstadoObligacion.className = "badge badge-proximamente px-2 py-1";
+            lblEstadoObligacion.textContent = "Parcial";
+        } else {
+            lblEstadoObligacion.className = "badge badge-proximamente px-2 py-1";
+            lblEstadoObligacion.textContent = "Pendiente";
+        }
+
+        lblCuotasPagadas.textContent = `${cuotasPagadas} de ${cuotasTotales}`;
+        lblCuotasPendientes.textContent = `${cuotasPendientes}`;
+        lblProximaFechaPago.textContent = proximaFecha;
+
+        // Vista previa de cuotas para el usuario
+        if (esPlazos && cuotasTotales >= 3 && totalGeneral > 0) {
+            boxPreviewCuotas.classList.remove("d-none");
+            let saldoAFinanciarCuotas = Math.max(0, totalGeneral - anticipo);
+            let montoPorCuota = Math.round((saldoAFinanciarCuotas / cuotasTotales) * 100) / 100;
+            badgeResumenCuota.textContent = `$${montoPorCuota.toFixed(2)} / mes (${cuotasTotales} cuotas)`;
+
+            cuerpoTablaCuotasPreview.innerHTML = "";
+            let suma = 0;
+            for (let i = 1; i <= cuotasTotales; i++) {
+                let v = (i === cuotasTotales) ? Math.round((saldoAFinanciarCuotas - suma) * 100) / 100 : montoPorCuota;
+                suma += v;
+                let trC = document.createElement("tr");
+                trC.innerHTML = `
+                    <td class="fw-bold">Cuota #${i}</td>
+                    <td>${sumarMesesFecha(fechaEmision, i)}</td>
+                    <td class="fw-bold font-monospace">$${v.toFixed(2)}</td>
+                    <td><span class="badge bg-light text-muted border">Pendiente</span></td>
+                `;
+                cuerpoTablaCuotasPreview.appendChild(trC);
+            }
+        } else {
+            boxPreviewCuotas.classList.add("d-none");
+        }
+
+        // Asignación de valores visuales
         lblSubtotal.textContent = `$${subtotal.toFixed(2)}`;
         lblIva.textContent = `$${iva.toFixed(2)}`;
-        lblTotal.textContent = `$${total.toFixed(2)}`;
-        lblSaldoPendiente.textContent = `$${saldo.toFixed(2)}`;
+        lblTotalOriginal.textContent = `$${totalOriginal.toFixed(2)}`;
+        lblMontoInteres.textContent = `+$${montoInteres.toFixed(2)}`;
+        lblTotal.textContent = `$${totalGeneral.toFixed(2)}`;
+        lblSaldoPendiente.textContent = `$${saldoPendiente.toFixed(2)}`;
 
-        if (saldo === 0 && total > 0) {
-            boxDiferencia.className = "saldo-liquidado mt-2";
-            lblSaldoPendiente.className = "fw-bold fs-6 text-success";
-            lblTextoSaldo.textContent = "✅ Totalmente cancelado (Sin saldo pendiente).";
-        } else {
-            boxDiferencia.className = "saldo-alerta mt-2";
-            lblSaldoPendiente.className = "fw-bold fs-6 text-danger";
-            lblTextoSaldo.textContent = "⚠️ Saldo pendiente a liquidar contra entrega.";
-        }
-
+        // Asignación de valores ocultos para Flask
         inputSubtotal.value = subtotal.toFixed(2);
         inputIva.value = iva.toFixed(2);
-        inputMonto.value = total.toFixed(2);
-        inputSaldoPendiente.value = saldo.toFixed(2);
+        inputMonto.value = totalOriginal.toFixed(2);
+        inputMontoInteres.value = montoInteres.toFixed(2);
+        inputTotalConInteres.value = totalGeneral.toFixed(2);
+        inputSaldoPendiente.value = saldoPendiente.toFixed(2);
+        inputFechaLimite.value = fechaLimite;
         inputJson.value = JSON.stringify(itemsFactura);
-        if (btnGuardarFactura) {
-            btnGuardarFactura.disabled = itemsFactura.length === 0;
-            btnGuardarFactura.title = itemsFactura.length === 0
-                ? "Agrega al menos un servicio para continuar"
-                : "";
-        }
     }
 
     // Escuchador para agregar servicio seleccionado
@@ -505,6 +784,14 @@ document.addEventListener("DOMContentLoaded", () => {
             event.preventDefault();
             mensajeSinItems.classList.add("text-danger");
             mensajeSinItems.scrollIntoView({behavior: "smooth", block: "center"});
+            return;
+        }
+
+        const totalG = parseFloat(inputTotalConInteres.value) || 0;
+        const ant = parseFloat(inputAnticipo.value) || 0;
+        if (ant > totalG && totalG > 0) {
+            event.preventDefault();
+            alert("No se puede emitir el documento: El abono recibido supera el total de la obligación.");
         }
     });
 
@@ -515,6 +802,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     {% endif %}
 
+    actualizarVisibilidadTipoDoc();
     renderizarTabla();
 });
 </script>

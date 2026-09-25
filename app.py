@@ -27,7 +27,7 @@ from functools import wraps
 from datetime import date, datetime, timedelta
 from urllib.parse import urljoin, urlencode, urlparse
 from urllib.request import Request, urlopen
-from flask import Flask, render_template, redirect, url_for, flash, request, session
+from flask import Flask, render_template, redirect, url_for, flash, request, session, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 import bcrypt
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -1442,6 +1442,23 @@ def clientes():
     return render_template('clientes.html', clientes=lista_clientes)
 
 
+def sumar_meses(fecha_base, meses):
+    """Suma N meses a una fecha respetando los días del mes y años bisiestos."""
+    if not fecha_base or not meses:
+        return fecha_base
+    if isinstance(fecha_base, str):
+        try:
+            fecha_base = datetime.strptime(fecha_base, '%Y-%m-%d').date()
+        except ValueError:
+            return fecha_base
+    mes = fecha_base.month - 1 + int(meses)
+    anio = fecha_base.year + mes // 12
+    mes = mes % 12 + 1
+    dias_en_mes = [31, 29 if (anio % 4 == 0 and (anio % 100 != 0 or anio % 400 == 0)) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    dia = min(fecha_base.day, dias_en_mes[mes - 1])
+    return date(anio, mes, dia)
+
+
 @app.route('/facturacion')
 @role_required('Administrador', 'Gestor de proyectos', 'Cliente')
 def facturacion():
@@ -1449,14 +1466,15 @@ def facturacion():
     Ruta principal del panel comercial de Facturación y Cotizaciones.
     - Administrador, Gestor de proyectos y Usuario interno: ven los documentos del negocio.
     - Cliente: ve únicamente sus propios proyectos y cotizaciones contratadas.
-    Usa JOIN con clientes y estados_documento.
+    Carga documentos con historial de pagos, comprobantes y estado de amortización.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
 
     if current_user.rol_nombre == 'Cliente':
         cursor.execute('''
-            SELECT f.*, c.nombre AS cliente_nombre, e.nombre AS estado_nombre
+            SELECT f.*, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono,
+                   c.correo AS cliente_correo, c.ciudad AS cliente_ciudad, e.nombre AS estado_nombre
             FROM facturacion f
             JOIN clientes c ON f.cliente_cedula = c.cedula
             JOIN estados_documento e ON f.estado_id = e.id
@@ -1466,7 +1484,8 @@ def facturacion():
         ''', (current_user.correo, current_user.usuario))
     else:
         cursor.execute('''
-            SELECT f.*, c.nombre AS cliente_nombre, e.nombre AS estado_nombre
+            SELECT f.*, c.nombre AS cliente_nombre, c.telefono AS cliente_telefono,
+                   c.correo AS cliente_correo, c.ciudad AS cliente_ciudad, e.nombre AS estado_nombre
             FROM facturacion f
             JOIN clientes c ON f.cliente_cedula = c.cedula
             JOIN estados_documento e ON f.estado_id = e.id
@@ -1475,14 +1494,91 @@ def facturacion():
     filas = cursor.fetchall()
 
     lista_facturas = []
-    for f in filas:
-        doc = dict(f)
+    if filas:
+        numeros = [f['numero'] for f in filas]
+
+        # Conteo de servicios por documento
         cursor.execute(
-            'SELECT COUNT(*) AS total FROM detalle_factura WHERE factura_numero = %s', (doc['numero'],)
+            'SELECT factura_numero, COUNT(*) AS total FROM detalle_factura WHERE factura_numero = ANY(%s) GROUP BY factura_numero',
+            (numeros,)
         )
-        conteo = cursor.fetchone()['total']
-        doc['servicios_detalle'] = [None] * conteo  # solo se usa para |length en la plantilla
-        lista_facturas.append(doc)
+        conteos = {r['factura_numero']: r['total'] for r in cursor.fetchall()}
+
+        # Historial de pagos
+        cursor.execute(
+            'SELECT * FROM pagos_factura WHERE factura_numero = ANY(%s) ORDER BY factura_numero, numero_pago ASC',
+            (numeros,)
+        )
+        pagos_por_factura = {}
+        for p in cursor.fetchall():
+            pagos_por_factura.setdefault(p['factura_numero'], []).append(dict(p))
+
+        # Comprobantes de pago
+        cursor.execute(
+            'SELECT * FROM comprobantes_pago WHERE factura_numero = ANY(%s) ORDER BY factura_numero, id DESC',
+            (numeros,)
+        )
+        comprobantes_por_factura = {}
+        for cp in cursor.fetchall():
+            comprobantes_por_factura.setdefault(cp['factura_numero'], []).append(dict(cp))
+
+        # Cuotas de amortización
+        cursor.execute(
+            'SELECT * FROM cuotas_factura WHERE factura_numero = ANY(%s) ORDER BY factura_numero, numero_cuota ASC',
+            (numeros,)
+        )
+        cuotas_por_factura = {}
+        for c in cursor.fetchall():
+            cuotas_por_factura.setdefault(c['factura_numero'], []).append(dict(c))
+
+        for f in filas:
+            doc = dict(f)
+            num = doc['numero']
+            doc['servicios_conteo'] = conteos.get(num, 0)
+            doc['servicios_detalle'] = [None] * doc['servicios_conteo']
+
+            doc['pagos'] = pagos_por_factura.get(num, [])
+            doc['comprobantes'] = comprobantes_por_factura.get(num, [])
+            doc['cuotas'] = cuotas_por_factura.get(num, [])
+
+            # Asociar número de comprobante a cada pago si existe
+            comp_map = {c['pago_id']: c['numero_comprobante'] for c in doc['comprobantes']}
+            for p in doc['pagos']:
+                p['numero_comprobante'] = comp_map.get(p['id'])
+
+            # Totales y saldos calculados desde base de datos
+            total_deuda = float(doc.get('total_con_interes') or doc.get('monto') or 0.0)
+            doc['total_deuda'] = total_deuda
+            if doc['pagos']:
+                total_abonado = sum(float(p['monto']) for p in doc['pagos'])
+            else:
+                total_abonado = float(doc.get('total_abonado') or doc.get('anticipo') or 0.0)
+            doc['total_abonado'] = round(total_abonado, 2)
+            doc['saldo_pendiente'] = max(0.0, round(total_deuda - total_abonado, 2))
+
+            # Próxima cuota pendiente
+            cuotas_pendientes = [c for c in doc['cuotas'] if c['estado'] != 'Pagada']
+            if cuotas_pendientes:
+                prox = cuotas_pendientes[0]
+                doc['proxima_cuota'] = prox
+                doc['proxima_cuota_texto'] = f"Cuota #{prox['numero_cuota']}: ${float(prox['saldo_cuota']):.2f}"
+                doc['proxima_cuota_fecha'] = prox['fecha_vencimiento']
+            else:
+                doc['proxima_cuota'] = None
+                doc['proxima_cuota_texto'] = "Liquidado" if doc['saldo_pendiente'] <= 0 else "Al contado"
+                doc['proxima_cuota_fecha'] = doc.get('fecha_limite')
+
+            # Normalizar nombre del estado según saldo real
+            if doc['tipo'] != 'Cotizacion':
+                if doc['saldo_pendiente'] <= 0:
+                    doc['estado_nombre'] = 'Pagada'
+                elif doc['total_abonado'] > 0:
+                    doc['estado_nombre'] = 'Parcial'
+                else:
+                    doc['estado_nombre'] = 'Pendiente'
+
+            doc['ultimo_comprobante'] = doc['comprobantes'][0]['numero_comprobante'] if doc['comprobantes'] else None
+            lista_facturas.append(doc)
 
     cursor.close()
     conn.close()
@@ -2219,8 +2315,7 @@ def nueva_factura():
     Emite un nuevo documento comercial (Factura o Cotización).
     El cliente se selecciona de una lista real (cliente_cedula), y cada servicio
     incluido se guarda como una fila propia en detalle_factura.
-    Acceso para Administrador, Gestor de proyectos y Usuario interno.
-    Genera automáticamente el número correlativo si no se especifica.
+    Soporta planes de pago con amortización (3 a 24 meses) e intereses.
     """
     form = FacturacionForm()
     tipo_solicitado = request.args.get('tipo', 'Cotizacion' if request.args.get('servicio_id') is not None else 'Factura')
@@ -2245,14 +2340,18 @@ def nueva_factura():
         if tipo_solicitado == 'Cotizacion':
             form.numero.data = f"COT-2026-{proximo:04d}"
             form.validez.data = "15 días"
-            form.estado_id.data = id_por_nombre.get('En revision')
+            form.estado_id.data = id_por_nombre.get('En revision') or id_por_nombre.get('Pendiente', 2)
         else:
             form.numero.data = f"001-001-{proximo:04d}"
             form.validez.data = "30 días"
-            form.estado_id.data = id_por_nombre.get('Pendiente')
+            form.estado_id.data = id_por_nombre.get('Pendiente', 2)
         form.fecha.data = str(date.today())
         form.anticipo.data = 0.00
         form.saldo_pendiente.data = 0.00
+        form.tipo_pago.data = 'contado'
+        form.plazo_meses.data = 3
+        form.con_intereses.data = '0'
+        form.tasa_interes.data = 0.0
 
     if form.validate_on_submit():
         tipo_doc = form.tipo.data
@@ -2262,7 +2361,7 @@ def nueva_factura():
         if numero_limpio:
             cursor.execute('SELECT 1 FROM facturacion WHERE numero = %s', (numero_limpio,))
             if cursor.fetchone() is not None:
-                cursor.execute('SELECT * FROM servicios')
+                cursor.execute('SELECT * FROM servicios ORDER BY nombre')
                 servicios_catalogo = cursor.fetchall()
                 cursor.close()
                 conn.close()
@@ -2338,32 +2437,70 @@ def nueva_factura():
         aplica_iva = float(form.iva.data or 0) > 0
         subtotal_val = subtotal_calculado
         iva_val = round(subtotal_val * 0.15, 2) if aplica_iva else 0.0
-        total_val = round(subtotal_val + iva_val, 2)
+        total_original = round(subtotal_val + iva_val, 2)
         anticipo_val = float(form.anticipo.data) if form.anticipo.data is not None else 0.00
-        saldo_val = max(0.0, round(total_val - anticipo_val, 2))
 
-        estado_id_final = form.estado_id.data
-        if tipo_doc == 'Factura' and saldo_val <= 0 and estado_id_final == id_por_nombre.get('Pendiente'):
-            estado_id_final = id_por_nombre.get('Pagada')
+        # Plan de pagos e intereses financieros
+        forma_pago = form.forma_pago.data or 'Transferencia bancaria'
+        tipo_pago = form.tipo_pago.data or 'contado'
+        plazo_meses = int(form.plazo_meses.data or 3) if tipo_pago == 'plazos' else 1
+        con_intereses = (form.con_intereses.data == '1') if tipo_pago == 'plazos' else False
+        tasa_interes = float(form.tasa_interes.data or 0) if con_intereses else 0.0
+
+        saldo_base = max(0.0, total_original - anticipo_val)
+        monto_interes = round(saldo_base * (tasa_interes / 100), 2) if con_intereses else 0.0
+        total_con_interes = round(total_original + monto_interes, 2)
+
+        # REGLA CRÍTICA C: No permitir anticipo > total_deuda
+        if anticipo_val > total_con_interes and total_con_interes > 0:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            flash(f'El abono recibido (${anticipo_val:.2f}) no puede superar el total de la obligación (${total_con_interes:.2f}).', 'danger')
+            return redirect(url_for('nueva_factura', tipo=tipo_doc))
+
+        saldo_val = max(0.0, round(total_con_interes - anticipo_val, 2))
+
+        try:
+            fecha_emision = datetime.strptime(str(form.fecha.data), '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            fecha_emision = date.today()
+
+        fecha_limite = sumar_meses(fecha_emision, plazo_meses) if tipo_pago == 'plazos' else (fecha_emision + timedelta(days=30))
+
+        # REGLA CRÍTICA B: Factura fiscal generada ÚNICAMENTE cuando saldo <= 0
+        numero_factura_final = None
+        if tipo_doc == 'Cotizacion':
+            estado_id_final = id_por_nombre.get('En revision') or id_por_nombre.get('Pendiente', 2)
+        else:
+            if saldo_val <= 0:
+                estado_id_final = id_por_nombre.get('Pagada', 1)
+                cursor.execute("SELECT nextval('secuencia_facturas') AS seq")
+                numero_factura_final = f"001-001-{cursor.fetchone()['seq']:04d}"
+            else:
+                numero_factura_final = None  # Bloqueado hasta liquidación total
+                estado_id_final = id_por_nombre.get('Parcial') if anticipo_val > 0 else id_por_nombre.get('Pendiente', 2)
 
         notas_final = form.notas.data.strip() if form.notas.data else (
             "Propuesta emitida por NexoDigital." if tipo_doc == 'Cotizacion' else "Comprobante emitido por NexoDigital."
         )
 
-        # Inserción con autogeneración secuencial atómica (trigger en PostgreSQL si numero_param es None)
+        # Inserción con autogeneración secuencial atómica
         cursor.execute(
             '''INSERT INTO facturacion
-               (numero, tipo, cliente_cedula, fecha, validez, subtotal, iva, monto, anticipo, saldo_pendiente, estado_id, notas)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+               (numero, tipo, cliente_cedula, fecha, validez, subtotal, iva, monto, anticipo, saldo_pendiente, estado_id, notas,
+                numero_factura, forma_pago, tipo_pago, plazo_meses, con_intereses, tasa_interes, monto_interes, total_con_interes, total_abonado, fecha_limite)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                RETURNING numero''',
-            (numero_param, tipo_doc, form.cliente_cedula.data, str(form.fecha.data),
+            (numero_param, tipo_doc, form.cliente_cedula.data, str(fecha_emision),
              form.validez.data.strip() if form.validez.data else "15 días",
-             subtotal_val, iva_val, total_val, anticipo_val, saldo_val, estado_id_final, notas_final)
+             subtotal_val, iva_val, total_original, anticipo_val, saldo_val, estado_id_final, notas_final,
+             numero_factura_final, forma_pago, tipo_pago, plazo_meses, con_intereses, tasa_interes, monto_interes, total_con_interes, anticipo_val, fecha_limite)
         )
         row_insertado = cursor.fetchone()
         numero_limpio = row_insertado['numero']
 
-
+        # Insertar líneas de detalle
         for item in servicios_detalle:
             cursor.execute(
                 '''INSERT INTO detalle_factura (factura_numero, servicio_id, nombre_servicio, cantidad, precio_base, ajuste, total)
@@ -2373,16 +2510,58 @@ def nueva_factura():
                  float(item.get('ajuste', 0)), float(item.get('total', item.get('precio', 0))))
             )
 
+        # Generar cuotas de amortización si aplica plan de pagos
+        if tipo_doc != 'Cotizacion' and tipo_pago == 'plazos' and plazo_meses >= 3:
+            saldo_a_financiar = total_con_interes - anticipo_val if anticipo_val > 0 else total_con_interes
+            monto_cuota_prom = round(saldo_a_financiar / plazo_meses, 2)
+            suma_c = 0
+            for i in range(1, plazo_meses + 1):
+                f_venc = sumar_meses(fecha_emision, i)
+                val_c = round(saldo_a_financiar - suma_c, 2) if i == plazo_meses else monto_cuota_prom
+                suma_c += val_c
+                cursor.execute(
+                    '''INSERT INTO cuotas_factura (factura_numero, numero_cuota, valor_cuota, fecha_vencimiento, monto_pagado, saldo_cuota, estado)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s)''',
+                    (numero_limpio, i, val_c, f_venc, 0, val_c, 'Pendiente')
+                )
+
+        # Si hubo un abono o anticipo inicial > 0, registrar su pago y emitir comprobante
+        if tipo_doc != 'Cotizacion' and anticipo_val > 0:
+            cursor.execute('''
+                INSERT INTO pagos_factura (
+                    factura_numero, numero_pago, monto, fecha, metodo_pago, referencia,
+                    saldo_anterior, saldo_posterior, total_acumulado, registrado_por, notas
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            ''', (
+                numero_limpio, 1, anticipo_val, str(fecha_emision), forma_pago,
+                'Anticipo inicial', total_con_interes, saldo_val, anticipo_val, current_user.usuario, 'Abono inicial registrado'
+            ))
+            pago_id = cursor.fetchone()['id']
+
+            cursor.execute("SELECT nextval('secuencia_comprobantes') AS seq")
+            numero_comprobante = f"REC-2026-{cursor.fetchone()['seq']:04d}"
+
+            cursor.execute('''
+                INSERT INTO comprobantes_pago (
+                    numero_comprobante, pago_id, factura_numero, cliente_cedula, fecha,
+                    monto_abonado, total_deuda, total_acumulado_pagado, saldo_pendiente, observaciones
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (
+                numero_comprobante, pago_id, numero_limpio, form.cliente_cedula.data, str(fecha_emision),
+                anticipo_val, total_con_interes, anticipo_val, saldo_val, 'Comprobante de abono inicial'
+            ))
+
         conn.commit()
         cursor.close()
         conn.close()
 
-        nombre_doc = "Cotización" if tipo_doc == 'Cotizacion' else "Factura"
-        registrar_log('EMITIR_FACTURA', f"{nombre_doc} {numero_limpio} emitida por {current_user.usuario} por un monto de ${total_val:.2f}")
+        nombre_doc = "Cotización" if tipo_doc == 'Cotizacion' else "Documento de Venta"
+        registrar_log('EMITIR_FACTURA', f"{nombre_doc} {numero_limpio} emitida por {current_user.usuario} por un monto de ${total_con_interes:.2f}")
         flash(f'{nombre_doc} "{numero_limpio}" guardada correctamente.', 'success')
         return redirect(url_for('facturacion'))
 
-    cursor.execute('SELECT * FROM servicios')
+    cursor.execute('SELECT * FROM servicios ORDER BY nombre')
     servicios_catalogo = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -2403,8 +2582,7 @@ def nueva_factura():
 def editar_factura(numero):
     """
     Edita un documento comercial existente, identificado por su número (clave primaria).
-    El número no se modifica desde este formulario, ya que detalle_factura depende de él.
-    Acceso para Administrador y Gestor de proyectos.
+    El número no se modifica desde este formulario, ya que detalle_factura y pagos dependen de él.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -2430,6 +2608,7 @@ def editar_factura(numero):
     clientes_registrados = cursor.fetchall()
     cursor.execute('SELECT * FROM estados_documento ORDER BY id')
     estados = cursor.fetchall()
+    id_por_nombre = {e['nombre']: e['id'] for e in estados}
 
     form = FacturacionForm(data=factura) if request.method == 'GET' else FacturacionForm()
     form.cliente_cedula.choices = [(c['cedula'], c['nombre']) for c in clientes_registrados]
@@ -2438,6 +2617,11 @@ def editar_factura(numero):
     if request.method == 'GET':
         form.cliente_cedula.data = factura['cliente_cedula']
         form.estado_id.data = factura['estado_id']
+        form.forma_pago.data = factura.get('forma_pago') or 'Transferencia bancaria'
+        form.tipo_pago.data = factura.get('tipo_pago') or 'contado'
+        form.plazo_meses.data = int(factura.get('plazo_meses') or 3)
+        form.con_intereses.data = '1' if factura.get('con_intereses') else '0'
+        form.tasa_interes.data = float(factura.get('tasa_interes') or 0.0)
         form.servicios_json.data = json.dumps(factura['servicios_detalle'])
 
     if form.validate_on_submit():
@@ -2448,22 +2632,66 @@ def editar_factura(numero):
             except Exception:
                 servicios_detalle = factura.get('servicios_detalle', [])
 
+        # Consultar pagos registrados en base de datos (Regla 10 G)
+        cursor.execute('SELECT COALESCE(SUM(monto), 0) AS total_pagos FROM pagos_factura WHERE factura_numero = %s', (numero,))
+        total_pagos_bd = float(cursor.fetchone()['total_pagos'])
+
+        anticipo_form = float(form.anticipo.data) if form.anticipo.data is not None else 0.00
+        total_abonado = max(total_pagos_bd, anticipo_form)
+
+        forma_pago = form.forma_pago.data or factura.get('forma_pago') or 'Transferencia bancaria'
+        tipo_pago = form.tipo_pago.data or factura.get('tipo_pago') or 'contado'
+        plazo_meses = int(form.plazo_meses.data or factura.get('plazo_meses') or 3) if tipo_pago == 'plazos' else 1
+        con_intereses = (form.con_intereses.data == '1') if tipo_pago == 'plazos' else False
+        tasa_interes = float(form.tasa_interes.data or 0) if con_intereses else 0.0
+
         subtotal_val = float(form.subtotal.data) if form.subtotal.data is not None else float(form.monto.data)
         iva_val = float(form.iva.data) if form.iva.data is not None else round(subtotal_val * 0.15, 2)
-        total_val = float(form.monto.data)
-        anticipo_val = float(form.anticipo.data) if form.anticipo.data is not None else 0.00
-        saldo_val = float(form.saldo_pendiente.data) if form.saldo_pendiente.data is not None else max(0.0, total_val - anticipo_val)
+        total_original = float(form.monto.data)
+
+        saldo_base = max(0.0, total_original - total_abonado)
+        monto_interes = round(saldo_base * (tasa_interes / 100), 2) if con_intereses else 0.0
+        total_con_interes = round(total_original + monto_interes, 2)
+
+        saldo_val = max(0.0, round(total_con_interes - total_abonado, 2))
         tipo_doc = form.tipo.data
         notas_final = form.notas.data.strip() if form.notas.data else "Documento generado por NexoDigital."
+
+        try:
+            fecha_emision = datetime.strptime(str(form.fecha.data), '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            fecha_emision = date.today()
+
+        fecha_limite = sumar_meses(fecha_emision, plazo_meses) if tipo_pago == 'plazos' else (fecha_emision + timedelta(days=30))
+
+        # REGLA CRÍTICA B: Factura final generada ÚNICAMENTE cuando saldo <= 0
+        numero_factura_asignado = factura.get('numero_factura')
+        if tipo_doc == 'Factura':
+            if saldo_val <= 0:
+                estado_id_final = id_por_nombre.get('Pagada', 1)
+                if not numero_factura_asignado:
+                    cursor.execute("SELECT nextval('secuencia_facturas') AS seq")
+                    numero_factura_asignado = f"001-001-{cursor.fetchone()['seq']:04d}"
+            else:
+                numero_factura_asignado = None  # Se revoca número oficial si tiene saldo pendiente
+                estado_id_final = id_por_nombre.get('Parcial') if total_abonado > 0 else id_por_nombre.get('Pendiente', 2)
+        else:
+            estado_id_final = form.estado_id.data
 
         cursor.execute(
             '''UPDATE facturacion SET
                tipo=%s, cliente_cedula=%s, fecha=%s, validez=%s,
-               subtotal=%s, iva=%s, monto=%s, anticipo=%s, saldo_pendiente=%s, estado_id=%s, notas=%s
+               subtotal=%s, iva=%s, monto=%s, anticipo=%s, saldo_pendiente=%s, estado_id=%s, notas=%s,
+               numero_factura=%s, forma_pago=%s, tipo_pago=%s, plazo_meses=%s,
+               con_intereses=%s, tasa_interes=%s, monto_interes=%s, total_con_interes=%s,
+               total_abonado=%s, fecha_limite=%s
                WHERE numero=%s''',
-            (tipo_doc, form.cliente_cedula.data, str(form.fecha.data),
+            (tipo_doc, form.cliente_cedula.data, str(fecha_emision),
              form.validez.data.strip() if form.validez.data else "15 días",
-             subtotal_val, iva_val, total_val, anticipo_val, saldo_val, form.estado_id.data, notas_final, numero)
+             subtotal_val, iva_val, total_original, total_abonado, saldo_val, estado_id_final, notas_final,
+             numero_factura_asignado, forma_pago, tipo_pago, plazo_meses,
+             con_intereses, tasa_interes, monto_interes, total_con_interes,
+             total_abonado, fecha_limite, numero)
         )
 
         cursor.execute('DELETE FROM detalle_factura WHERE factura_numero = %s', (numero,))
@@ -2485,7 +2713,7 @@ def editar_factura(numero):
         flash(f'{nombre_doc} "{numero}" actualizada correctamente.', 'success')
         return redirect(url_for('facturacion'))
 
-    cursor.execute('SELECT * FROM servicios')
+    cursor.execute('SELECT * FROM servicios ORDER BY nombre')
     servicios_catalogo = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -2501,13 +2729,357 @@ def editar_factura(numero):
     )
 
 
+@app.route('/facturacion/abono/<numero>', methods=['POST'])
+@role_required('Administrador', 'Gestor de proyectos')
+@permission_required('facturas.editar')
+def registrar_abono(numero):
+    """
+    Registra un abono/pago parcial o total para una factura comercial.
+    Aplica controles críticos (Reglas 10 A - 10 I):
+    - Transacción atómica en PostgreSQL.
+    - Validación estricta: monto > 0 y monto <= saldo_pendiente.
+    - Registro en historial individual (pagos_factura).
+    - Generación atómica de Comprobante de Pago único (comprobantes_pago).
+    - Amortización progresiva de cuotas en cuotas_factura si aplica.
+    - Emisión y asignación de Factura Final fiscal ÚNICAMENTE cuando saldo == 0.
+    """
+    monto_str = request.form.get('monto') or (request.json.get('monto') if request.is_json else '')
+    fecha_pago = request.form.get('fecha') or (request.json.get('fecha') if request.is_json else '') or str(date.today())
+    metodo_pago = request.form.get('metodo_pago') or (request.json.get('metodo_pago') if request.is_json else 'Transferencia bancaria')
+    referencia = request.form.get('referencia') or (request.json.get('referencia') if request.is_json else '')
+    notas = request.form.get('notas') or (request.json.get('notas') if request.is_json else '')
+
+    try:
+        monto_abono = round(float(monto_str), 2)
+    except (ValueError, TypeError):
+        flash('El monto del abono debe ser un número válido.', 'danger')
+        return redirect(url_for('facturacion'))
+
+    if monto_abono <= 0:
+        flash('El monto del abono debe ser mayor a $0.00.', 'danger')
+        return redirect(url_for('facturacion'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Bloquear fila con FOR UPDATE para concurrencia segura
+        cursor.execute('''
+            SELECT f.*, c.cedula AS c_cedula, c.nombre AS c_nombre
+            FROM facturacion f
+            JOIN clientes c ON f.cliente_cedula = c.cedula
+            WHERE f.numero = %s
+            FOR UPDATE
+        ''', (numero,))
+        factura = cursor.fetchone()
+
+        if not factura:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            flash(f'El documento "{numero}" no fue encontrado.', 'danger')
+            return redirect(url_for('facturacion'))
+
+        if factura['tipo'] == 'Cotizacion':
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            flash('No se pueden registrar pagos sobre una cotización o proforma comercial. Conviértela o emite una factura.', 'warning')
+            return redirect(url_for('facturacion'))
+
+        total_deuda = float(factura.get('total_con_interes') or factura.get('monto') or 0.0)
+
+        # Calcular total acumulado previo desde base de datos
+        cursor.execute('SELECT COALESCE(SUM(monto), 0) AS total_pagado, COUNT(*) AS conteo FROM pagos_factura WHERE factura_numero = %s', (numero,))
+        res_pagos = cursor.fetchone()
+        total_pagado_previo = float(res_pagos['total_pagado'])
+        if total_pagado_previo == 0 and float(factura.get('anticipo') or 0) > 0:
+            total_pagado_previo = float(factura['anticipo'])
+
+        saldo_anterior = round(total_deuda - total_pagado_previo, 2)
+
+        # REGLA CRÍTICA C: No permitir monto_abono > saldo_pendiente (Caso de prueba 4)
+        if monto_abono > saldo_anterior:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            flash(f'Operación rechazada: El pago ingresado (${monto_abono:.2f}) supera el saldo pendiente de ${saldo_anterior:.2f}. No se permiten sobrepagos.', 'danger')
+            return redirect(url_for('facturacion'))
+
+        saldo_posterior = max(0.0, round(saldo_anterior - monto_abono, 2))
+        nuevo_total_abonado = round(total_pagado_previo + monto_abono, 2)
+        numero_pago = int(res_pagos['conteo']) + 1
+
+        # 1. Insertar pago individual en el historial (Regla 10 F)
+        cursor.execute('''
+            INSERT INTO pagos_factura (
+                factura_numero, numero_pago, monto, fecha, metodo_pago, referencia,
+                saldo_anterior, saldo_posterior, total_acumulado, registrado_por, notas
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        ''', (
+            numero, numero_pago, monto_abono, fecha_pago, metodo_pago,
+            referencia.strip() if referencia else None, saldo_anterior, saldo_posterior,
+            nuevo_total_abonado, current_user.usuario, notas.strip() if notas else None
+        ))
+        pago_id = cursor.fetchone()['id']
+
+        # 2. Generar número único de Comprobante de Pago (Regla 10 E)
+        cursor.execute("SELECT nextval('secuencia_comprobantes') AS seq")
+        seq_comp = cursor.fetchone()['seq']
+        numero_comprobante = f"REC-2026-{seq_comp:04d}"
+
+        # 3. Amortizar cuotas pendientes si existen
+        cursor.execute('''
+            SELECT * FROM cuotas_factura
+            WHERE factura_numero = %s
+            ORDER BY numero_cuota ASC
+            FOR UPDATE
+        ''', (numero,))
+        cuotas_existentes = cursor.fetchall()
+
+        monto_restante_pago = monto_abono
+        for c in cuotas_existentes:
+            if c['estado'] == 'Pagada':
+                continue
+            if monto_restante_pago <= 0:
+                break
+            saldo_c = float(c['saldo_cuota'])
+            pagado_actual = float(c['monto_pagado'])
+            if monto_restante_pago >= saldo_c:
+                monto_restante_pago = round(monto_restante_pago - saldo_c, 2)
+                cursor.execute('''
+                    UPDATE cuotas_factura
+                    SET monto_pagado = %s, saldo_cuota = 0, estado = 'Pagada', fecha_pago = %s
+                    WHERE id = %s
+                ''', (float(c['valor_cuota']), fecha_pago, c['id']))
+            else:
+                nuevo_saldo_c = round(saldo_c - monto_restante_pago, 2)
+                nuevo_pagado_c = round(pagado_actual + monto_restante_pago, 2)
+                monto_restante_pago = 0.0
+                cursor.execute('''
+                    UPDATE cuotas_factura
+                    SET monto_pagado = %s, saldo_cuota = %s, estado = 'Parcial', fecha_pago = %s
+                    WHERE id = %s
+                ''', (nuevo_pagado_c, nuevo_saldo_c, fecha_pago, c['id']))
+
+        # Obtener próxima cuota pendiente
+        cursor.execute('''
+            SELECT * FROM cuotas_factura
+            WHERE factura_numero = %s AND estado != 'Pagada'
+            ORDER BY numero_cuota ASC
+            LIMIT 1
+        ''', (numero,))
+        prox_c = cursor.fetchone()
+        proxima_cuota_num = prox_c['numero_cuota'] if prox_c else None
+        proxima_cuota_fecha = prox_c['fecha_vencimiento'] if prox_c else None
+        proxima_cuota_monto = float(prox_c['saldo_cuota']) if prox_c else None
+
+        # 4. Insertar comprobante de pago
+        cursor.execute('''
+            INSERT INTO comprobantes_pago (
+                numero_comprobante, pago_id, factura_numero, cliente_cedula, fecha,
+                monto_abonado, total_deuda, total_acumulado_pagado, saldo_pendiente,
+                proxima_cuota_num, proxima_cuota_fecha, proxima_cuota_monto, observaciones
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (
+            numero_comprobante, pago_id, numero, factura['cliente_cedula'], fecha_pago,
+            monto_abono, total_deuda, nuevo_total_abonado, saldo_posterior,
+            proxima_cuota_num, proxima_cuota_fecha, proxima_cuota_monto,
+            notas.strip() if notas else f'Abono #{numero_pago} registrado vía {metodo_pago}'
+        ))
+
+        cursor.execute('SELECT id, nombre FROM estados_documento')
+        estados_dict = {e['nombre']: e['id'] for e in cursor.fetchall()}
+
+        # 5. REGLA CRÍTICA B: Factura final generada ÚNICAMENTE cuando saldo <= 0
+        numero_factura_asignado = factura.get('numero_factura')
+        if saldo_posterior <= 0:
+            estado_id_nuevo = estados_dict.get('Pagada', 1)
+            if not numero_factura_asignado:
+                cursor.execute("SELECT nextval('secuencia_facturas') AS seq")
+                numero_factura_asignado = f"001-001-{cursor.fetchone()['seq']:04d}"
+            cursor.execute('''
+                UPDATE facturacion
+                SET anticipo = %s, total_abonado = %s, saldo_pendiente = 0,
+                    estado_id = %s, numero_factura = %s, proxima_cuota_fecha = NULL, proxima_cuota_monto = NULL
+                WHERE numero = %s
+            ''', (nuevo_total_abonado, nuevo_total_abonado, estado_id_nuevo, numero_factura_asignado, numero))
+        else:
+            estado_id_nuevo = estados_dict.get('Parcial') or estados_dict.get('Pendiente', 2)
+            cursor.execute('''
+                UPDATE facturacion
+                SET anticipo = %s, total_abonado = %s, saldo_pendiente = %s,
+                    estado_id = %s, proxima_cuota_fecha = %s, proxima_cuota_monto = %s
+                WHERE numero = %s
+            ''', (nuevo_total_abonado, nuevo_total_abonado, saldo_posterior, estado_id_nuevo, proxima_cuota_fecha, proxima_cuota_monto, numero))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        registrar_log(
+            'REGISTRAR_ABONO',
+            f"Abono #{numero_pago} de ${monto_abono:.2f} registrado en {numero}. Comprobante: {numero_comprobante}. Saldo restante: ${saldo_posterior:.2f}"
+        )
+
+        if saldo_posterior <= 0:
+            flash(
+                f'¡Abono de ${monto_abono:.2f} registrado exitosamente! Se emitió el Comprobante de Pago "{numero_comprobante}". '
+                f'La deuda ha sido liquidada al 100% y se ha generado la Factura Fiscal Oficial Nº "{numero_factura_asignado}".',
+                'success'
+            )
+            return redirect(url_for('ver_factura_fiscal', numero=numero))
+        else:
+            flash(
+                f'Abono de ${monto_abono:.2f} registrado exitosamente. Se emitió el Comprobante de Pago "{numero_comprobante}". '
+                f'Saldo pendiente actual: ${saldo_posterior:.2f}. Recuerda que la factura oficial se emitirá al completar el saldo a $0.00.',
+                'info'
+            )
+            return redirect(url_for('ver_comprobante_pago', numero_comprobante=numero_comprobante))
+
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        flash(f'Ocurrió un error inesperado al procesar el pago: {str(e)}', 'danger')
+        return redirect(url_for('facturacion'))
+
+
+@app.route('/facturacion/comprobante-pago/<numero_comprobante>')
+@role_required('Administrador', 'Gestor de proyectos', 'Cliente')
+@permission_required('facturas.ver_propias')
+def ver_comprobante_pago(numero_comprobante):
+    """
+    Genera la vista imprimible del Comprobante de Pago emitido por un abono.
+    Un comprobante de pago NO es una factura.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT cp.*, p.metodo_pago, p.referencia, p.notas,
+               c.nombre AS cliente_nombre, c.correo AS cliente_correo,
+               c.telefono AS cliente_telefono, c.ciudad AS cliente_ciudad,
+               f.tipo AS doc_tipo
+        FROM comprobantes_pago cp
+        JOIN pagos_factura p ON cp.pago_id = p.id
+        JOIN clientes c ON cp.cliente_cedula = c.cedula
+        JOIN facturacion f ON cp.factura_numero = f.numero
+        WHERE cp.numero_comprobante = %s
+    ''', (numero_comprobante,))
+    fila = cursor.fetchone()
+
+    if not fila:
+        cursor.close()
+        conn.close()
+        flash(f'El comprobante de pago "{numero_comprobante}" no fue encontrado.', 'danger')
+        return redirect(url_for('facturacion'))
+
+    if current_user.rol_nombre == 'Cliente':
+        cliente_correo = (fila.get('cliente_correo') or '').strip().lower()
+        cliente_cedula = (fila.get('cliente_cedula') or '').strip()
+        usuario_actual = current_user.usuario.strip().lower()
+        correo_actual = current_user.correo.strip().lower()
+        if (correo_actual != cliente_correo and usuario_actual != cliente_cedula.lower()):
+            cursor.close()
+            conn.close()
+            flash('No tienes autorización para ver comprobantes de otros clientes.', 'danger')
+            return redirect(url_for('facturacion'))
+
+    cursor.close()
+    conn.close()
+    return render_template('comprobante_pago.html', comprobante=dict(fila))
+
+
+@app.route('/facturacion/factura/<numero>')
+@role_required('Administrador', 'Gestor de proyectos', 'Cliente')
+@permission_required('facturas.ver_propias')
+def ver_factura_fiscal(numero):
+    """
+    Genera la vista imprimible de la Factura Final Oficial de venta.
+    REGLA CRÍTICA B Y CASO DE PRUEBA 5:
+    La factura fiscal ÚNICAMENTE puede generarse o visualizarse si saldo_pendiente <= 0.
+    Si existe saldo pendiente > $0.00, el backend bloquea terminantemente el acceso.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT f.*, c.nombre AS cliente_nombre, c.correo AS cliente_correo,
+               c.telefono AS cliente_telefono, c.ciudad AS cliente_ciudad,
+               e.nombre AS estado_nombre
+        FROM facturacion f
+        JOIN clientes c ON f.cliente_cedula = c.cedula
+        JOIN estados_documento e ON f.estado_id = e.id
+        WHERE f.numero = %s
+    ''', (numero,))
+    fila = cursor.fetchone()
+
+    if not fila:
+        cursor.close()
+        conn.close()
+        flash('El documento seleccionado no existe.', 'danger')
+        return redirect(url_for('facturacion'))
+
+    factura = dict(fila)
+
+    # REGLA CRÍTICA B Y CASO DE PRUEBA 5: Bloqueo estricto en backend
+    saldo_pendiente = float(factura.get('saldo_pendiente') or 0.0)
+    if saldo_pendiente > 0:
+        cursor.close()
+        conn.close()
+        registrar_log(
+            'ACCESO_DENEGADO_FACTURA_SALDO_PENDIENTE',
+            f"Intento de ver factura para {numero} con saldo pendiente de ${saldo_pendiente:.2f}"
+        )
+        flash(
+            f'Acceso bloqueado: No se puede generar ni visualizar la Factura Fiscal Oficial porque el documento "{numero}" '
+            f'tiene un saldo pendiente de ${saldo_pendiente:.2f}. '
+            'Un pago parcial genera comprobante de pago, NO factura final. '
+            'La factura oficial se emite únicamente cuando la deuda sea liquidada al 100% ($0.00).',
+            'warning'
+        )
+        return redirect(url_for('facturacion'))
+
+    if current_user.rol_nombre == 'Cliente':
+        cliente_correo = (factura.get('cliente_correo') or '').strip().lower()
+        cliente_cedula = (factura.get('cliente_cedula') or '').strip()
+        usuario_actual = current_user.usuario.strip().lower()
+        correo_actual = current_user.correo.strip().lower()
+        if (correo_actual != cliente_correo and usuario_actual != cliente_cedula.lower()):
+            cursor.close()
+            conn.close()
+            flash('No tienes autorización para ver facturas de otros clientes.', 'danger')
+            return redirect(url_for('facturacion'))
+
+    cursor.execute('SELECT * FROM detalle_factura WHERE factura_numero = %s', (numero,))
+    detalle = cursor.fetchall()
+    factura['servicios_detalle'] = [
+        {'id': d['servicio_id'], 'servicio': d['nombre_servicio'], 'cantidad': d['cantidad'],
+         'precio': d['precio_base'], 'ajuste': d['ajuste'], 'total': d['total']}
+        for d in detalle
+    ]
+
+    cursor.execute('''
+        SELECT p.*, cp.numero_comprobante
+        FROM pagos_factura p
+        LEFT JOIN comprobantes_pago cp ON cp.pago_id = p.id
+        WHERE p.factura_numero = %s
+        ORDER BY p.numero_pago ASC
+    ''', (numero,))
+    factura['pagos'] = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+    return render_template('comprobante_factura.html', factura=factura, numero=numero)
+
+
 @app.route('/facturacion/eliminar/<numero>', methods=['POST'])
 @role_required('Administrador')
 @permission_required('facturas.eliminar')
 def eliminar_factura(numero):
     """
-    Elimina un documento comercial identificado por su número. El detalle asociado
-    se borra automáticamente gracias a ON DELETE CASCADE en detalle_factura.
+    Elimina un documento comercial identificado por su número.
+    El detalle, pagos, comprobantes y cuotas asociadas se borran automáticamente (ON DELETE CASCADE).
     Acceso exclusivo para el rol Administrador.
     """
     conn = get_db_connection()
@@ -2538,13 +3110,17 @@ def eliminar_factura(numero):
 @permission_required('facturas.ver_propias')
 def ver_comprobante(numero):
     """
-    Genera la vista imprimible del comprobante, identificado por su número (PK).
-    Acceso para Administrador, Gestor de proyectos y Cliente (solo sus propios comprobantes).
+    Ruta compatible con accesos directos previos.
+    - Si es Cotización: la muestra.
+    - Si es Factura con saldo 0: redirige a la Factura Fiscal Oficial.
+    - Si es Factura con saldo > 0: redirige al último Comprobante de Pago emitido.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT f.*, c.nombre AS cliente_nombre, c.correo AS cliente_correo, e.nombre AS estado_nombre
+        SELECT f.*, c.nombre AS cliente_nombre, c.correo AS cliente_correo,
+               c.telefono AS cliente_telefono, c.ciudad AS cliente_ciudad,
+               e.nombre AS estado_nombre
         FROM facturacion f
         JOIN clientes c ON f.cliente_cedula = c.cedula
         JOIN estados_documento e ON f.estado_id = e.id
@@ -2558,39 +3134,51 @@ def ver_comprobante(numero):
         flash('El documento seleccionado no existe.', 'danger')
         return redirect(url_for('facturacion'))
 
-    # Si el usuario es Cliente, verificar que el comprobante pertenezca a sus datos
-    if current_user.rol_nombre == 'Cliente':
-        cliente_correo = (fila.get('cliente_correo') or '').strip().lower()
-        cliente_cedula = (fila.get('cliente_cedula') or '').strip()
-        cliente_nombre = (fila.get('cliente_nombre') or '').strip().lower()
-        usuario_actual = current_user.usuario.strip().lower()
-        correo_actual = current_user.correo.strip().lower()
-
-        if (correo_actual != cliente_correo and
-            usuario_actual != cliente_cedula.lower() and
-            usuario_actual not in cliente_nombre):
-            cursor.close()
-            conn.close()
-            registrar_log(
-                'ACCESO_DENEGADO_COMPROBANTE',
-                f"Cliente {current_user.usuario} intentó ver comprobante ajeno {numero} de {fila.get('cliente_nombre')}"
-            )
-            flash('No tienes autorización para ver comprobantes emitidos a otros clientes.', 'danger')
-            return redirect(url_for('facturacion'))
-
     factura = dict(fila)
-    cursor.execute('SELECT * FROM detalle_factura WHERE factura_numero = %s', (numero,))
-    detalle = cursor.fetchall()
-    cursor.close()
-    conn.close()
 
-    factura['servicios_detalle'] = [
-        {'id': d['servicio_id'], 'servicio': d['nombre_servicio'], 'cantidad': d['cantidad'],
-         'precio': d['precio_base'], 'ajuste': d['ajuste'], 'total': d['total']}
-        for d in detalle
-    ]
+    if factura['tipo'] == 'Cotizacion':
+        if current_user.rol_nombre == 'Cliente':
+            cliente_correo = (factura.get('cliente_correo') or '').strip().lower()
+            cliente_cedula = (factura.get('cliente_cedula') or '').strip()
+            usuario_actual = current_user.usuario.strip().lower()
+            correo_actual = current_user.correo.strip().lower()
+            if (correo_actual != cliente_correo and usuario_actual != cliente_cedula.lower()):
+                cursor.close()
+                conn.close()
+                flash('No tienes autorización para ver cotizaciones emitidas a otros clientes.', 'danger')
+                return redirect(url_for('facturacion'))
 
-    return render_template('comprobante_factura.html', factura=factura, numero=numero)
+        cursor.execute('SELECT * FROM detalle_factura WHERE factura_numero = %s', (numero,))
+        detalle = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        factura['servicios_detalle'] = [
+            {'id': d['servicio_id'], 'servicio': d['nombre_servicio'], 'cantidad': d['cantidad'],
+             'precio': d['precio_base'], 'ajuste': d['ajuste'], 'total': d['total']}
+            for d in detalle
+        ]
+        return render_template('comprobante_factura.html', factura=factura, numero=numero)
+
+    # Es Factura / Venta
+    saldo = float(factura.get('saldo_pendiente') or 0.0)
+    if saldo <= 0:
+        cursor.close()
+        conn.close()
+        return redirect(url_for('ver_factura_fiscal', numero=numero))
+    else:
+        cursor.execute(
+            'SELECT numero_comprobante FROM comprobantes_pago WHERE factura_numero = %s ORDER BY id DESC LIMIT 1',
+            (numero,)
+        )
+        comp = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if comp:
+            flash('Este documento tiene saldo pendiente. Mostrando el último comprobante de pago emitido.', 'info')
+            return redirect(url_for('ver_comprobante_pago', numero_comprobante=comp['numero_comprobante']))
+        else:
+            flash(f'El documento {numero} tiene un saldo pendiente de ${saldo:.2f} y aún no registra abonos.', 'warning')
+            return redirect(url_for('facturacion'))
 
 
 

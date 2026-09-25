@@ -82,7 +82,19 @@ CREATE TABLE facturacion (
     anticipo NUMERIC(12,2) DEFAULT 0,
     saldo_pendiente NUMERIC(12,2) DEFAULT 0,
     estado_id INT NOT NULL REFERENCES estados_documento(id),
-    notas TEXT
+    notas TEXT,
+    numero_factura VARCHAR(30) UNIQUE,
+    forma_pago VARCHAR(100) DEFAULT 'Transferencia bancaria',
+    tipo_pago VARCHAR(20) DEFAULT 'contado',
+    plazo_meses INT DEFAULT 1,
+    con_intereses BOOLEAN DEFAULT FALSE,
+    tasa_interes NUMERIC(5,2) DEFAULT 0,
+    monto_interes NUMERIC(12,2) DEFAULT 0,
+    total_con_interes NUMERIC(12,2),
+    total_abonado NUMERIC(12,2) DEFAULT 0,
+    fecha_limite DATE,
+    proxima_cuota_fecha DATE,
+    proxima_cuota_monto NUMERIC(12,2)
 );
  
 CREATE TABLE detalle_factura (
@@ -95,6 +107,55 @@ CREATE TABLE detalle_factura (
     precio_base NUMERIC(12,2) NOT NULL DEFAULT 0,
     ajuste NUMERIC(12,2) NOT NULL DEFAULT 0,
     total NUMERIC(12,2) NOT NULL
+);
+
+CREATE TABLE pagos_factura (
+    id SERIAL PRIMARY KEY,
+    factura_numero VARCHAR(30) NOT NULL REFERENCES facturacion(numero) ON DELETE CASCADE ON UPDATE CASCADE,
+    numero_pago INT NOT NULL,
+    monto NUMERIC(12,2) NOT NULL CHECK (monto > 0),
+    fecha DATE NOT NULL,
+    metodo_pago VARCHAR(100) NOT NULL DEFAULT 'Transferencia bancaria',
+    referencia VARCHAR(100),
+    saldo_anterior NUMERIC(12,2) NOT NULL DEFAULT 0,
+    saldo_posterior NUMERIC(12,2) NOT NULL DEFAULT 0,
+    total_acumulado NUMERIC(12,2) NOT NULL DEFAULT 0,
+    registrado_por VARCHAR(100),
+    notas TEXT,
+    fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE SEQUENCE IF NOT EXISTS secuencia_comprobantes START WITH 1 INCREMENT BY 1;
+
+CREATE TABLE comprobantes_pago (
+    id SERIAL PRIMARY KEY,
+    numero_comprobante VARCHAR(40) UNIQUE NOT NULL,
+    pago_id INT NOT NULL REFERENCES pagos_factura(id) ON DELETE CASCADE,
+    factura_numero VARCHAR(30) NOT NULL REFERENCES facturacion(numero) ON DELETE CASCADE ON UPDATE CASCADE,
+    cliente_cedula VARCHAR(20) NOT NULL REFERENCES clientes(cedula) ON UPDATE CASCADE,
+    fecha DATE NOT NULL,
+    monto_abonado NUMERIC(12,2) NOT NULL,
+    total_deuda NUMERIC(12,2) NOT NULL,
+    total_acumulado_pagado NUMERIC(12,2) NOT NULL,
+    saldo_pendiente NUMERIC(12,2) NOT NULL,
+    proxima_cuota_num INT,
+    proxima_cuota_fecha DATE,
+    proxima_cuota_monto NUMERIC(12,2),
+    observaciones TEXT,
+    fecha_emision TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE cuotas_factura (
+    id SERIAL PRIMARY KEY,
+    factura_numero VARCHAR(30) NOT NULL REFERENCES facturacion(numero) ON DELETE CASCADE ON UPDATE CASCADE,
+    numero_cuota INT NOT NULL,
+    valor_cuota NUMERIC(12,2) NOT NULL,
+    fecha_vencimiento DATE NOT NULL,
+    monto_pagado NUMERIC(12,2) NOT NULL DEFAULT 0,
+    saldo_cuota NUMERIC(12,2) NOT NULL,
+    estado VARCHAR(30) NOT NULL DEFAULT 'Pendiente',
+    fecha_pago DATE,
+    CONSTRAINT uq_cuota_factura UNIQUE (factura_numero, numero_cuota)
 );
 
 CREATE TABLE roles (
@@ -249,7 +310,7 @@ INSERT INTO proveedores (nombre, categoria_id, sitio, estado_id) VALUES
 ('Cloudflare', 4, 'cloudflare.com', 2);
  
 INSERT INTO estados_documento (nombre) VALUES
-('Pagada'), ('Pendiente'), ('Aprobada'), ('En revision'), ('Vencida');
+('Pagada'), ('Pendiente'), ('Parcial'), ('Aprobada'), ('En revision'), ('Vencida');
 
 -- ============================
 -- ROLES Y PERMISOS (RBAC)
