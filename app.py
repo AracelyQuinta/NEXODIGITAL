@@ -2480,7 +2480,6 @@ def nueva_factura():
             else:
                 numero_factura_final = None  # Bloqueado hasta liquidación total
                 estado_id_final = id_por_nombre.get('Parcial') if anticipo_val > 0 else id_por_nombre.get('Pendiente', 2)
-
         notas_final = form.notas.data.strip() if form.notas.data else (
             "Propuesta emitida por NexoDigital." if tipo_doc == 'Cotizacion' else "Comprobante emitido por NexoDigital."
         )
