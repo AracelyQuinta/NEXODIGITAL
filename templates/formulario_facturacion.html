@@ -234,15 +234,6 @@
                                 <label class="form-label fw-semibold text-navy small mb-2">
                                     <i class="bi bi-plus-circle-fill text-emerald me-1"></i>Agregar servicio desde el catálogo de tarifas
                                 </label>
-                                <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-12">
-                                        <div class="input-group input-group-sm">
-                                            <span class="input-group-text bg-white text-muted"><i class="bi bi-search text-emerald"></i></span>
-                                            <input type="text" id="buscadorCatalogoFactura" class="form-control" placeholder="Escribe para buscar o filtrar servicios del catálogo..." autocomplete="off">
-                                            <button class="btn btn-outline-secondary" type="button" id="btnLimpiarCatalogoFactura" title="Limpiar"><i class="bi bi-x"></i></button>
-                                        </div>
-                                    </div>
-                                </div>
                                 <div class="row g-2 align-items-center">
                                     <div class="col-md-9">
                                         <select id="selectorCatalogo" class="form-select">
@@ -454,34 +445,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const badgeResumenCuota = document.getElementById("badgeResumenCuota");
 
     const selectorCatalogo = document.getElementById("selectorCatalogo");
-    const buscadorCatalogo = document.getElementById("buscadorCatalogoFactura");
-    const btnLimpiarCatalogo = document.getElementById("btnLimpiarCatalogoFactura");
     const btnAgregar = document.getElementById("btnAgregarServicio");
     const cuerpoTabla = document.getElementById("cuerpoTablaItems");
     const mensajeSinItems = document.getElementById("mensajeSinItems");
-
-    // Filtrado en vivo del catálogo de servicios
-    if (buscadorCatalogo && selectorCatalogo) {
-        const opcionesCatalogo = Array.from(selectorCatalogo.options).slice(1);
-        function filtrarCatalogo() {
-            const q = (buscadorCatalogo.value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-            opcionesCatalogo.forEach(opt => {
-                const txt = (opt.textContent || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                opt.hidden = q !== "" && !txt.includes(q);
-            });
-            if (selectorCatalogo.selectedOptions[0] && selectorCatalogo.selectedOptions[0].hidden) {
-                selectorCatalogo.selectedIndex = 0;
-            }
-        }
-        buscadorCatalogo.addEventListener("input", filtrarCatalogo);
-        if (btnLimpiarCatalogo) {
-            btnLimpiarCatalogo.addEventListener("click", () => {
-                buscadorCatalogo.value = "";
-                filtrarCatalogo();
-                buscadorCatalogo.focus();
-            });
-        }
-    }
 
     const lblSubtotal = document.getElementById("lblSubtotal");
     const lblIva = document.getElementById("lblIva");
@@ -557,7 +523,18 @@ document.addEventListener("DOMContentLoaded", () => {
         recalcularTotales();
     }
 
-    selectTipoDoc.addEventListener("change", actualizarVisibilidadTipoDoc);
+    selectTipoDoc.addEventListener("change", function () {
+        actualizarVisibilidadTipoDoc();
+        const nuevoTipo = this.value;
+        fetch(`/api/siguiente-numero/${encodeURIComponent(nuevoTipo)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.numero && inputNumeroDoc) {
+                    inputNumeroDoc.value = data.numero;
+                }
+            })
+            .catch(() => {});
+    });
     selectTipoPago.addEventListener("change", actualizarVisibilidadTipoDoc);
     if (selectPlazoMeses) selectPlazoMeses.addEventListener("change", recalcularTotales);
     if (inputFechaDoc) inputFechaDoc.addEventListener("change", recalcularTotales);

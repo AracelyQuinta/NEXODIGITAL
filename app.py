@@ -2307,6 +2307,50 @@ def eliminar_categoria_proveedor(id):
 # MÓDULO CRUD: FACTURACIÓN
 # ==============================================================================
 
+def obtener_siguiente_numero_documento(cursor, tipo_doc):
+    """
+    Calcula el siguiente número secuencial único que NO exista en facturacion.
+    Garantiza que no haya saltos innecesarios en lecturas (GET) y evita colisiones.
+    """
+    es_cotizacion = (tipo_doc == 'Cotizacion')
+    prefijo = "COT-2026-" if es_cotizacion else "001-001-"
+
+    # 1. Obtener todos los números existentes en facturación con este prefijo
+    cursor.execute("SELECT numero FROM facturacion WHERE numero LIKE %s", (f"{prefijo}%",))
+    existentes = {r['numero'] for r in cursor.fetchall()}
+
+    max_num = 0
+    for num_str in existentes:
+        try:
+            seg = int(num_str.split('-')[-1])
+            if seg > max_num:
+                max_num = seg
+        except (ValueError, IndexError):
+            continue
+
+    proximo = max_num + 1
+
+    # 2. Garantizar que el número no colisione con ninguno existente
+    while f"{prefijo}{proximo:04d}" in existentes:
+        proximo += 1
+
+    return f"{prefijo}{proximo:04d}"
+
+
+@app.route('/api/siguiente-numero/<tipo>')
+@login_required
+def api_siguiente_numero(tipo):
+    """Retorna el siguiente número secuencial disponible para Factura o Cotización."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        num = obtener_siguiente_numero_documento(cursor, tipo)
+        return jsonify({'numero': num})
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @app.route('/facturacion/nueva', methods=['GET', 'POST'])
 @role_required('Administrador', 'Gestor de proyectos')
 @permission_required('facturas.crear')
@@ -2333,16 +2377,13 @@ def nueva_factura():
     id_por_nombre = {e['nombre']: e['id'] for e in estados}
 
     if request.method == 'GET':
-        cursor.execute("SELECT last_value, is_called FROM " + ("secuencia_cotizaciones" if tipo_solicitado == 'Cotizacion' else "secuencia_facturas"))
-        seq_row = cursor.fetchone()
-        proximo = (seq_row['last_value'] + 1) if (seq_row and seq_row['is_called']) else (seq_row['last_value'] if seq_row else 1)
         form.tipo.data = tipo_solicitado
+        proximo_numero = obtener_siguiente_numero_documento(cursor, tipo_solicitado)
+        form.numero.data = proximo_numero
         if tipo_solicitado == 'Cotizacion':
-            form.numero.data = f"COT-2026-{proximo:04d}"
             form.validez.data = "15 días"
             form.estado_id.data = id_por_nombre.get('En revision') or id_por_nombre.get('Pendiente', 2)
         else:
-            form.numero.data = f"001-001-{proximo:04d}"
             form.validez.data = "30 días"
             form.estado_id.data = id_por_nombre.get('Pendiente', 2)
         form.fecha.data = str(date.today())
@@ -2356,22 +2397,17 @@ def nueva_factura():
     if form.validate_on_submit():
         tipo_doc = form.tipo.data
         numero_limpio = form.numero.data.strip() if form.numero.data else ''
-        numero_param = None
 
-        if numero_limpio:
+        # Si el número viene vacío o ya existe (colisión por formulario previo),
+        # se asigna automáticamente el siguiente número único disponible
+        if not numero_limpio:
+            numero_param = obtener_siguiente_numero_documento(cursor, tipo_doc)
+        else:
             cursor.execute('SELECT 1 FROM facturacion WHERE numero = %s', (numero_limpio,))
             if cursor.fetchone() is not None:
-                cursor.execute('SELECT * FROM servicios ORDER BY nombre')
-                servicios_catalogo = cursor.fetchall()
-                cursor.close()
-                conn.close()
-                flash(f'Ya existe un documento con el número "{numero_limpio}". Usa un número distinto.', 'danger')
-                return render_template(
-                    'formulario_facturacion.html', form=form, editando=False,
-                    servicios_catalogo=servicios_catalogo, clientes_registrados=clientes_registrados,
-                    servicio_seleccionado_id=request.args.get('servicio_id', type=int)
-                )
-            numero_param = numero_limpio
+                numero_param = obtener_siguiente_numero_documento(cursor, tipo_doc)
+            else:
+                numero_param = numero_limpio
 
         servicios_detalle = []
         if form.servicios_json.data:
@@ -2477,15 +2513,19 @@ def nueva_factura():
 
         fecha_limite = sumar_meses(fecha_emision, plazo_meses) if tipo_pago == 'plazos' else (fecha_emision + timedelta(days=30))
 
+        # Autogeneración secuencial segura del número de documento si no se proporcionó
+        if not numero_param or numero_param.strip() == '':
+            numero_param = obtener_siguiente_numero_documento(cursor, tipo_doc)
+
         # REGLA CRÍTICA B: Factura fiscal generada ÚNICAMENTE cuando saldo <= 0
         numero_factura_final = None
         if tipo_doc == 'Cotizacion':
             estado_id_final = id_por_nombre.get('En revision') or id_por_nombre.get('Pendiente', 2)
+            numero_factura_final = None
         else:
             if saldo_val <= 0:
                 estado_id_final = id_por_nombre.get('Pagada', 1)
-                cursor.execute("SELECT nextval('secuencia_facturas') AS seq")
-                numero_factura_final = f"001-001-{cursor.fetchone()['seq']:04d}"
+                numero_factura_final = numero_param
             else:
                 numero_factura_final = None  # Bloqueado hasta liquidación total
                 estado_id_final = id_por_nombre.get('Parcial') if anticipo_val > 0 else id_por_nombre.get('Pendiente', 2)
@@ -2493,13 +2533,6 @@ def nueva_factura():
         notas_final = form.notas.data.strip() if form.notas.data else (
             "Propuesta emitida por NexoDigital." if tipo_doc == 'Cotizacion' else "Comprobante emitido por NexoDigital."
         )
-
-        # Autogeneración secuencial segura del número de documento si no se proporcionó
-        if not numero_param or numero_param.strip() == '':
-            seq_name = "secuencia_cotizaciones" if tipo_doc == 'Cotizacion' else "secuencia_facturas"
-            cursor.execute(f"SELECT nextval('{seq_name}') AS seq")
-            seq_num = cursor.fetchone()['seq']
-            numero_param = f"COT-2026-{seq_num:04d}" if tipo_doc == 'Cotizacion' else f"001-001-{seq_num:04d}"
 
         # Inserción con autogeneración secuencial atómica
         cursor.execute(
@@ -2707,8 +2740,7 @@ def editar_factura(numero):
             if saldo_val <= 0:
                 estado_id_final = id_por_nombre.get('Pagada', 1)
                 if not numero_factura_asignado:
-                    cursor.execute("SELECT nextval('secuencia_facturas') AS seq")
-                    numero_factura_asignado = f"001-001-{cursor.fetchone()['seq']:04d}"
+                    numero_factura_asignado = numero
             else:
                 numero_factura_asignado = None  # Se revoca número oficial si tiene saldo pendiente
                 estado_id_final = id_por_nombre.get('Parcial') if total_abonado > 0 else id_por_nombre.get('Pendiente', 2)
@@ -2934,8 +2966,7 @@ def registrar_abono(numero):
         if saldo_posterior <= 0:
             estado_id_nuevo = estados_dict.get('Pagada', 1)
             if not numero_factura_asignado:
-                cursor.execute("SELECT nextval('secuencia_facturas') AS seq")
-                numero_factura_asignado = f"001-001-{cursor.fetchone()['seq']:04d}"
+                numero_factura_asignado = numero
             cursor.execute('''
                 UPDATE facturacion
                 SET anticipo = %s, total_abonado = %s, saldo_pendiente = 0,
